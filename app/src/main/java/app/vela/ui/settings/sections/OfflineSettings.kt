@@ -99,6 +99,13 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             hint = stringResource(R.string.settings_offline_places_with_downloads_hint),
         )
         GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_offline_route_strip),
+            checked = app.vela.offline.OfflineMaps.routeStrip.value,
+            onCheckedChange = { app.vela.offline.OfflineMaps.setRouteStrip(context, it) },
+            hint = stringResource(R.string.settings_offline_route_strip_hint),
+        )
+        GroupDivider()
         // What a rebaked region is allowed to do on its own. Deltas make an update a few megabytes
         // instead of a few hundred, but they are still the user's bytes, so the default is off.
         // On Wi-Fi or mobile, published patches apply once a day by themselves; a full re-download

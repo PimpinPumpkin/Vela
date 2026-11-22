@@ -5153,6 +5153,21 @@ destination), because MapLibre's path change opens a new database and carries no
 `adb shell setprop debug.vela.sdtest true` makes the shared-storage app folder stand in for a
 card.
 
+#### The map along the route
+
+`NavController.saveRouteStrip` saves the map along a drive's route when the drive starts, and
+again for a new route at most every `STRIP_GAP_MS` (60 s), not while offline or in a replay
+(`OfflineMaps.saveRouteStrip`). It is a MapLibre region on the route's line itself
+(`OfflineGeometryRegionDefinition`, zooms `STRIP_MIN_Z` 11 to `STRIP_MAX_Z` 14, points kept
+`STRIP_STEP_M` 50 m apart, the first `STRIP_MAX_M` 150 km), so the tiles the line crosses
+come down: at zoom 14 about 2 km wide. Tiles already in the cache are not fetched again. One
+strip at a time: when a new one is done it deletes the last (`deleteRouteStrip`), so tiles the two
+share are not fetched again. The region is marked in its
+metadata (`routeStrip`), `OfflineMaps.list` leaves it out of the saved areas, and "Delete all
+offline data" takes it with the rest. Not on a metered network with Data Saver on. Setting
+"Save the map along the route" (`OfflineMaps.routeStrip`, pref `route_strip`, on): off also
+deletes the strip.
+
 #### Deleting
 
 - A region (`deleteRoutingGraph`): the routing file, the pack unless another installed piece

@@ -258,6 +258,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   A name is found with or without its accents: "cafe" finds "Café".
 - Offline routes cover driving, walking and cycling, with spoken turns, speed limits and avoid
   options, and are labeled offline.
+- "Save the map along the route" (on by default): a drive that starts with signal saves the map
+  along its route, so the streets around it still show without one.
 - Leaving Google's route with no signal, the offline reroute goes back onto it a few km on and
   keeps the rest of Google's route, its roads, names, lanes and exits, unless that is a long way
   round.

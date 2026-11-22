@@ -122,6 +122,18 @@ internal class NavController(
      *  the tunnel dead-reckon loop reads it to detect a quiet feed. */
     @Volatile var lastNavFedMs = 0L
 
+    private var stripAtMs = 0L
+
+    /** Save the map along the drive's route while there is signal ([app.vela.offline.OfflineMaps.saveRouteStrip]):
+     *  at the start, then for a new route at most every [STRIP_GAP_MS]. */
+    private fun saveRouteStrip(route: app.vela.core.model.Route, first: Boolean) {
+        if (_state.value.offline || route.polyline.size < 2) return
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!first && now - stripAtMs < STRIP_GAP_MS) return
+        stripAtMs = now
+        app.vela.offline.OfflineMaps.saveRouteStrip(appContext, _state.value.styleUri, route.polyline)
+    }
+
     /** Whether a route-corridor controls fetch owns [MapUiState.trafficControls] for this drive. */
     val corridorControlsActive: Boolean get() = navControlsKey != null
 
@@ -173,6 +185,7 @@ internal class NavController(
                     // them it fell back to every sign in view, which is not what the drive showed.
                     // It still makes no live request for them (no Overpass, no camera lookups).
                     if (vs.replaying && !vs.demoDriving) refreshNavRouteControls(nsRoute, liveFetch = false)
+                    if (!vs.replaying) saveRouteStrip(nsRoute, first)
                     if (!vs.replaying || vs.demoDriving) {
                         refreshNavRouteControls(nsRoute)
                         refreshRouteSpeedCams(nsRoute) // spoken camera warnings (issue #229)
@@ -1708,6 +1721,8 @@ private const val BRIDGE_REFRESH_MS = 5 * 60_000L
 /** Driving mode's look ahead (issue #727): how far the line reaches, how wide its corridor is, and
  *  how often it is rescanned, by time or by distance driven. */
 private const val DRIVE_AHEAD_M = 1200.0
+/** A new route during a drive saves the map along it at most this often ([NavController.saveRouteStrip]). */
+private const val STRIP_GAP_MS = 60_000L
 private const val DRIVE_CORRIDOR_M = 60.0
 private const val DRIVE_SCAN_MS = 4000L
 private const val DRIVE_SCAN_M = 150.0

@@ -419,6 +419,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     // Offline
     R.string.settings_offline to SettingsSection.OFFLINE,
     R.string.settings_offline_places_with_downloads to SettingsSection.OFFLINE,
+    R.string.settings_offline_route_strip to SettingsSection.OFFLINE,
     R.string.settings_clear_map_cache to SettingsSection.OFFLINE,
     R.string.settings_delete_offline_all to SettingsSection.OFFLINE,
     R.string.settings_offline_map_area to SettingsSection.OFFLINE,

@@ -50,7 +50,7 @@ logged-out browser's. They are not tied to an account.
 | **google.com/maps/vt** (traffic layer) | "Live traffic overlay" on (Settings > Map, off by default) | your IP, the tile coordinates in view |
 | **mt1.google.com** (satellite close-ups) | satellite view, zoomed in past where Esri has imagery | your IP, tile coordinates |
 | **maps.app.goo.gl** | opening a shared short Google Maps link | your IP and that link. No cookies |
-| **OpenFreeMap** | viewing the map | your IP, which map tiles you pan over |
+| **OpenFreeMap** | viewing the map; starting a drive with "Save the map along the route" on (Settings > Offline maps, on by default) | your IP, which map tiles you pan over; for a drive, the tiles along its route, all at once |
 | **Esri World Imagery** | satellite view (off by default) | your IP, tile coordinates, and the view's bounds (to label the imagery date) |
 | **Photon** (komoot's OpenStreetMap geocoder) | typing text that starts with a house number, and every search with "Use Vela without Google" on | your IP, the typed text, a bias point (the map center or your position) |
 | **OSM Nominatim** | long-pressing to drop a pin, tapping a house number, a building or an unnamed icon | your IP, that one coordinate |

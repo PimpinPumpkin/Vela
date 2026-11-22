@@ -200,6 +200,8 @@
     <string name="settings_region_updates_wifi">On Wi-Fi</string>
     <string name="settings_region_updates_mobile">On Wi-Fi and mobile data</string>
     <string name="settings_offline_places_with_downloads">Include places with downloads</string>
+    <string name="settings_offline_route_strip">Save the map along the route</string>
+    <string name="settings_offline_route_strip_hint">A drive that starts with signal saves the map along its route, so it still shows without one. The map server gets the route\'s tiles all at once.</string>
     <string name="settings_offline_places_with_downloads_hint">A region download also brings Vela\'s place data for it, so the businesses on the map show with no signal. Around half a gigabyte for a big state. Off = places only stream while online.</string>
     <string name="settings_offline_cached_places">Keep viewed places for offline</string>
     <string name="settings_offline_cached_places_hint">Every place you open while online is kept on this phone with what was loaded for it (details, the reviews and photos you saw), so it still opens with no signal. The newest 400 are kept, for a month. Clear history and Delete all offline data remove them.</string>

@@ -7,6 +7,7 @@ import org.maplibre.android.offline.OfflineRegion
 import org.maplibre.android.offline.OfflineRegionError
 import org.maplibre.android.offline.OfflineRegionStatus
 import org.maplibre.android.offline.OfflineTilePyramidRegionDefinition
+import app.vela.core.model.distanceTo
 import org.json.JSONObject
 import kotlin.math.max
 
@@ -96,13 +97,119 @@ object OfflineMaps {
         )
     }
 
-    fun list(context: Context, onResult: (List<OfflineRegion>) -> Unit) {
+    /** The areas the user saved; the map along the route ([saveRouteStrip]) is not one. */
+    fun list(context: Context, onResult: (List<OfflineRegion>) -> Unit) =
+        all(context) { regions -> onResult(regions.filterNot(::isRouteStrip)) }
+
+    private fun all(context: Context, onResult: (List<OfflineRegion>) -> Unit) {
         OfflineManager.getInstance(context).listOfflineRegions(
             object : OfflineManager.ListOfflineRegionsCallback {
                 override fun onList(regions: Array<OfflineRegion>?) = onResult(regions?.toList().orEmpty())
                 override fun onError(error: String) = onResult(emptyList())
             },
         )
+    }
+
+    private fun isRouteStrip(region: OfflineRegion): Boolean =
+        runCatching { JSONObject(String(region.metadata)).optBoolean(KEY_ROUTE_STRIP) }.getOrDefault(false)
+
+    /** "Save the map along the route" (Settings > Offline maps), on by default. */
+    val routeStrip = androidx.compose.runtime.mutableStateOf(true)
+
+    fun init(context: Context) {
+        routeStrip.value = prefs(context).getBoolean(KEY_ROUTE_STRIP_ON, true)
+    }
+
+    fun setRouteStrip(context: Context, on: Boolean) {
+        routeStrip.value = on
+        prefs(context).edit().putBoolean(KEY_ROUTE_STRIP_ON, on).apply()
+        if (!on) deleteRouteStrip(context) {}
+    }
+
+    /**
+     * The map along a drive's route, saved while there is signal so the streets around it still
+     * draw without one: Google keeps the map along its route the same way. The first
+     * [STRIP_MAX_M] of [line], at zooms [STRIP_MIN_Z] to [STRIP_MAX_Z] (the basemap's tiles stop
+     * at 14; the drive camera draws closer from them). One strip at a time: a new route's strip
+     * replaces the last. Tiles already in the cache are not fetched again. Not with Data Saver on.
+     */
+    fun saveRouteStrip(context: Context, styleUrl: String, line: List<app.vela.core.model.LatLng>) {
+        if (!routeStrip.value || styleUrl.isBlank() || line.size < 2) return
+        val cm = context.getSystemService(android.net.ConnectivityManager::class.java)
+        if (cm?.isActiveNetworkMetered == true &&
+            cm.restrictBackgroundStatus == android.net.ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED
+        ) return
+        val points = mutableListOf<org.maplibre.geojson.Point>()
+        var along = 0.0
+        var last: app.vela.core.model.LatLng? = null
+        for (p in line) {
+            val prev = last
+            if (prev != null) {
+                val d = prev.distanceTo(p)
+                if (d < STRIP_STEP_M && p !== line.last()) continue
+                along += d
+            }
+            points += org.maplibre.geojson.Point.fromLngLat(p.lng, p.lat)
+            last = p
+            if (along >= STRIP_MAX_M) break
+        }
+        if (points.size < 2) return
+        val definition = org.maplibre.android.offline.OfflineGeometryRegionDefinition(
+            styleUrl,
+            org.maplibre.geojson.LineString.fromLngLats(points),
+            STRIP_MIN_Z,
+            STRIP_MAX_Z,
+            context.resources.displayMetrics.density,
+        )
+        val metadata = JSONObject().put(KEY_NAME, "Route").put(KEY_ROUTE_STRIP, true).toString().toByteArray()
+        // The new strip first, the old ones after it is done: tiles the two routes share stay
+        // referenced throughout and are not fetched again.
+        OfflineManager.getInstance(context).createOfflineRegion(
+            definition,
+            metadata,
+            object : OfflineManager.CreateOfflineRegionCallback {
+                override fun onCreate(region: OfflineRegion) {
+                    region.setObserver(object : OfflineRegion.OfflineRegionObserver {
+                        var done = false
+                        fun finish(line: String) {
+                            if (done) return
+                            done = true
+                            region.setDownloadState(OfflineRegion.STATE_INACTIVE)
+                            android.util.Log.i("VelaOffline", line)
+                            deleteRouteStrip(context, keep = region.id) {}
+                        }
+                        override fun onStatusChanged(status: OfflineRegionStatus) {
+                            if (status.isComplete) {
+                                finish("route strip saved: ${status.completedTileCount} tiles, ${status.completedResourceSize / 1024} KB")
+                            }
+                        }
+                        override fun onError(error: OfflineRegionError) {
+                            // A tile that fails is retried by MapLibre; only a stop ends the strip.
+                            android.util.Log.i("VelaOffline", "route strip: ${error.reason}")
+                        }
+                        override fun mapboxTileCountLimitExceeded(limit: Long) = finish("route strip: over $limit tiles")
+                    })
+                    region.setDownloadState(OfflineRegion.STATE_ACTIVE)
+                }
+                override fun onError(error: String) {
+                    android.util.Log.i("VelaOffline", "route strip not created: $error")
+                }
+            },
+        )
+        android.util.Log.i("VelaOffline", "route strip: ${points.size} points, ${(along / 1000).toInt()} km")
+    }
+
+    /** Remove the map along the route, all but region [keep], then [onDone]. */
+    fun deleteRouteStrip(context: Context, keep: Long? = null, onDone: () -> Unit) {
+        all(context) { regions ->
+            val strips = regions.filter { isRouteStrip(it) && it.id != keep }
+            var left = strips.size
+            if (left == 0) { onDone(); return@all }
+            strips.forEach { r ->
+                r.setDownloadState(OfflineRegion.STATE_INACTIVE)
+                delete(r) { if (--left == 0) onDone() }
+            }
+        }
     }
 
     fun delete(region: OfflineRegion, onDone: () -> Unit) {
@@ -126,11 +233,11 @@ object OfflineMaps {
         }.onFailure { onDone() }
     }
 
-    /** Delete every saved area, then pack the database. */
+    /** Delete every saved area and the map along the route, then pack the database. */
     fun deleteAll(context: Context, onDone: () -> Unit) {
-        list(context) { regions ->
+        all(context) { regions ->
             var left = regions.size
-            if (left == 0) { packDatabase(context, onDone); return@list }
+            if (left == 0) { packDatabase(context, onDone); return@all }
             regions.forEach { r -> delete(r) { if (--left == 0) packDatabase(context, onDone) } }
         }
     }
@@ -144,5 +251,13 @@ object OfflineMaps {
     fun boundsOf(region: OfflineRegion): LatLngBounds? =
         (region.definition as? org.maplibre.android.offline.OfflineTilePyramidRegionDefinition)?.bounds
 
+    private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
+
     private const val KEY_NAME = "name"
+    private const val KEY_ROUTE_STRIP = "routeStrip"
+    private const val KEY_ROUTE_STRIP_ON = "route_strip"
+    const val STRIP_MAX_M = 150_000.0
+    const val STRIP_STEP_M = 50.0
+    const val STRIP_MIN_Z = 11.0
+    const val STRIP_MAX_Z = 14.0
 }
