@@ -151,8 +151,8 @@ class MainActivity : ComponentActivity() {
     }
 
     @Deprecated("Deprecated in Java")
-    /** The assigned zoom keys (Settings > Navigation, issue #694). A key that types is offered
-     *  only after nothing else took it, so a digit still types in a text field. */
+    /** The map keys (Settings > Navigation, issue #694). A key that types is offered only after
+     *  nothing else took it, so a digit still types in a text field. */
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
         // Any key but volume ends a turn wake's glance screen, as a touch does.
         if (event.action == android.view.KeyEvent.ACTION_DOWN && !event.isVolumeKey()) {
@@ -160,9 +160,9 @@ class MainActivity : ComponentActivity() {
             app.vela.ui.LockScreenNav.userActive(this, s.navigating && !s.navPaused)
         }
         val typing = event.isPrintingKey
-        if (!typing && app.vela.ui.ZoomKeys.handle(event)) return true
+        if (!typing && app.vela.ui.MapKeys.handle(event)) return true
         if (super.dispatchKeyEvent(event)) return true
-        return typing && app.vela.ui.ZoomKeys.handle(event)
+        return typing && app.vela.ui.MapKeys.handle(event)
     }
 
     override fun onUserLeaveHint() {

@@ -56,6 +56,7 @@ internal fun BoxScope.MapFloaters(state: MapUiState, vm: MapViewModel, sheet: Sh
     if (state.replaying && !state.demoDriving) ReplayControls(state, vm)
     // Only beside its sheet: with the search page up the place stays selected and the sheet is gone.
     if (sheet.shown.value) StreetViewThumb(state, vm, sheet.top)
+    MapKeysCrosshair(state)
 }
 
 /** Google's own Street View preview of the open place, above the place card's left corner (beside

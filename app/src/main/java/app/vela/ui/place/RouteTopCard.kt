@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import app.vela.R
 import app.vela.ui.dpadHighlight
 import app.vela.ui.dpadFieldEscape
+import app.vela.ui.map.coversMap
 
 // The map result pins' red (PoiIcons.RESULT_RED) — the destination pin on this card is the same
 // species as the pin the route ends at on the map, so the two must stay the same ink.
@@ -98,7 +99,7 @@ fun RouteTopCard(
     val link = LinkTrip.view.value
     val resolving = link?.resolving == true
     Card(
-        modifier.fillMaxWidth(),
+        modifier.coversMap().fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         // Same tone as the search bar it replaces, so the top chrome reads as one family.
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),

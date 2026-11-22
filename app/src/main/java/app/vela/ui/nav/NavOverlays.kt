@@ -26,6 +26,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
+import app.vela.ui.map.coversMap
 import kotlin.math.roundToInt
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
@@ -772,7 +773,7 @@ fun NavSearchChips(
     val cfg = LocalConfiguration.current
     val landscape = cfg.screenWidthDp > cfg.screenHeightDp
     val autoFocus = app.vela.ui.rememberDpadAutoFocus()
-    Box(modifier.fillMaxSize()) {
+    Box(modifier.fillMaxSize().coversMap()) {
         // Landscape: the rest of the route stays in view under a tint; a tap on it closes the page.
         // A tap target only, never a focus stop: with keys the close button and Back do this.
         if (landscape) {
@@ -920,6 +921,7 @@ fun NavControls(
     val previewNaturalPx = remember { floatArrayOf(0f) }
     Card(
         modifier
+            .coversMap() // docs/dpad.md, map keys
             .fillMaxWidth()
             // dpad-ok: OK on NavBarTop's handle opens the step list, the same as this drag.
             .pointerInput(Unit) {
@@ -1290,7 +1292,7 @@ fun ArrivalSummary(
         }
     }
     Card(
-        modifier.fillMaxWidth(),
+        modifier.coversMap().fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -1411,7 +1413,7 @@ fun NavStopOffer(
     }
     val ringColor = MaterialTheme.colorScheme.primary
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.coversMap().fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 3.dp,

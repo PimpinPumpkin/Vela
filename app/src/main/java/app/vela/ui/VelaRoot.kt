@@ -55,7 +55,7 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
     val navController = androidx.navigation.compose.rememberNavController()
     val page by navController.currentBackStackEntryAsState()
     val showSettings = page?.destination?.route?.let { it != app.vela.ui.settings.MAP_ROUTE } == true
-    ZoomKeys.mapShowing = !showSettings
+    MapKeys.mapShowing = !showSettings
     val rootContext = androidx.compose.ui.platform.LocalContext.current
     // Over a locked phone (a drive on the lock screen), Settings waits for the unlock.
     val openSettings: () -> Unit = {

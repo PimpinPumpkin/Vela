@@ -74,6 +74,7 @@ import app.vela.ui.SheetPalette
 import app.vela.ui.dpadHighlight
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
+import app.vela.ui.map.coversMap
 import app.vela.ui.nav.StepRow
 import app.vela.ui.nav.StopDividerRow
 import app.vela.ui.theme.isAppInDarkTheme
@@ -204,7 +205,7 @@ fun GoogleStyleDirectionsPanel(
     }
 
     Card(
-        modifier.fillMaxWidth(),
+        modifier.coversMap().fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark), contentColor = ink),

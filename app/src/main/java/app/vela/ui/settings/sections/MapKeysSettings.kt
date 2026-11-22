@@ -33,30 +33,53 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.vela.R
-import app.vela.ui.ZoomKeys
+import app.vela.ui.MapKeys
 import app.vela.ui.dpadClickable
 import app.vela.ui.dpadHighlight
 import app.vela.ui.settings.GroupDivider
 import app.vela.ui.settings.Hint
 import app.vela.ui.settings.settingsAnchor
 
-/** The two zoom-key rows (issue #694): each shows its key and opens a "press a key" dialog. */
+/** The map key rows (issue #694): each shows its key and opens a "press a key" dialog. Below them,
+ *  one row fills in the keypad layout ([MapKeys.KEYPAD]). */
 @Composable
-internal fun ZoomKeyRows() {
+internal fun MapKeyRows() {
     val context = LocalContext.current
-    var settingIn by remember { mutableStateOf<Boolean?>(null) } // true: zoom in, false: zoom out
-    KeyRow(stringResource(R.string.settings_zoom_key_in), ZoomKeys.zoomIn.intValue) { settingIn = true }
+    var setting by remember { mutableStateOf<MapKeys.Action?>(null) }
+    MapKeys.Action.entries.forEachIndexed { i, action ->
+        if (i > 0) GroupDivider()
+        KeyRow(stringResource(labelOf(action)), MapKeys.code(action)) { setting = action }
+    }
     GroupDivider()
-    KeyRow(stringResource(R.string.settings_zoom_key_out), ZoomKeys.zoomOut.intValue) { settingIn = false }
-    Hint(stringResource(R.string.settings_zoom_keys_hint))
-    settingIn?.let { forIn ->
+    val keypad = stringResource(R.string.settings_map_keys_keypad)
+    Row(
+        Modifier.fillMaxWidth().settingsAnchor(keypad).dpadHighlight(RoundedCornerShape(10.dp))
+            .dpadClickable(onClick = { MapKeys.useKeypadLayout(context) })
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Text(keypad, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
+    }
+    Hint(stringResource(R.string.settings_map_keys_hint))
+    setting?.let { action ->
         KeyCaptureDialog(
-            title = stringResource(if (forIn) R.string.settings_zoom_key_in else R.string.settings_zoom_key_out),
-            onKey = { ZoomKeys.set(context, forIn, it); settingIn = null },
-            onClear = { ZoomKeys.set(context, forIn, 0); settingIn = null },
-            onDismiss = { settingIn = null },
+            title = stringResource(labelOf(action)),
+            onKey = { MapKeys.set(context, action, it); setting = null },
+            onClear = { MapKeys.set(context, action, 0); setting = null },
+            onDismiss = { setting = null },
         )
     }
+}
+
+private fun labelOf(action: MapKeys.Action): Int = when (action) {
+    MapKeys.Action.ZOOM_IN -> R.string.settings_zoom_key_in
+    MapKeys.Action.ZOOM_OUT -> R.string.settings_zoom_key_out
+    MapKeys.Action.PAN_UP -> R.string.settings_map_key_pan_up
+    MapKeys.Action.PAN_DOWN -> R.string.settings_map_key_pan_down
+    MapKeys.Action.PAN_LEFT -> R.string.settings_map_key_pan_left
+    MapKeys.Action.PAN_RIGHT -> R.string.settings_map_key_pan_right
+    MapKeys.Action.ROTATE_LEFT -> R.string.settings_map_key_rotate_ccw
+    MapKeys.Action.ROTATE_RIGHT -> R.string.settings_map_key_rotate_cw
+    MapKeys.Action.SELECT -> R.string.settings_map_key_select
 }
 
 @Composable
@@ -67,10 +90,13 @@ private fun KeyRow(label: String, keyCode: Int, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge)
+        // The label wraps and the key keeps its width: a long label squeezed "Not set" onto two lines.
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Text(
-            if (keyCode == 0) stringResource(R.string.settings_zoom_key_none) else ZoomKeys.label(keyCode),
+            if (keyCode == 0) stringResource(R.string.settings_zoom_key_none) else MapKeys.label(keyCode),
             style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            modifier = Modifier.padding(start = 12.dp),
             color = if (keyCode == 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Medium,
         )
@@ -105,7 +131,7 @@ private fun KeyCaptureDialog(title: String, onKey: (Int) -> Unit, onClear: () ->
                         .dpadHighlight(RoundedCornerShape(12.dp))
                         .onPreviewKeyEvent { ev ->
                             val code = ev.nativeKeyEvent.keyCode
-                            if (!ZoomKeys.assignable(code)) return@onPreviewKeyEvent false
+                            if (!MapKeys.assignable(code)) return@onPreviewKeyEvent false
                             if (ev.type == KeyEventType.KeyDown) onKey(code)
                             true
                         }
