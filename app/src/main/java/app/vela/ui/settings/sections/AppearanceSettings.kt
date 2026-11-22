@@ -175,7 +175,7 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             GroupDivider()
             SelectableRow(
                 label = stringResource(R.string.settings_font_system),
-                selected = app.vela.ui.AppFont.customName.value == null && !app.vela.ui.AppFont.builtin.value,
+                selected = app.vela.ui.AppFont.customName.value == null && !app.vela.ui.AppFont.builtin.value && !app.vela.ui.AppFont.vazirmatn.value,
                 onClick = { app.vela.ui.AppFont.clear(context) },
             )
             GroupDivider()

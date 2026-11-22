@@ -1,6 +1,6 @@
 # Languages and translating
 
-Vela's interface is offered in 20 languages. Translations are done by the community on
+Vela's interface is offered in 21 languages. Translations are done by the community on
 Weblate:
 
 **<https://hosted.weblate.org/engage/vela-maps/>**
@@ -32,14 +32,16 @@ are separate systems, so support differs by language.
 | Japanese | `ja` | yes | yes | system voice | yes |
 | Thai | `th` | yes | yes | system voice | yes |
 | Hebrew | `he` | yes | yes | system voice | yes |
+| Persian | `fa` | yes | yes | system voice | yes |
 
 - **App text** means the language has its own string file. A string nobody has translated yet
   shows in English. Categories, hours and open or closed lines from Google arrive in the app
-  language too. Place names, street names and reviews are data and are never translated.
+  language too, except Thai, Persian and Estonian, which get them in English. Place names,
+  street names and reviews are data and are never translated.
 - **Spoken directions** are built from grammar templates per language (`NavStrings` in
   `:core`), so cases and word order are right.
 - **Vela voice** is the downloadable neural voice (Piper). There is no Piper voice for
-  Japanese, Thai, Hebrew or Estonian, so those use the phone's own text-to-speech in that language.
+  Japanese, Thai, Hebrew, Persian or Estonian, so those use the phone's own text-to-speech in that language.
   If the phone has none, navigation stays silent and a hint points at the voice settings.
 - **Dictation** runs on the phone. The default model is multilingual Whisper, set to the app
   language: tiny for English, base for any other language, with small as a bigger option.

@@ -6074,11 +6074,14 @@ its directory. One is forgiven, because a process killed mid-load strands the co
 
 ### 9.4 Interface language
 
-The picker has 20 languages (`AppLocale.SUPPORTED`). Thai (`th`) has the full interface, its own spoken
+The picker has 21 languages (`AppLocale.SUPPORTED`). Thai (`th`) has the full interface, its own spoken
 guidance (`ThNavStrings`) and the phone's own Thai voice; Google is still asked in English for
 Thai, because `SearchParser` has no Thai open and closed words yet. Estonian (`et`) has a partial translation
 from Weblate and English spoken guidance. Romanian (`ro`) has a partial translation, its own
-spoken guidance (`RoNavStrings`) and the Mihai Piper voice.
+spoken guidance (`RoNavStrings`) and the Mihai Piper voice. Persian (`fa`) has the full interface,
+its own spoken guidance (`FaNavStrings`, Persian digits) and the phone's own voice; like Thai,
+Google is asked in English. Hebrew and Persian lay out right to left: `MainActivity` also
+provides `LocalLayoutDirection` from the app locale. Vazirmatn ships as a font choice (`AppFont`).
 
 `AppLocale` holds the language (empty means follow the system) and is applied in both
 `MainActivity.attachBaseContext` and `VelaApp.attachBaseContext`. When following the system it
