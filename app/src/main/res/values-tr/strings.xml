@@ -63,7 +63,7 @@
     <string name="settings_voice_library">Ses kütüphanesi</string>
     <string name="settings_voice_advanced">Gelişmiş ses seçenekleri</string>
     <string name="settings_voice_try_label">Sesi herhangi bir metinde deneyin</string>
-    <string name="settings_voice_nav_sample_text">Çeyrek mil sonra Main Street yönüne sağa dönün, ardından varış noktanız solunuzda kalacak.</string>
+    <string name="settings_voice_nav_sample_text">Yaklaşık 400 metre sonra sağa, Ana Cadde\'ye dönün, hedefiniz solunuzda kalacak.</string>
     <string name="settings_voice_speak">Seslendir</string>
     <string name="settings_voice_nav_sample">Yol tarifi örneği</string>
     <string name="settings_voice_speed">Konuşma hızı · %1$s</string>
@@ -810,7 +810,7 @@
     <string name="mapvm_export_trips_subject">Vela yolculukları: %1$d sürüş (%2$d nokta)</string>
     <string name="mapvm_export_trip_scrubbed_subject">Vela yolculuğu: %1$d nokta, uçları kırpılmış</string>
     <string name="mapvm_share_trip_chooser">Yolculuğu paylaş</string>
-    <string name="mapvm_voice_sample">Çeyrek mil sonra Main Street yönüne sağa dönün.</string>
+    <string name="mapvm_voice_sample">400 metre sonra sağa, Ana Cadde\'ye dönün.</string>
     <string name="mapvm_not_enough_space">%1$s için yeterli boş alan yok (%2$d MB)</string>
     <string name="mapvm_voice_downloaded">%1$s indirildi</string>
     <string name="mapvm_voice_download_failed">%1$s indirilemedi</string>
@@ -908,7 +908,6 @@
     <string name="car_along_route">Rota boyunca ara</string>
     <string name="car_along_none">Yakında bir şey bulunamadı</string>
     <string name="car_stop_added">%1$s sonraki durak olarak eklendi</string>
-    <string name="car_continue_on">%1$s üzerinde devam edin</string>
     <string name="car_nearby">Yakında</string>
     <string name="car_more_nearby">Yakındaki diğer yerler</string>
     <string name="car_saved">Kaydedilenler</string>
@@ -1249,7 +1248,6 @@
     <string name="settings_zoom_key_in">Yakınlaştırma tuşu</string>
     <string name="settings_zoom_key_out">Uzaklaştırma tuşu</string>
     <string name="settings_zoom_key_none">Ayarlanmadı</string>
-    <string name="settings_zoom_keys_hint">Haritanın herhangi bir yerinde yakınlaştırmayı değiştiren iki tuş; örneğin tuş takımında 2 ve 5. Metin alanlarında yazmaya devam ederler.</string>
     <string name="settings_zoom_key_press">Kullanılacak tuşa basın. Yön tuşları, Tamam ve Geri kullanımda.</string>
     <string name="settings_zoom_key_clear">Temizle</string>
     <string name="settings_prefer_buttons_hint">Hareketle de yapılabilen işlemler için düğme gösterir: haritada yakınlaştırma ve uzaklaştırma, navigasyon çubuğunda adım listesi. Dokunmatik ekranı olmayan telefonlarda daima açıktır.</string>
