@@ -2176,6 +2176,9 @@ MIN_RECHECK_DISTANCE_M         1_500   no recheck this near the destination
 SAME_COURSE_M                    250   a candidate within this of the current line is the same course
 FASTER_THRESHOLD_S                90   minimum saving before a route is offered
 MIN_PLAUSIBLE_ETA_FRACTION       0.4   a candidate under this share of the time left is not offered
+STAND_IN_TURN_CLEAR_S             15   RouteHeal: no stand-in switch with a turn this many seconds ahead on either route
+STAND_IN_TURN_CLEAR_MIN_M        150   ...and never this near
+STAND_IN_RETRY_MS             15_000   a stand-in that waited for a turn asks again after this
 ```
 
 A validated default network (the view model's network callback) calls `onNetworkBack`: on a
@@ -2217,6 +2220,16 @@ with abbreviated steps, no live traffic, or street names that fell short (`Route
 - Same road (`RouteGeometry.sameRoad`: every point along the candidate, every 50 m or more
   with at most 400 read, past its first 100 m, within 40 m of the current line): never offered.
   Its lower time is fresher traffic, and the recalibration above has taken it.
+- Different course on a stand-in (`RouteHeal.standIn`): the current route was planned on the
+  phone (`Route.isOffline`) because the network failed, at the start or on a reroute in a dead
+  spot. In a car, a candidate that is Google's line with traffic, real steps and names, covers
+  every remaining stop and does not turn the car round replaces it: the faster-route chime plays
+  and the app shows "Route updated with live traffic" (`onStandInReplaced`). The driver never
+  chose the stand-in, its time has no traffic to weigh against, and a much longer Google route
+  most often goes round something the phone's map does not know is shut. While the first turn
+  on either route is nearer than `STAND_IN_TURN_CLEAR_S` at the car's speed, and never under
+  `STAND_IN_TURN_CLEAR_MIN_M`, it waits, and asks again `STAND_IN_RETRY_MS` later whatever the
+  cadence.
 - Different course: offered when it has traffic and real steps, covers every remaining stop,
   saves more than `FASTER_THRESHOLD_S`, and its ETA is between 0.4 and 0.9 of the time left. A
   trafficless candidate is never offered and never calibrates, because free-flow always appears

@@ -1540,6 +1540,7 @@
     <string name="route_save_default">Route to %1$s</string>
     <string name="route_save_default_from">%1$s to %2$s</string> <!-- format -->
     <string name="route_saved_toast">Route saved. It shows up next to the others whenever you ask for this trip.</string>
+    <string name="nav_route_updated_traffic">Route updated with live traffic</string>
     <string name="nav_left_your_route">Left “%1$s”. Taking the fastest way.</string>
     <string name="nav_reached_stop">You\'ve reached %1$s</string>
     <string name="nav_reached_your_stop">You\'ve reached your stop</string>

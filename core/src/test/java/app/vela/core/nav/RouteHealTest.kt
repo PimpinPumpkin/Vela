@@ -13,11 +13,44 @@ import org.junit.Test
 class RouteHealTest {
     private val line = listOf(LatLng(38.54, -121.74), LatLng(38.55, -121.74))
 
-    private fun route(traffic: Boolean = true, abbreviated: Boolean = false, namesShort: Boolean = false) = Route(
+    private fun route(
+        traffic: Boolean = true,
+        abbreviated: Boolean = false,
+        namesShort: Boolean = false,
+        source: RouteSource = if (abbreviated) RouteSource.GOOGLE_ABBREVIATED else RouteSource.GOOGLE_HYBRID,
+    ) = Route(
         line, listOf(RouteLeg(1100.0, 90.0, if (traffic) 95.0 else null, emptyList())), 1100.0, 90.0, if (traffic) 95.0 else null,
-        abbreviatedSteps = abbreviated, source = if (abbreviated) RouteSource.GOOGLE_ABBREVIATED else RouteSource.GOOGLE_HYBRID,
+        abbreviatedSteps = abbreviated, source = source,
         namesShort = namesShort,
     )
+
+    private val standIn = route(traffic = false, source = RouteSource.OBF)
+
+    @Test fun `Google's route on other roads replaces a stand-in once no turn is near`() {
+        assertEquals(RouteHeal.StandIn.SWITCH, RouteHeal.standIn(standIn, route(), lineOk = true, currentTurnM = 900.0, candidateTurnM = 450.0))
+        assertEquals(RouteHeal.StandIn.SWITCH, RouteHeal.standIn(standIn, route(), lineOk = true, currentTurnM = null, candidateTurnM = null))
+    }
+
+    @Test fun `a stand-in waits while a turn on either route is near for the car's speed`() {
+        assertEquals(RouteHeal.StandIn.WAIT, RouteHeal.standIn(standIn, route(), lineOk = true, currentTurnM = 120.0, candidateTurnM = 900.0))
+        // 15 s ahead: 195 m at 13 m/s in town, 450 m at 30 m/s on a freeway.
+        assertEquals(RouteHeal.StandIn.SWITCH, RouteHeal.standIn(standIn, route(), lineOk = true, currentTurnM = 200.0, candidateTurnM = 900.0, speedMps = 13.0))
+        assertEquals(RouteHeal.StandIn.WAIT, RouteHeal.standIn(standIn, route(), lineOk = true, currentTurnM = 900.0, candidateTurnM = 440.0, speedMps = 30.0))
+        assertEquals(150.0, RouteHeal.standInClearM(0.0), 0.0)
+    }
+
+    @Test fun `only a stand-in gives way, and only to Google's full line that keeps the car's course`() {
+        // Google's own route, or the open router's online one, is not a stand-in.
+        assertEquals(RouteHeal.StandIn.NO, RouteHeal.standIn(route(), route(), lineOk = true, currentTurnM = null, candidateTurnM = null))
+        assertEquals(RouteHeal.StandIn.NO, RouteHeal.standIn(route(traffic = false, source = RouteSource.OSRM), route(), lineOk = true, currentTurnM = null, candidateTurnM = null))
+        // Turns the car round.
+        assertEquals(RouteHeal.StandIn.NO, RouteHeal.standIn(standIn, route(), lineOk = false, currentTurnM = null, candidateTurnM = null))
+        // No traffic, short of names, abbreviated, or the open router's own route.
+        assertEquals(RouteHeal.StandIn.NO, RouteHeal.standIn(standIn, route(traffic = false), lineOk = true, currentTurnM = null, candidateTurnM = null))
+        assertEquals(RouteHeal.StandIn.NO, RouteHeal.standIn(standIn, route(namesShort = true), lineOk = true, currentTurnM = null, candidateTurnM = null))
+        assertEquals(RouteHeal.StandIn.NO, RouteHeal.standIn(standIn, route(abbreviated = true), lineOk = true, currentTurnM = null, candidateTurnM = null))
+        assertEquals(RouteHeal.StandIn.NO, RouteHeal.standIn(standIn, route(source = RouteSource.OSRM), lineOk = true, currentTurnM = null, candidateTurnM = null))
+    }
 
     @Test fun `a healthy route is not degraded and takes nothing from a candidate`() {
         assertFalse(RouteHeal.degraded(route()))

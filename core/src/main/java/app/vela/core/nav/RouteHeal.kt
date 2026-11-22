@@ -34,7 +34,7 @@ object RouteHeal {
         // Names only from a route that is Google's line: a re-check that could not build the
         // hybrid answers with the open router's own route, which runs through whatever Google
         // went around, and the same-course test samples too few points to see a short detour.
-        val googleLine = candidate.source == RouteSource.GOOGLE_HYBRID || candidate.source == RouteSource.GOOGLE_LINE_NAMED
+        val googleLine = googleLine(candidate)
         val names = current.namesShort && !candidate.namesShort && candidate.hasRealSteps && googleLine
         val traffic = !current.hasLiveTraffic && candidate.hasLiveTraffic
         val line = lineOk && googleLine && offGoogleLine(current) && candidate.hasRealSteps && !candidate.namesShort
@@ -46,4 +46,44 @@ object RouteHeal {
         if (loses || !(steps || names || traffic || line)) return null
         return listOfNotNull("steps".takeIf { steps }, "names".takeIf { names }, "traffic".takeIf { traffic }, "line".takeIf { line }).joinToString("+")
     }
+
+    private fun googleLine(r: Route): Boolean =
+        r.source == RouteSource.GOOGLE_HYBRID || r.source == RouteSource.GOOGLE_LINE_NAMED
+
+    /** What a re-check's [candidate] does for [current] when [current] is a stand-in. */
+    enum class StandIn { NO, WAIT, SWITCH }
+
+    /**
+     * A STAND-IN is a route planned on the phone ([Route.isOffline]) because the network failed
+     * while the route was fetched (leaving home Wi-Fi) or while the car was off its route in a
+     * dead spot. Google's route takes its place on other roads too ([StandIn.SWITCH]): the driver
+     * never chose the stand-in, its time has no traffic to weigh Google's against, and a much
+     * longer Google route most often goes round something the phone's map does not know is shut.
+     * It waits ([StandIn.WAIT]) while the first turn on either route is nearer than
+     * [standInClearM] at [speedMps] ([currentTurnM], [candidateTurnM]; null for none): a route
+     * changed just before a turn reads as a wrong prompt. [lineOk]: the caller drives a car and
+     * found that [candidate] does not turn it round. The same roads come back through [gains].
+     */
+    fun standIn(
+        current: Route,
+        candidate: Route,
+        lineOk: Boolean,
+        currentTurnM: Double?,
+        candidateTurnM: Double?,
+        speedMps: Double = 0.0,
+    ): StandIn {
+        if (!current.isOffline || !lineOk || !googleLine(candidate) || !candidate.drivable) return StandIn.NO
+        if (!candidate.hasRealSteps || candidate.namesShort || !candidate.hasLiveTraffic) return StandIn.NO
+        val clear = standInClearM(speedMps)
+        val near = (currentTurnM ?: Double.MAX_VALUE) < clear || (candidateTurnM ?: Double.MAX_VALUE) < clear
+        return if (near) StandIn.WAIT else StandIn.SWITCH
+    }
+
+    /** No route change while a turn on either route is nearer than this: [STAND_IN_TURN_CLEAR_S]
+     *  at the car's speed, and never under [STAND_IN_TURN_CLEAR_MIN_M]. 195 m in town at 30 mph,
+     *  450 m on a freeway at 67 mph: a fixed 300 m kept a car in a street grid waiting block
+     *  after block. */
+    fun standInClearM(speedMps: Double): Double = maxOf(STAND_IN_TURN_CLEAR_MIN_M, speedMps * STAND_IN_TURN_CLEAR_S)
+    const val STAND_IN_TURN_CLEAR_S = 15.0
+    const val STAND_IN_TURN_CLEAR_MIN_M = 150.0
 }

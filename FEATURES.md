@@ -258,6 +258,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   A name is found with or without its accents: "cafe" finds "Café".
 - Offline routes cover driving, walking and cycling, with spoken turns, speed limits and avoid
   options, and are labeled offline.
+- A drive on an offline route switches to Google's route with live traffic once the signal is
+  back, on other roads too, with a chime and "Route updated with live traffic". It waits until no
+  turn is close.
 - "Update downloaded regions" applies small updates on Wi-Fi (the default), on mobile data too, or
   never by itself, and an "Update all" button does every region with an update in turn. Each
   installed region says when it was last updated.

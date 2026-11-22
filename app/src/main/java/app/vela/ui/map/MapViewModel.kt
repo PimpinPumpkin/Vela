@@ -615,6 +615,7 @@ class MapViewModel @Inject constructor(
             if (_state.value.replaying) android.util.Log.i("VelaTrip", it)
         }
         navSession.onLeftPlannedWay = { name -> flashStatus(appContext.getString(R.string.nav_left_your_route, name), 8_000L) }
+        navSession.onStandInReplaced = { flashStatus(appContext.getString(R.string.nav_route_updated_traffic), 6_000L) }
         // A stop reached mid-drive (issue #955): the card the voice's "You've reached" line goes
         // with, shown with the voice muted too. Called on the location thread, so posted to main.
         navSession.onStopReached = { label ->

@@ -319,6 +319,7 @@ class NavSession @Inject constructor(
         // first fix: the network is usually back by the time Start is tapped, and the fast-heal
         // wait kept Google's route away for 20 s (a real drive, 2026-11-20).
         lastRecheckMs = if (RouteHeal.degraded(route)) 0L else SystemClock.elapsedRealtime()
+        standInRetryAtMs = 0L
         tripStartMs = SystemClock.elapsedRealtime()
         synchronized(walkAway) { walkAway.reset() }
         _walkWatch.value = false
@@ -807,6 +808,8 @@ class NavSession @Inject constructor(
     @Volatile var plannedWayName: String? = null
     /** The drive left its saved route and is now routed plainly ([plannedWayName] as it was). */
     var onLeftPlannedWay: ((String) -> Unit)? = null
+    /** Google's route replaced a stand-in ([RouteHeal.standIn]); the app says so on screen. */
+    var onStandInReplaced: (() -> Unit)? = null
     /** A stop on the drive was just reached, with its label (may be blank): once per stop, as the
      *  voice says "You've reached <stop>", and never for a silent via or the destination. Called on
      *  the location thread. The label is a place name: never log it or write it to the trip. */
@@ -956,6 +959,37 @@ class NavSession @Inject constructor(
         note("network back on a degraded route: re-check on the next fix")
     }
     private var lastNetworkBackMs = 0L
+    @Volatile private var standInRetryAtMs = 0L
+
+    /** Drive [candidate] from here, a re-check's route on a line the car is on. */
+    private fun adoptRecheck(candidate: Route, candidateEta: Double, remainingStops: List<NavStop>) {
+        val marks = NavEngine.stopMarks(candidate, remainingStops.map { it.location })
+        synchronized(stopLock) {
+            stops = remainingStops
+            stopMarks = marks
+            passedStops = 0
+            planRoute = candidate
+        }
+        // A re-check's route does not start the reroute cooldown: it lands only on a line the car
+        // is on, so a deviation right after it is real. It held a needed reroute back 8 s on a
+        // real drive.
+        etaScale = 1.0
+        _state.update {
+            it.copy(
+                route = candidate,
+                nav = NavState(
+                    distanceToNextManeuver = candidate.maneuvers.firstOrNull()?.distanceMeters ?: 0.0,
+                    remainingDistance = candidate.distanceMeters,
+                    remainingDuration = candidateEta,
+                ),
+                maneuverText = candidate.maneuvers.firstOrNull()?.instruction.orEmpty(),
+                remainingDistance = candidate.distanceMeters,
+                remainingDuration = candidateEta,
+                fasterRoute = null,
+                nextStop = seededNextStop(candidate, candidateEta),
+            )
+        }
+    }
 
     private fun maybeRecheck(loc: LatLng, nav: NavState) {
         if (replayMode) return // hermetic replays never fetch live traffic/routes
@@ -982,15 +1016,18 @@ class NavSession @Inject constructor(
         // Spread by +/-25%, redrawn after every recheck: an exact 120 s beat is a rhythm every
         // install shares (see Jitter).
         val interval = ((if (fastHeal) DEGRADED_RECHECK_INTERVAL_MS else RECHECK_INTERVAL_MS) * recheckSpread).toLong()
-        if (now - lastRecheckMs < interval) return
+        // A stand-in that waited for a turn to pass asks again soon, whatever the cadence.
+        val retryDue = standInRetryAtMs in 1..now
+        if (!retryDue && now - lastRecheckMs < interval) return
         if (nav.offRoute || nav.remainingDistance < (if (offLine && fastHeal) OFF_LINE_MIN_RECHECK_M else MIN_RECHECK_DISTANCE_M)) return
         if (recheckJob?.isActive == true) return
         // An offer is already on screen — don't fetch/re-speak over it every interval.
         if (_state.value.fasterRoute != null) return
         val dest = destination ?: return
         lastRecheckMs = now
+        standInRetryAtMs = 0L
         recheckSpread = app.vela.core.util.Jitter.factor()
-        if (fastHeal) degradedFastRechecks++
+        if (fastHeal && !retryDue) degradedFastRechecks++
         // Named remainingStops (not `remaining`) — the launch body below declares `remaining` for the
         // remaining DURATION, which would shadow this and hand a future edit seconds instead of stops.
         val remainingStops = synchronized(stopLock) { stops.drop(passedStops) }
@@ -1066,38 +1103,31 @@ class NavSession @Inject constructor(
             val gains = if (sameCourse && candidate.drivable) RouteHeal.gains(current, candidate, lineOk) else null
             if (gains != null) {
                 lastSwapReason = "heal"
-                val marks = NavEngine.stopMarks(candidate, remainingStops.map { it.location })
-                synchronized(stopLock) {
-                    stops = remainingStops
-                    stopMarks = marks
-                    passedStops = 0
-                    planRoute = candidate
-                }
-                // A heal does not start the reroute cooldown: it lands only on a line the car is
-                // on, so a deviation right after it is real. It held a needed reroute back 8 s on
-                // a real drive.
-                etaScale = 1.0
-                _state.update {
-                    it.copy(
-                        route = candidate,
-                        nav = NavState(
-                            distanceToNextManeuver = candidate.maneuvers.firstOrNull()?.distanceMeters ?: 0.0,
-                            remainingDistance = candidate.distanceMeters,
-                            remainingDuration = candidateEta,
-                        ),
-                        maneuverText = candidate.maneuvers.firstOrNull()?.instruction.orEmpty(),
-                        remainingDistance = candidate.distanceMeters,
-                        remainingDuration = candidateEta,
-                        fasterRoute = null,
-                        nextStop = seededNextStop(candidate, candidateEta),
-                    )
-                }
+                adoptRecheck(candidate, candidateEta, remainingStops)
                 note(
                     "recheck upgraded route for $gains (steps ${current.maneuvers.size} -> ${candidate.maneuvers.size}, " +
                         "named turns ${current.namedTurns} of ${current.turns} -> ${candidate.namedTurns} of ${candidate.turns}, " +
                         "traffic ${current.hasLiveTraffic} -> ${candidate.hasLiveTraffic})",
                 )
                 return@launch
+            }
+            // A STAND-IN gives way to Google's route on other roads too (RouteHeal.standIn), with
+            // the faster-route chime and a line on screen so the change is not a surprise.
+            when (RouteHeal.standIn(current, candidate, lineOk, firstTurnAheadM(current, car), firstTurnAheadM(candidate, car), lastTrustedSpeedMps)) {
+                RouteHeal.StandIn.SWITCH -> {
+                    lastSwapReason = "stand-in"
+                    adoptRecheck(candidate, candidateEta, remainingStops)
+                    note("recheck: Google's route replaced the stand-in (${current.maneuvers.size} -> ${candidate.maneuvers.size} steps)")
+                    voice.fasterRouteChime()
+                    onStandInReplaced?.invoke()
+                    return@launch
+                }
+                RouteHeal.StandIn.WAIT -> {
+                    standInRetryAtMs = SystemClock.elapsedRealtime() + STAND_IN_RETRY_MS
+                    note("recheck: Google's route is back, waiting for the turn ahead to pass before switching")
+                    return@launch
+                }
+                RouteHeal.StandIn.NO -> Unit
             }
             val saving = remaining - candidateEta
             // The same roads are not a faster route: a lower time for them is fresher traffic, and
@@ -1571,6 +1601,7 @@ class NavSession @Inject constructor(
         const val RECHECK_INTERVAL_MS = 120_000L   // re-check traffic every ~2 min
         const val DEGRADED_RECHECK_INTERVAL_MS = 20_000L // fast heal cadence while the route is degraded
         const val NETWORK_BACK_MIN_GAP_MS = 10_000L // [onNetworkBack] at most this often
+        const val STAND_IN_RETRY_MS = 15_000L     // a stand-in waiting out a near turn asks again after this
         const val DEGRADED_FAST_TRIES = 6          // ~2 min of fast heal attempts per degraded route
         // A recheck candidate whose sampled points all sit within this of the current route line
         // counts as the SAME course -> its fresh ETA recalibrates the shown arrival time. Tighter
