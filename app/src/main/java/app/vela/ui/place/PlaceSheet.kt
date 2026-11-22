@@ -945,7 +945,9 @@ fun PlaceSheet(
             )
             if (rest.isNotEmpty()) {
                 Text(
-                    rest.joinToString("  ·  "),
+                    // Each part isolated, so "496 m" and an English category keep their order in
+                    // a right-to-left language.
+                    rest.joinToString("  ·  ") { app.vela.ui.nav.bidiIsolate(it) },
                     style = MaterialTheme.typography.bodyMedium,
                     color = dim,
                     maxLines = 1,
@@ -1049,9 +1051,11 @@ fun PlaceSheet(
                 Text(
                     buildAnnotatedString {
                         withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = Color(0xFFE0A63C))) {
-                            append(h.label)
+                            append(app.vela.ui.nav.bidiIsolate(h.label))
                         }
-                        withStyle(SpanStyle(color = dim)) { append("  ·  ${h.whenLabel} · ${h.hours}") }
+                        withStyle(SpanStyle(color = dim)) {
+                            append("  ·  ${app.vela.ui.nav.bidiIsolate(h.whenLabel)} · ${app.vela.ui.nav.bidiIsolate(h.hours)}")
+                        }
                     },
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 4.dp),

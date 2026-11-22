@@ -6211,9 +6211,9 @@ reuses it.
   replaces the map's, so the route, transit and results fits pad with `fitPaddingBeside`: the
   column on the left, no top inset (the endpoints card is in the column), and the map buttons'
   width on the right. New route or drive chrome without this spans the screen.
-- Mixed figures in one line (the drive bar's "15.3 mi · 20:45") put each figure in a first-strong
-  isolate (`bidiIsolate`, U+2068..U+2069), so in a right-to-left language a unit stays beside its
-  number.
+- Mixed figures in one line (the drive bar's "15.3 mi · 20:45", the place page's "496 m · Grocery
+  store" and holiday hours) put each part in a first-strong isolate (`bidiIsolate`,
+  U+2068..U+2069), so in a right-to-left language a unit stays beside its number.
 - `sidePanelWidth()` is 0.56 of the screen width, between `SIDE_PANEL_WIDTH_MIN` (400 dp) and
   `SIDE_PANEL_WIDTH_MAX` (600 dp).
 - Picture-in-picture: everything after the map call is inside one `if (!pipUi)` gate. The map's
