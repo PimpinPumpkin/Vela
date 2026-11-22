@@ -379,6 +379,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_map_key_rotate_cw to SettingsSection.NAVIGATION,
     R.string.settings_map_key_select to SettingsSection.NAVIGATION,
     R.string.settings_map_keys_keypad to SettingsSection.NAVIGATION,
+    R.string.settings_map_keys_crosshair to SettingsSection.NAVIGATION,
     R.string.settings_pip_turn_card to SettingsSection.NAVIGATION,
     R.string.settings_region_updates to SettingsSection.OFFLINE,
     R.string.settings_faster_auto to SettingsSection.NAVIGATION,

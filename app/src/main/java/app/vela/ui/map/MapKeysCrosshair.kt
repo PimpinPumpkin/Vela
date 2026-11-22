@@ -9,6 +9,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.CompositingStrategy
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -20,7 +30,9 @@ import app.vela.ui.MapKeys
 import kotlin.math.roundToInt
 
 /**
- * The select key's crosshair (docs/dpad.md, Map keys): drawn while a select key is set, at the
+ * The select key's crosshair (docs/dpad.md, Map keys): drawn while a select key is set and the map
+ * keys are in use, fading [MapKeys.CROSSHAIR_SHOW_MS] after the last one, and never with "Show the
+ * crosshair" off. At the
  * point the key taps, the middle of the visible map ([MapCover.center]). It also reports the
  * map's own bounds to [MapCover], so the key has nothing to tap while this is not composed.
  * Hidden in Choose on map, which draws its own pin there, while nothing of the map is visible, and
@@ -40,7 +52,21 @@ internal fun BoxScope.MapKeysCrosshair(state: MapUiState) {
     // it), so it never sits on the road ahead; select rests with it.
     val following = state.navigating && !state.navCameraDetached && state.previewStepIndex == null
     SideEffect { MapCover.selectLive = !following }
-    if (state.pickOnMap != null || following) return
+    // Shown while the keys are in use: a map key press wakes it, and it fades after the last one.
+    val used = MapKeys.lastUsedMs.longValue
+    var awake by remember { mutableStateOf(false) }
+    LaunchedEffect(used) {
+        if (used == 0L) return@LaunchedEffect
+        awake = true
+        val left = MapKeys.CROSSHAIR_SHOW_MS - (android.os.SystemClock.elapsedRealtime() - used)
+        if (left > 0) delay(left)
+        awake = false
+    }
+    val show = MapKeys.crosshair.value && awake && state.pickOnMap == null && !following
+    val alpha by animateFloatAsState(if (show) 1f else 0f, tween(if (show) 120 else 500), label = "keysCrosshair")
+    SideEffect { MapKeys.crosshairShowing.value = show }
+    DisposableEffect(Unit) { onDispose { MapKeys.crosshairShowing.value = false } }
+    if (alpha == 0f) return
     // Read here, not in the placement below: the bounds arrive after the first placement, and a
     // placement read alone was not run again when they did, which left the mark in the corner.
     val m = MapCover.map.value
@@ -54,7 +80,8 @@ internal fun BoxScope.MapKeysCrosshair(state: MapUiState) {
                 else IntOffset((c.first - m[0]).roundToInt(), (c.second - m[1]).roundToInt()) -
                     IntOffset(18.dp.roundToPx(), 18.dp.roundToPx())
             }
-            .size(36.dp),
+            .size(36.dp)
+            .graphicsLayer { this.alpha = alpha; compositingStrategy = CompositingStrategy.ModulateAlpha },
     ) {
         if (MapCover.centerIn(m) == null) return@Canvas
         // The same mark as the engaged map target's crosshair in MapScreen.

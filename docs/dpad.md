@@ -118,12 +118,21 @@ same key still types in a text field, and offers a key that does not type (volum
 first. The arrows, OK and Back cannot be assigned. Select works like a finger: in Choose on map
 a tap is a tap, and the hold sets the point.
 
-While a select key is set, a crosshair marks the point it taps. During a drive it shows, and select
-works, only once the camera has left the car; a pan key detaches it. The point is the middle of the
+While a select key is set, a crosshair marks the point it taps while the map keys are in use: a
+map key press shows it, and it fades `MapKeys.CROSSHAIR_SHOW_MS` (4 s) after the last one. "Show
+the crosshair" (with the map keys in Settings > Navigation, on by default) turns it off for good;
+select still taps the same point. During a drive it shows, and select works, only once the camera
+has left the car; a pan key detaches it. The point is the middle of the
 part of the map no panel covers (`MapCover`). A sheet or panel that covers the map reports its
 bounds with `Modifier.coversMap()` on its outermost element, and the search page reports the whole
 map with `CoversWholeMap()`. With nothing of the map visible the crosshair hides and select does
-nothing. New map chrome that covers the map reports, or the crosshair draws over it.
+nothing. New map chrome that covers the map reports, or the crosshair draws over it. While it shows it is
+the one crosshair: the D-pad target draws none of its own, and its "OK: move the map" pill sits
+under it instead of over it.
+
+A key move ends like a finger's: "Search this area" offers itself and the map loads places for the
+new view. The native moves never report camera idle, so the controller reports it
+(`MapDpadController.onMoveEnd`) 300 ms after the move, once after the last key of a quick series.
 
 ### Key paths for gestures
 

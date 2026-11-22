@@ -1230,7 +1230,6 @@
     <string name="settings_zoom_key_in">Tombol perbesar</string>
     <string name="settings_zoom_key_out">Tombol perkecil</string>
     <string name="settings_zoom_key_none">Belum diatur</string>
-    <string name="settings_zoom_keys_hint">Dua tombol yang memperbesar/memperkecil peta dari mana saja, seperti tombol 2 dan 5 pada keypad. Di kolom teks, tombol tersebut tetap berfungsi mengetik.</string>
     <string name="settings_zoom_key_press">Tekan tombol untuk menggunakan. Tombol panah, OKE, dan Kembali sudah digunakan.</string>
     <string name="settings_zoom_key_clear">Hapus</string>
     <string name="settings_prefer_buttons_hint">Mempertahankan tombol untuk hal-hal yang juga memiliki gerakan geser: tombol perbesar dan perkecil di peta, serta tombol daftar langkah di bar navigasi. Selalu aktif untuk ponsel tanpa layar sentuh.</string>

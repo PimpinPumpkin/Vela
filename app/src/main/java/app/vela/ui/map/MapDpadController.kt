@@ -34,6 +34,18 @@ class MapDpadController {
     /** Reports a key-driven turn of the map, as a finger turn reports itself (MapKeys). */
     internal var markRotate: (() -> Unit)? = null
 
+    /** Runs once a key move has finished. The native moves below (scrollBy, setZoom,
+     *  setFocalBearing) never report camera idle, so without this nothing that waits for the map to
+     *  rest ran after one: no "Search this area", no places loaded for the new view. */
+    internal var onMoveEnd: (() -> Unit)? = null
+    private val moveEnd = Runnable { onMoveEnd?.invoke() }
+
+    private fun moveEndAfter(durationMs: Long) {
+        val v = mapView ?: return
+        v.removeCallbacks(moveEnd)
+        v.postDelayed(moveEnd, durationMs + MOVE_END_SLACK_MS)
+    }
+
     /** Pan the camera by a fraction of the view size, using touch's native screen-space movement.
      *  Map content moves opposite the requested camera direction, including with tilt or padding. */
     fun panBy(fracX: Float, fracY: Float) {
@@ -42,6 +54,7 @@ class MapDpadController {
         if (v.width <= 0 || v.height <= 0) return
         markPan?.invoke()
         m.scrollBy(-v.width * fracX, -v.height * fracY, 150L)
+        moveEndAfter(150L)
     }
 
     fun zoomBy(delta: Double) {
@@ -51,6 +64,7 @@ class MapDpadController {
         val zoom = cp.zoom + delta
         markZoom?.invoke(zoom)
         m.setZoom(zoom, point, 200L)
+        moveEndAfter(200L)
     }
 
     /** [zoomBy] around a point given in window pixels, using touch's native focal zoom. */
@@ -60,6 +74,7 @@ class MapDpadController {
         val zoom = m.cameraPosition.zoom + delta
         markZoom?.invoke(zoom)
         m.setZoom(zoom, p, 200L)
+        moveEndAfter(200L)
     }
 
     /** Turns the map on screen by [clockwiseDeg]; the camera's bearing moves the other way. With a
@@ -78,6 +93,7 @@ class MapDpadController {
             return
         }
         m.setFocalBearing(bearing, p.x, p.y, 150L)
+        moveEndAfter(150L)
     }
 
     /** A "tap" at the crosshair (view center). Returns true if something was hit. */
@@ -123,5 +139,11 @@ class MapDpadController {
         val at = IntArray(2)
         v.getLocationInWindow(at)
         return PointF(windowX - at[0], windowY - at[1])
+    }
+
+    private companion object {
+        /** After a native move's own duration: the camera is at rest, and presses in a quick series
+         *  (a few a second) end the move once, after the last, not between each. */
+        const val MOVE_END_SLACK_MS = 300L
     }
 }

@@ -60,6 +60,15 @@ internal fun MapKeyRows() {
         Text(keypad, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
     }
     Hint(stringResource(R.string.settings_map_keys_hint))
+    if (MapKeys.code(MapKeys.Action.SELECT) != 0) {
+        GroupDivider()
+        app.vela.ui.settings.ToggleRow(
+            label = stringResource(R.string.settings_map_keys_crosshair),
+            checked = MapKeys.crosshair.value,
+            onCheckedChange = { MapKeys.setCrosshair(context, it) },
+            hint = stringResource(R.string.settings_map_keys_crosshair_hint),
+        )
+    }
     setting?.let { action ->
         KeyCaptureDialog(
             title = stringResource(labelOf(action)),

@@ -1279,7 +1279,6 @@
     <string name="settings_zoom_key_in">ปุ่มซูมเข้า</string>
     <string name="settings_zoom_key_out">ปุ่มซูมออก</string>
     <string name="settings_zoom_key_none">ยังไม่ได้ตั้ง</string>
-    <string name="settings_zoom_keys_hint">ปุ่มสองปุ่มที่ใช้ซูมแผนที่ได้จากทุกที่บนแผนที่ เช่น 2 และ 5 บนแป้นตัวเลข ในช่องข้อความปุ่มเหล่านี้ยังใช้พิมพ์ได้ตามปกติ</string>
     <string name="settings_zoom_key_press">กดปุ่มที่ต้องการใช้ ปุ่มลูกศร ตกลง และกลับถูกใช้อยู่แล้ว</string>
     <string name="settings_zoom_key_clear">ล้าง</string>
     <string name="settings_prefer_buttons_hint">มีปุ่มให้สำหรับสิ่งที่ทำได้ด้วยท่าทางด้วย: ปุ่มซูมเข้าและออกบนแผนที่ และปุ่มรายการขั้นตอนบนแถบนำทาง เปิดเสมอสำหรับโทรศัพท์ที่ไม่มีหน้าจอสัมผัส</string>

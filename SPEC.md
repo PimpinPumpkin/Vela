@@ -6512,8 +6512,12 @@ The whole UI works with a five-key D-pad and no touchscreen.
   path, and the on-screen zoom buttons share the camera-target zoom path.
 - Select taps the middle of the visible map on the key's up and long-presses there once the key
   has been held 500 ms, through the same tap and long-press paths as a finger. While a select key
-  is set, `MapKeysCrosshair` (in `MapFloaters`) draws a crosshair at that point, except in Choose
-  on map, which has its own pin. During a drive the crosshair shows only once the camera has left
+  is set, `MapKeysCrosshair` (in `MapFloaters`) draws a crosshair at that point while the keys are
+  in use: any map key wakes it (`MapKeys.lastUsedMs`), and it fades `CROSSHAIR_SHOW_MS` (4 s) after
+  the last. "Show the crosshair" (`MapKeys.crosshair`, pref `map_keys_crosshair`, on) turns it off;
+  select still taps the same point. While it shows, the D-pad target draws no crosshair of its own
+  and its "OK: move the map" pill sits under it (`MapKeys.crosshairShowing`). Never in Choose on
+  map, which has its own pin. During a drive the crosshair shows only once the camera has left
   the car (`navCameraDetached` or a previewed step); while it follows, the select key does nothing.
   A key pan detaches it, as a finger pan does.
 - The visible map is what the panels leave uncovered (`MapCover`, `core/util/VisibleArea`). Every

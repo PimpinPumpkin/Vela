@@ -1282,7 +1282,6 @@
     <string name="settings_zoom_key_in">Kláves na priblíženie</string>
     <string name="settings_zoom_key_out">Kláves na oddialenie</string>
     <string name="settings_zoom_key_none">Nenastavené</string>
-    <string name="settings_zoom_keys_hint">Dva klávesy, ktoré približujú a odďaľujú mapu kdekoľvek na nej, napríklad 2 a 5 na klávesnici. V textovom poli píšu ako obvykle.</string>
     <string name="settings_zoom_key_press">Stlačte kláves, ktorý chcete použiť. Šípky, OK a Späť sú obsadené.</string>
     <string name="settings_zoom_key_clear">Vymazať</string>
     <string name="settings_prefer_buttons_hint">Ponechá tlačidlá pre funkcie, ktoré majú aj gesto: tlačidlá priblíženia a oddialenia na mape a tlačidlo zoznamu krokov na navigačnej lište. Na telefónoch bez dotykovej obrazovky je vždy zapnuté.</string>

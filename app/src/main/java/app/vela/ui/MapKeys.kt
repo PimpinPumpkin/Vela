@@ -36,6 +36,27 @@ object MapKeys {
     /** False while a Settings page covers the map. */
     @Volatile var mapShowing = true
 
+    /** "Show the crosshair" (Settings > Navigation, with the map keys), on by default: the select
+     *  key's crosshair shows while the keys are in use and fades [CROSSHAIR_SHOW_MS] after the last.
+     *  Off, it never shows; select still taps the middle of the visible map. */
+    val crosshair = androidx.compose.runtime.mutableStateOf(true)
+
+    /** elapsedRealtime of the last set key that acted on the map, 0 for none. */
+    val lastUsedMs = androidx.compose.runtime.mutableLongStateOf(0L)
+
+    /** The crosshair is on screen now. The map target reads it: one crosshair on the map. */
+    val crosshairShowing = androidx.compose.runtime.mutableStateOf(false)
+
+    /** How long the crosshair stays after the last map key. */
+    const val CROSSHAIR_SHOW_MS = 4_000L
+
+    fun setCrosshair(context: Context, on: Boolean) {
+        crosshair.value = on
+        prefs(context).edit().putBoolean(CROSSHAIR_PREF, on).apply()
+    }
+
+    private const val CROSSHAIR_PREF = "map_keys_crosshair"
+
     /** The keypad layout the Settings button fills in. */
     val KEYPAD = mapOf(
         Action.ZOOM_OUT to KeyEvent.KEYCODE_1, Action.ZOOM_IN to KeyEvent.KEYCODE_3,
@@ -56,10 +77,14 @@ object MapKeys {
     private const val LONG_PRESS_MS = 500L
 
     private var selectHeld = false
+    /** The select key's down was seen here. A key that typed into a field was taken on its down,
+     *  and its up alone must not tap the map. */
+    private var selectDown = false
 
     fun init(context: Context) {
         val p = prefs(context)
         for (a in Action.entries) codes.getValue(a).intValue = p.getInt(a.pref, 0)
+        crosshair.value = p.getBoolean(CROSSHAIR_PREF, true)
     }
 
     /** Gives [keyCode] to [action]. One key does one thing: giving it here takes it from any
@@ -93,6 +118,7 @@ object MapKeys {
         if (!mapShowing) return false
         val c = controller ?: return false
         val down = event.action == KeyEvent.ACTION_DOWN
+        if (down) lastUsedMs.longValue = android.os.SystemClock.elapsedRealtime()
         // Zoom and rotate turn about the crosshair, so the spot under it stays under it.
         val at = MapCover.center()
         when (action) {
@@ -116,17 +142,19 @@ object MapKeys {
     private fun select(event: KeyEvent, c: MapDpadController) {
         if (!MapCover.selectLive) {
             selectHeld = false
+            selectDown = false
             return
         }
         when {
-            event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 -> selectHeld = false
-            event.action == KeyEvent.ACTION_DOWN -> if (!selectHeld && event.eventTime - event.downTime >= LONG_PRESS_MS) {
+            event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 -> { selectHeld = false; selectDown = true }
+            event.action == KeyEvent.ACTION_DOWN -> if (selectDown && !selectHeld && event.eventTime - event.downTime >= LONG_PRESS_MS) {
                 selectHeld = true
                 MapCover.center()?.let { (x, y) -> c.longPressAt(x, y) }
             }
             event.action == KeyEvent.ACTION_UP -> {
-                if (!selectHeld) MapCover.center()?.let { (x, y) -> c.tapAt(x, y) }
+                if (selectDown && !selectHeld) MapCover.center()?.let { (x, y) -> c.tapAt(x, y) }
                 selectHeld = false
+                selectDown = false
             }
         }
     }

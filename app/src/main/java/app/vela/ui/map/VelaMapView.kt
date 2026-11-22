@@ -1184,6 +1184,10 @@ fun VelaMapView(
     val viewport = rememberUpdatedState(onViewport)
     val dpadHolder = rememberUpdatedState(dpadController)
     val gestureMove = remember { booleanArrayOf(false) }
+    // A key-driven move (MapKeys, the zoom buttons): its scrollBy or setZoom starts as an API move,
+    // and the move-start listener's REASON_API_GESTURE test turned gestureMove back off before the
+    // camera rested, so a key pan never offered "Search this area". Kept apart and read at idle.
+    val keyMove = remember { booleanArrayOf(false) }
     val navZoomSpeed = remember { floatArrayOf(0f) }          // low-passed speed driving the nav zoom
     val scaling = remember { booleanArrayOf(false) }          // a pinch-zoom is in progress
     val navUserZoom = remember { doubleArrayOf(Double.NaN) }  // manual nav zoom override (NaN = auto)
@@ -3179,7 +3183,7 @@ fun VelaMapView(
         val cam = mapRef ?: return@LaunchedEffect
         val loc = myLocation ?: return@LaunchedEffect
         // Nav owns the camera, or the user already took control → don't grab it; just retire the one-shot.
-        if (navMode || gestureMove[0] || markers.isNotEmpty() || routePolyline.isNotEmpty()) {
+        if (navMode || gestureMove[0] || keyMove[0] || markers.isNotEmpty() || routePolyline.isNotEmpty()) {
             didLaunchCenter[0] = true
             return@LaunchedEffect
         }
@@ -4742,7 +4746,9 @@ fun VelaMapView(
                 }
                 ovlGateRef[0] = runOvlGate
                 ovlGateHook[0] = runOvlGate
-                map.addOnCameraIdleListener {
+                // The camera came to rest. A named function, so a key move (MapKeys), whose native
+                // scrollBy / setZoom / setFocalBearing never report idle, runs the same work.
+                fun onCameraRest() {
                     idleEvents[0]++
                     // "Keep north up": whatever turned the map (a restored camera, an animation that
                     // carried a bearing), it goes back to north once the camera rests. A following
@@ -4763,8 +4769,9 @@ fun VelaMapView(
                             runCatching { map.animateCamera(CameraUpdateFactory.bearingTo(0.0), 180) }
                         }
                     }
-                    if (gestureMove[0]) {
+                    if (gestureMove[0] || keyMove[0]) {
                         gestureMove[0] = false
+                        keyMove[0] = false
                         map.cameraPosition.target?.let { t ->
                             cameraIdle.value(LatLng(t.latitude, t.longitude))
                         }
@@ -4780,10 +4787,12 @@ fun VelaMapView(
                         val trail = Runnable { idleTrail[0] = null; idleWork[0]?.invoke() }
                         idleTrail[0] = trail
                         mv.postDelayed(trail, IDLE_WORK_TRAIL_MS)
-                        return@addOnCameraIdleListener
+                        return
                     }
                     idleWork[0]?.invoke()
                 }
+                map.addOnCameraIdleListener { onCameraRest() }
+                dpadHolder.value?.onMoveEnd = { onCameraRest() }
                 idleWork[0] = {
                     idleWorkAt[0] = android.os.SystemClock.elapsedRealtime()
                     // Keep the VM's "area you're viewing" current so the offline
@@ -5083,7 +5092,10 @@ fun VelaMapView(
                     c.onTap = { handleTap(it) }
                     c.onLongPress = { pt -> longPress.value(LatLng(pt.latitude, pt.longitude)) }
                     c.markPan = {
-                        gestureMove[0] = true
+                        keyMove[0] = true
+                        // As a finger pan does: the results sheet drops out of the way, which is
+                        // also what lets "Search this area" show.
+                        if (!navModeHolder.value) userPan.value()
                         if (navModeHolder.value) {
                             navPanned.value()
                             navUserZoom[0] = Double.NaN
@@ -5099,7 +5111,7 @@ fun VelaMapView(
                         if (navModeHolder.value) {
                             navUserZoom[0] = z
                             zoomOverride.value(true)
-                        } else gestureMove[0] = true
+                        } else keyMove[0] = true
                     }
                 }
                 // The built-in compass reorients to north on tap, which the nav follow overrides a

@@ -33,6 +33,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.offset
 import app.vela.R
 
 
@@ -129,9 +130,13 @@ internal fun BoxScope.MapDpadTarget(
             .focusable(),
         contentAlignment = Alignment.Center,
     ) {
+        // While the map keys' crosshair (MapKeysCrosshair) shows, it is the one crosshair, at the
+        // middle of the visible map: this one would draw a second at the middle of the whole map,
+        // and the pill below would cover it.
+        val keysCrosshair = app.vela.ui.MapKeys.crosshairShowing.value
         when {
             // Crosshair only while the map is key-driven; Choose-on-map draws its own.
-            mapEngaged && state.pickOnMap == null -> {
+            mapEngaged && state.pickOnMap == null && !keysCrosshair -> {
                 val crossColor = MaterialTheme.colorScheme.primary
                 Canvas(Modifier.size(36.dp)) {
                     val cx = size.width / 2f
@@ -149,12 +154,13 @@ internal fun BoxScope.MapDpadTarget(
             // supplies the pin + "Move the map to set…" banner, and the target is
             // auto-engaged so arrows already pan; the "OK: move the map" pill would
             // be wrong there (OK confirms the pick, it doesn't enter map control).
-            mapFocused && state.pickOnMap == null -> Surface(
+            mapFocused && !mapEngaged && state.pickOnMap == null -> Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 shadowElevation = 4.dp,
                 border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                modifier = if (keysCrosshair) Modifier.offset(y = CROSSHAIR_CLEAR_DP) else Modifier,
             ) {
                 Text(
                     stringResource(R.string.mapscreen_dpad_engage),
@@ -165,3 +171,6 @@ internal fun BoxScope.MapDpadTarget(
         }
     }
 }
+
+/** How far under the middle the "OK: move the map" pill sits when the map keys' crosshair is there. */
+private val CROSSHAIR_CLEAR_DP = 44.dp
