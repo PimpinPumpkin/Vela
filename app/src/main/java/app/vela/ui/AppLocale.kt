@@ -33,13 +33,13 @@ object AppLocale {
     // "he" is the modern Hebrew code the picker + NavStrings use; the Android RESOURCES live in the
     // legacy-qualifier folder res/values-iw (AAPT's Hebrew qualifier), and the platform maps a "he"
     // locale onto values-iw, so the two agree. (Same legacy-pair handling as id/in, yi/ji.)
-    val SUPPORTED = listOf("en", "fr", "de", "es", "it", "pt", "pt-BR", "nl", "ru", "pl", "sv", "uk", "hu", "ro", "et", "zh", "zh-TW", "ja", "th", "he")
+    val SUPPORTED = listOf("en", "fr", "de", "es", "it", "pt", "pt-BR", "nl", "ru", "pl", "sv", "uk", "hu", "ro", "et", "zh", "zh-TW", "ja", "th", "he", "fa")
 
     private val ENDONYMS = mapOf(
         "en" to "English", "fr" to "Français", "de" to "Deutsch", "es" to "Español",
         "it" to "Italiano", "pt" to "Português (Portugal)", "pt-BR" to "Português (Brasil)", "nl" to "Nederlands", "ru" to "Русский",
         "pl" to "Polski", "sv" to "Svenska", "uk" to "Українська", "hu" to "Magyar", "ro" to "Română", "et" to "Eesti",
-        "zh" to "简体中文", "zh-TW" to "繁體中文（台灣）", "ja" to "日本語", "th" to "ไทย", "he" to "עברית",
+        "zh" to "简体中文", "zh-TW" to "繁體中文（台灣）", "ja" to "日本語", "th" to "ไทย", "he" to "עברית", "fa" to "فارسی",
     )
 
     /** The language's own name (endonym) — what a speaker of it expects to see in a language list. */
@@ -155,7 +155,7 @@ object AppLocale {
         // Force the RTL/LTR direction from the chosen locale. setLocale only auto-updates
         // layoutDirection when the config's direction wasn't already set, but AdaptiveDensity.wrap
         // runs first and hands over a config with an explicit (LTR) direction, so Hebrew never
-        // flipped the layout without this (found + fixed in the vela-dpad fork).
+        // flipped the layout without this. MainActivity also provides the same direction to Compose.
         config.setLayoutDirection(locale)
         return base.createConfigurationContext(config)
     }

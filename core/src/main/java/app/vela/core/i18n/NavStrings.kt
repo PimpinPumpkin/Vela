@@ -2745,6 +2745,129 @@ object ThNavStrings : NavStrings {
     override fun repeatShort(instruction: String): String = instruction.substringBefore(" มุ่งหน้า ")
 }
 
+/** Persian navigation prompts. Road and destination labels remain source data. */
+object FaNavStrings : NavStrings by EnNavStrings {
+    override val locale: Locale = Locale.forLanguageTag("fa-IR")
+    private fun digits(value: String): String = value
+        .replace('0', '۰').replace('1', '۱').replace('2', '۲').replace('3', '۳')
+        .replace('4', '۴').replace('5', '۵').replace('6', '۶').replace('7', '۷')
+        .replace('8', '۸').replace('9', '۹')
+    private fun side(mod: String?): String = when (mod?.lowercase()) {
+        "left", "slight left", "sharp left" -> "چپ"
+        "right", "slight right", "sharp right" -> "راست"
+        "straight" -> "مستقیم"
+        else -> ""
+    }
+    private fun exitOrdinal(number: Int): String = when (number) {
+        1 -> "اولین خروجی"
+        2 -> "دومین خروجی"
+        3 -> "سومین خروجی"
+        else -> "خروجی شماره " + digits(number.toString())
+    }
+    override fun ferry(): String = "با کشتی عبور کنید"
+    override fun phrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
+        val direction = side(mod)
+        val roadText = road?.takeIf { it.isNotBlank() }?.let { " و وارد مسیر «" + it + "» شوید" }.orEmpty()
+        val destination = dest?.takeIf { it.isNotBlank() }?.let { " به سمت «" + it + "»" }.orEmpty()
+        val exit = exitNo?.let { " شماره " + digits(it) }.orEmpty()
+        return when (type) {
+            "depart" -> road?.takeIf { it.isNotBlank() }?.let { "از مسیر «" + it + "» حرکت کنید" } ?: "مسیر را آغاز کنید"
+            "arrive" -> "به مقصد رسیدید"
+            "turn", "end of road" -> if (direction.isNotBlank()) "به سمت " + direction + " بپیچید" + roadText else "به مسیر ادامه دهید" + roadText
+            "continue", "new name" -> road?.takeIf { it.isNotBlank() }?.let { "در مسیر «" + it + "» به حرکت ادامه دهید" } ?: "به مسیر ادامه دهید"
+            "merge" -> road?.takeIf { it.isNotBlank() }?.let { "به مسیر «" + it + "» بپیوندید" } ?: "به مسیر اصلی بپیوندید"
+            "on ramp" -> "وارد رمپ" + exit + " شوید" + destination
+            "off ramp" -> "از خروجی" + exit + destination + " خارج شوید"
+            "fork" -> when {
+                direction.isNotBlank() && dest.isNullOrBlank() -> "در دوراهی، مسیر سمت " + direction + " را انتخاب کنید"
+                direction.isNotBlank() -> "در دوراهی، مسیر سمت " + direction + " را به‌سوی «" + dest + "» انتخاب کنید"
+                dest.isNullOrBlank() -> "در دوراهی مسیر را ادامه دهید"
+                else -> "در دوراهی مسیر به‌سوی «" + dest + "» را انتخاب کنید"
+            }
+            "roundabout", "rotary" -> "وارد میدان شوید" + (rbExit?.let { " و از " + exitOrdinal(it) + " خارج شوید" }.orEmpty())
+            "roundabout turn" -> "از میدان خارج شوید" + roadText
+            "notification" -> road?.takeIf { it.isNotBlank() }?.let { "در مسیر «" + it + "» به حرکت ادامه دهید" } ?: "به مسیر ادامه دهید"
+            "exit roundabout", "exit rotary" -> "از میدان خارج شوید" + roadText
+            "uturn" -> "دور بزنید" + roadText
+            else -> if (direction.isNotBlank()) "به سمت " + direction + " بروید" + roadText else "به مسیر ادامه دهید" + roadText
+        }
+    }
+    override fun spokenDistance(meters: Double, imperial: Boolean): String {
+        val amount: String
+        val unit: String
+        if (imperial) {
+            val feet = meters * 3.28084
+            if (feet >= 5280.0) {
+                amount = digits(String.format(Locale.US, "%.1f", feet / 5280.0).trimEnd('0').trimEnd('.'))
+                unit = "مایل"
+            } else {
+                amount = digits(feet.roundToInt().toString())
+                unit = "فوت"
+            }
+        } else if (meters >= 1000.0) {
+            amount = digits(String.format(Locale.US, "%.1f", meters / 1000.0).trimEnd('0').trimEnd('.'))
+            unit = "کیلومتر"
+        } else {
+            amount = digits(meters.roundToInt().toString())
+            unit = "متر"
+        }
+        return amount + " " + unit
+    }
+    override fun inThen(distancePhrase: String, instruction: String): String = distancePhrase + " دیگر، " + instruction
+    override fun arrived(): String = "به مقصد رسیدید"
+    override fun destinationSide(left: Boolean): String = if (left) "مقصد در سمت چپ شماست" else "مقصد در سمت راست شماست"
+    override fun destinationWillBe(left: Boolean?): String = when (left) {
+        true -> "مقصد در سمت چپ شما خواهد بود"
+        false -> "مقصد در سمت راست شما خواهد بود"
+        null -> "مقصد در پیش روی شماست"
+    }
+    override fun startNav(firstInstruction: String): String = "مسیریابی آغاز شد. " + firstInstruction
+    override fun reachedStop(label: String): String = if (label.isBlank()) "به ایستگاه رسیدید" else "به " + label + " رسیدید"
+    override fun stopAhead(label: String, left: Boolean?): String {
+        val name = label.ifBlank { "ایستگاه شما" }
+        return when (left) {
+            true -> name + " در سمت چپ شما خواهد بود"
+            false -> name + " در سمت راست شما خواهد بود"
+            null -> name + " در پیش روی شما خواهد بود"
+        }
+    }
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String = instruction + "، سپس " + stopAhead(label, left)
+    override fun intoLot(turnLeft: Boolean): String = if (turnLeft) "به سمت چپ وارد پارکینگ شوید" else "به سمت راست وارد پارکینگ شوید"
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String = intoLot(turnLeft) + "، سپس " + stopAhead(label, left)
+    override fun fasterRoute(firstInstruction: String): String = "مسیر سریع‌تر انتخاب شد. " + firstInstruction
+    override fun fasterRouteAvailable(minutes: Int): String = "مسیر سریع‌تری با حدود " + digits(minutes.toString()) + " دقیقه صرفه‌جویی در دسترس است"
+    override fun rerouting(): String = "در حال محاسبه دوباره مسیر"
+    override fun stopsNotIncluded(): String = "امکان افزودن توقف‌ها به این مسیر نبود. دوباره تلاش می‌کنم."
+    override fun leftYourRoute(): String = "از مسیر خارج شدید. مسیر سریع‌تر را دنبال می‌کنیم."
+    override fun destinationAhead(): String = "مقصد در پیش روی شماست"
+    override fun voiceTest(): String = "راهنمای صوتی فعال است. پس از چهارصد متر، به راست بپیچید."
+    override fun useLanes(side: LaneSide, count: Int): String {
+        val direction = when (side) { LaneSide.LEFT -> "چپ"; LaneSide.RIGHT -> "راست"; LaneSide.CENTER -> "میانی" }
+        val n = digits(count.toString())
+        return if (count > 1) "از " + n + " خط سمت " + direction + " استفاده کنید" else "از خط سمت " + direction + " استفاده کنید"
+    }
+    override fun passLights(count: Int): String =
+        if (count <= 1) "از چراغ راهنمایی عبور کنید"
+        else "از ${digits(count.toString())} چراغ راهنمایی عبور کنید"
+
+    override fun lightThen(lead: String, instruction: String): String =
+        if (lead.isBlank()) instruction else "$lead، سپس $instruction"
+
+    override fun thenNext(instruction: String, next: String): String = "$instruction، سپس $next"
+
+    override fun spokenSign(instruction: String): String = instruction
+    override fun repeatShort(instruction: String): String = instruction
+    override fun repeatWithRoute(instruction: String): String = instruction
+    override fun signParts(instruction: String): List<String> = emptyList()
+    override fun stayOn(instruction: String, route: String): String? = null
+
+    override fun useLanesToDo(side: LaneSide, count: Int, instruction: String): String =
+        useLanes(side, count) + ". " + instruction
+
+    override fun expandForSpeech(text: String): String = text
+
+}
+
 object NavStringsRegistry {
     @Volatile
     private var active: NavStrings = EnNavStrings
@@ -2785,6 +2908,7 @@ object NavStringsRegistry {
         "ja" -> JaNavStrings
         "th" -> ThNavStrings
         "he", "iw" -> HeNavStrings // JDK 17+ normalizes the old code "iw" → "he"; accept both
+        "fa" -> FaNavStrings
         else -> EnNavStrings
     }
 }
