@@ -471,6 +471,16 @@ search field call `searchAlongRoute`:
 - `RouteCorridor.alongRoute` keeps results within 3 km of the line and sorts them in travel
   order. The distance shown is the distance along the route to the result plus its distance off
   the line.
+- `AlongRouteDetour` then prices the places, because a straight-line gap says nothing about the
+  road. One request to the open router's `table` service carries the car, up to 30 places and
+  two points on the route for each place, 3 km before and 3 km after it. A place's detour is the
+  time from the first point to it, plus the time from it to the second point, minus the time
+  between the two points. All three come from the same router, so its free-flow speeds cancel.
+  The place is compared with the stretch of the route it sits on, since the router's own road to
+  the destination may not be the road the route takes. The distance becomes the road distance
+  from the car. The list goes least detour first, in whole minutes, then better rated, then
+  nearer. A row says "On the way" under 30 seconds and "+N min" above. The search waits 3 seconds
+  for the router. With no answer the list stays in travel order, without the detour.
 - During a drive it searches only the route ahead of the car (`RouteCorridor.ahead`, cut at
   `NavState.traveledM`), so places already passed drop out and distances count from the car.
 - A pick becomes a stop. While planning, the destination is kept, the pick is added as a stop
@@ -539,6 +549,9 @@ corridor filter. [Chapter 10](10-android-auto.md) covers the rest.
   from closer. It has no offline path and reports that the search failed.
 - With Google off and no download, a category search reads about 2 km of places around the
   search point. Farther places come only from an installed place pack.
+- The detour of a place along a route uses the open router's free-flow times, with no traffic.
+  A place on a divided road can be priced from the carriageway it is nearest to, which may be the
+  far one.
 - Intents need a word table. Estonian gets the English table. Chinese and Japanese get no fuzzy
   pass over their own words, only over the English fallback.
 - Saved places do not enter the results list, only the suggestions. A search for a saved

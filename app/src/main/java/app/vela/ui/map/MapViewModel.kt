@@ -3206,9 +3206,14 @@ class MapViewModel @Inject constructor(
                     "VelaNavSearch",
                     "'$query' along ${route.size} points: ${res.places.size} results, ${along.size} in the corridor",
                 )
+                // The corridor can only measure a straight-line gap to the road. The open router
+                // prices each place with the drive time it really adds, and the list goes least
+                // detour first. No answer in time leaves the list in travel order.
+                val priced = if (along.isEmpty()) null else withTimeoutOrNull(DETOUR_WAIT_MS) { dataSource.detourAlongRoute(route, along) }
+                val shown = priced ?: along
                 _state.update {
                     it.copy(
-                        results = along,
+                        results = shown,
                         selected = null,
                         searching = false,
                         status = if (along.isEmpty()) appContext.getString(R.string.mapvm_none_found_along_route, query) else null,
@@ -11238,6 +11243,8 @@ class MapViewModel @Inject constructor(
         const val DRAWINGS_LIST_ID = "list:drawings"
         /** Vela leaving the screen this near a drive's destination saves the parking spot (AutoParking). */
         private const val PARK_NEAR_DEST_M = 400.0
+        /** How long an along-route search waits for the open router to price its places. */
+        private const val DETOUR_WAIT_MS = 3_000L
         /** A name match "near you" that replaces a far view's results is within this of you. */
         private const val HOME_NAME_MAX_M = 40_000.0
         /** A GPX file larger than this is not read (openGpxFile). */
