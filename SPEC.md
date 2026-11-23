@@ -1506,14 +1506,17 @@ through what the plan avoided. They apply to DRIVE.
   `Road.runs` samples the route every 50 m and counts a sample on the road when a piece of it
   going the same way (within 60 degrees) is within 25 m; the pieces are filed in a 0.01 degree
   grid. A run holds across a gap of 300 m and counts from 1 km, so an overpass is not a trip, and
-  goes east or west by its ends. Each run is priced at the time the route reaches it (now plus its
-  share of the route's time, in the road's own time zone) from the period in force that day, plus
+  goes east or west by its ends. Each run is priced at the time the route reaches it (the leaving
+  time plus its share of the route's time, in the road's own time zone) from the period in force
+  that day, plus
   the period's trip toll, with its per-trip fee for a driver without a transponder beside it. A
   trip on a day no period covers gives the road no price. Before the day's first band is the
   overnight band. Saturday and Sunday are the weekend; a weekday holiday is priced as a weekday.
   A range under 25 cents or 5 percent reads "Toll about $B". "I have a toll transponder"
-  (`TollTransponder`, off by default) drops the fee. The toll is worked out off the main thread
-  once per route and file (`TollFile.generation`).
+  (`TollTransponder`, off by default) drops the fee. The leaving time is now, the "Depart at"
+  time, or the "Arrive by" time less the route's time (`DepartPick.timed`), and never before now.
+  The toll is worked out off the main thread once per route, file and picked time
+  (`TollFile.generation`).
 - The toll file: `{version, generated, note, roads: [...]}`, a road `{id, name, currency, zone,
   box: [S,W,N,E], kind, lines_source, lines, periods}` with `kind` `distance` and `currency` `CAD`
   (a road of another kind or currency is left out), and a period `{effective, valid_until,

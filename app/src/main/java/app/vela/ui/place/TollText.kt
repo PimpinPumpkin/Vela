@@ -17,14 +17,17 @@ import kotlinx.coroutines.withContext
 /**
  * "Toll about $18.20 to $26.40 + $5.30 fee" for a route on a road in the toll file ([Tolls]), or
  * one price when the range is a few cents, the fee left out when the setting says there is a
- * transponder; else null. Worked out off the main
- * thread once per route and toll file.
+ * transponder; else null. Priced for leaving now, or at the time picked with "Depart at", or the
+ * trip's time before the one picked with "Arrive by" ([DepartPick]). Worked out off the main
+ * thread once per route, toll file and picked time.
  */
 @Composable
 fun routeTollText(r: Route): String? {
-    val charges by produceState<List<TollCharge>>(emptyList(), System.identityHashCode(r.polyline), TollFile.generation.intValue) {
+    val durationS = r.durationInTrafficSeconds ?: r.durationSeconds
+    val leaveMs = DepartPick.timed.value?.let { (mode, epochS) -> (if (mode == 2) epochS - durationS.toLong() else epochS) * 1000L }
+    val charges by produceState<List<TollCharge>>(emptyList(), System.identityHashCode(r.polyline), TollFile.generation.intValue, leaveMs) {
         value = withContext(Dispatchers.Default) {
-            Tolls.charges(r.polyline, System.currentTimeMillis(), r.durationInTrafficSeconds ?: r.durationSeconds)
+            Tolls.charges(r.polyline, maxOf(leaveMs ?: 0L, System.currentTimeMillis()), durationS)
         }
     }
     if (charges.isEmpty()) return null

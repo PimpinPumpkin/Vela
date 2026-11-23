@@ -307,7 +307,8 @@ Vela does not know where one zone ends and the next begins, so it shows a range:
 you drive on the road, at the cheapest zone's rate and at the dearest zone's rate for your
 direction and the time you reach the road. The $1 trip toll is in both ends of the range. Without
 a transponder the camera charge of $5.30 per trip is added; "I have a toll transponder" removes
-it. The range is wide in the rush hours and narrow at night, where it reads as one price.
+it. The range is wide in the rush hours and narrow at night, where it reads as one price. With
+"Depart at" or "Arrive by" picked, the toll is for the time you would leave.
 
 The file is downloaded, not built into the code. A weekly job reads the 407's published rate
 chart, and each read vouches for the rates on it for 60 more days. A new chart becomes a set of
@@ -555,4 +556,4 @@ way you drove". A replayed trip never offers it.
   regions has no offline route.
 - No departure-time planning for driving, walking or cycling. The keyless request has no
   departure field, so "Depart at" and "Arrive by" only shift the arrival clock the chooser
-  works out.
+  works out and the time a toll is priced at.

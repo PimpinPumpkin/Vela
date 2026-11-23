@@ -2091,10 +2091,15 @@ internal object DepartPick {
     private var pick: Pick? = null
     private var droppedOne = false
 
+    /** The picked "Depart at" (1) or "Arrive by" (2) and its time in epoch seconds, or null, for
+     *  pricing a route's toll at the time the trip leaves ([routeTollText]). */
+    val timed = androidx.compose.runtime.mutableStateOf<Pair<Int, Long>?>(null)
+
     fun keep(forKey: Any?, mode: Int, date: java.time.LocalDate, time: java.time.LocalTime) {
         key = forKey
         pick = if (mode == 0) null else Pick(mode, date, time)
         droppedOne = false
+        timed.value = if (mode == 1 || mode == 2) mode to date.atTime(time).atZone(java.time.ZoneId.systemDefault()).toEpochSecond() else null
     }
 
     /** The pick for [forKey], or null. A pick for another destination, or one whose time has
@@ -2107,7 +2112,8 @@ internal object DepartPick {
         return null
     }
 
-    fun dropped(): Boolean = droppedOne.also { droppedOne = false }
+    /** Called from an effect, not from composition, so clearing [timed] here is safe. */
+    fun dropped(): Boolean = droppedOne.also { if (it) timed.value = null; droppedOne = false }
 }
 
 /** "Leave now / Depart at / Arrive by" chooser. "Leave now" uses the live
