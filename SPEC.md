@@ -6722,6 +6722,10 @@ the same `:core` singletons as the phone (`CarDeps`).
 - The host's `onStopNavigation` ends the drive only while the car session is live and the drive
   screen not destroyed (`CarBridge.live`). On a disconnect the host calls it after both are gone,
   and the drive goes on on the phone.
+- The host can be gone a moment before the session is. A `HostException` from a call made on a
+  state change (the drive screen's `pop` and `invalidate`, the session's push of the drive
+  screen) is logged (`VelaCar`, "car host call failed") and dropped; thrown, it ended the app
+  on the phone.
 - `VelaCarSession` is the one place that pushes `ActiveNavCarScreen`: it watches
   `NavSession.state` and, when a drive starts on the car or on the phone, pops to the landing
   screen and pushes the drive screen. `onCreateScreen` returns the drive screen over the landing

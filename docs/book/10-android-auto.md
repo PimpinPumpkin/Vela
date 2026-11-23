@@ -275,6 +275,8 @@ The host draws the turn card, and needs three things first:
    ends the drive when another navigation app starts one. The host also calls it when the car
    disconnects, after the session and the screen are gone, and then the drive goes on on the
    phone, as Google Maps' does: before, a loose cable or a wireless dropout ended guidance.
+   A call to a host that is already gone throws; the drive screen and the session drop such a
+   throw from their state updates, which had ended the app on the phone.
 2. `updateTrip()` with the current step and the destination. This is the host's navigation data
    channel. It also feeds the instrument cluster and a head-up display. Vela sends it when
    something it shows has changed, and at most once a second. The drive screen is rebuilt on

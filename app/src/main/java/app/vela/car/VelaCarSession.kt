@@ -156,8 +156,13 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
         val screens = carContext.getCarService(ScreenManager::class.java)
         // Before the first screen exists, onCreateScreen decides.
         if (screens.stackSize == 0 || screens.top is ActiveNavCarScreen) return
-        screens.popToRoot()
-        screens.push(ActiveNavCarScreen(carContext, deps))
+        // A host that is already gone throws here (see ActiveNavCarScreen).
+        try {
+            screens.popToRoot()
+            screens.push(ActiveNavCarScreen(carContext, deps))
+        } catch (e: androidx.car.app.HostException) {
+            android.util.Log.i("VelaCar", "car host call failed: ${e.message}")
+        }
     }
 
     /** A navigation intent delivered while the app is already running (the host reuses the session). */

@@ -46,13 +46,19 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
         // ends. Voice already announces the arrival, so returning to the landing screen is enough.
         lifecycleScope.launch {
             deps.navSession.state.collect { s ->
-                if (!left && (s.arrived || !s.navigating)) {
-                    left = true
-                    endNavDeclaration()
-                    screenManager.pop()
-                } else {
-                    declareNavStartedIfNeeded()
-                    invalidate()
+                // The host can be gone a moment before this screen is (a car disconnecting). Its
+                // calls then throw, and a throw here ended the app on the phone.
+                try {
+                    if (!left && (s.arrived || !s.navigating)) {
+                        left = true
+                        endNavDeclaration()
+                        screenManager.pop()
+                    } else {
+                        declareNavStartedIfNeeded()
+                        invalidate()
+                    }
+                } catch (e: androidx.car.app.HostException) {
+                    android.util.Log.i("VelaCar", "car host call failed: ${e.message}")
                 }
             }
         }
