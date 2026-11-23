@@ -6656,6 +6656,36 @@ class MapViewModel @Inject constructor(
         if (!ok) flashStatus(appContext.getString(R.string.trip_shortcut_unsupported))
     }
 
+    /** A GPX file opened in Vela (TrackRide): its track becomes a bicycle trip from its start to its
+     *  end, answered by the track itself, and the chooser opens on it. */
+    fun openGpxFile(uri: android.net.Uri) {
+        viewModelScope.launch {
+            val text = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    appContext.contentResolver.openInputStream(uri)?.use { input ->
+                        // A long ride's track is a few MB; a bigger file is not a track to ride.
+                        val out = java.io.ByteArrayOutputStream(); val buf = ByteArray(64 * 1024)
+                        while (out.size() <= GPX_MAX_BYTES) { val n = input.read(buf); if (n < 0) break; out.write(buf, 0, n) }
+                        if (out.size() > GPX_MAX_BYTES) null else out.toString("UTF-8")
+                    }
+                }.getOrNull()
+            }
+            if (text == null || !app.vela.core.data.GpxTrack.looksLikeGpx(text)) { flashStatus(appContext.getString(R.string.mapvm_gpx_unreadable)); return@launch }
+            val (name, line) = app.vela.core.data.GpxTrack.parse(text)
+            val label = name ?: appContext.getString(R.string.mapvm_gpx_track)
+            val t = app.vela.core.data.TrackRide.start(label, line)
+            if (t == null) { flashStatus(appContext.getString(R.string.mapvm_gpx_unreadable)); return@launch }
+            flashStatus(appContext.getString(R.string.mapvm_gpx_matching, label), 6000L)
+            // The trip runs from the track's start to its end, and Start begins it on the track
+            // from wherever the rider is (startNav skips its plan-from-here step for a track).
+            val start = t.line.first(); val end = t.line.last()
+            openTripShortcut(listOf(
+                Place(id = "pin:${start.lat},${start.lng}", name = appContext.getString(R.string.mapvm_gpx_start, label), location = start),
+                Place(id = "pin:${end.lat},${end.lng}", name = appContext.getString(R.string.mapvm_gpx_end, label), location = end),
+            ), TravelMode.BICYCLE)
+        }
+    }
+
     /** A home-screen trip shortcut was tapped: open the route picker on that trip. */
     fun openTripShortcut(points: List<Place?>, mode: TravelMode?) {
         // A round trip has "your location" at both ends: it opens on its first stop.
@@ -7703,7 +7733,10 @@ class MapViewModel @Inject constructor(
         val start = if (s.directionsReversed) null else s.directionsOrigin
         val me = s.myLocation
         val demo = settingsPrefs.getBoolean("demo_drive", false)
-        if (!demo && start != null && me != null && me.distanceTo(start.location) > START_FROM_ME_M) {
+        // A GPX track ride (TrackRide) starts on the track as it is: planned from here it would be
+        // the same track, so the plan-from-here step is skipped.
+        val trackRide = app.vela.core.data.TrackRide.isTrack(s.activeRoute)
+        if (!demo && !trackRide && start != null && me != null && me.distanceTo(start.location) > START_FROM_ME_M) {
             autoStartOnRoute = true
             _state.update { it.copy(directionsOrigin = null) }
             showStatus(appContext.getString(R.string.mapvm_start_from_here))
@@ -11182,6 +11215,8 @@ class MapViewModel @Inject constructor(
         private const val PARK_NEAR_DEST_M = 400.0
         /** A name match "near you" that replaces a far view's results is within this of you. */
         private const val HOME_NAME_MAX_M = 40_000.0
+        /** A GPX file larger than this is not read (openGpxFile). */
+        private const val GPX_MAX_BYTES = 20_000_000
         /** Id prefix of a results row that stands for a custom map's planned route. */
         const val ROUTE_ROW_ID = "shape-route:"
         /** Closer than this to a planned route's first stop, the trip starts from where you are. */

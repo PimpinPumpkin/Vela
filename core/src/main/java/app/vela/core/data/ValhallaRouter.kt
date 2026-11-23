@@ -187,8 +187,8 @@ object ValhallaRouter {
      * both ways and its length agrees within [MATCH_LENGTH_SLACK]. One request, no retry (the
      * caller has a fallback), at most 200 km (the server's own limit; callers send stretches).
      */
-    fun match(http: OkHttpClient, shape: List<LatLng>, costing: String = "auto", timeoutMs: Long = 3_000): Route? =
-        matchWithEdges(http, shape, costing, timeoutMs)?.route
+    fun match(http: OkHttpClient, shape: List<LatLng>, costing: String = "auto", timeoutMs: Long = 3_000, ignoreOneways: Boolean = false): Route? =
+        matchWithEdges(http, shape, costing, timeoutMs, ignoreOneways = ignoreOneways)?.route
 
     /** A test switch only adb can set (`debug.vela.tune.noMatch`, read at launch): no stretch is
      *  matched, so what a route does without the matcher can be seen on a phone. */
@@ -312,11 +312,19 @@ object ValhallaRouter {
     fun matchWithEdges(
         http: OkHttpClient, shape: List<LatLng>, costing: String = "auto", timeoutMs: Long = 3_000,
         startSlackM: Double = 0.0, endSlackM: Double = 0.0, departSaid: Boolean = true,
+        // A GPX track ride (TrackRide) follows the rider's own line: a one-way street it rides
+        // against is matched as ridden, not looped around.
+        ignoreOneways: Boolean = false,
+        // A caller that asks the matcher again when this match fails (TrackRide's pedestrian
+        // fallback) waits for the edges request to end first, so its next request does not
+        // overlap this one's. The driving path falls back to the map tiles and does not wait.
+        settleOnFailure: Boolean = false,
     ): Match? {
         if (shape.size < 2) return null
         val body = buildJsonObject {
             putJsonArray("shape") { shape.forEach { p -> add(buildJsonObject { put("lat", p.lat); put("lon", p.lng) }) } }
             put("costing", costing)
+            if (ignoreOneways) oneWaysIgnored(costing)
             put("shape_match", "map_snap")
             put("units", "kilometers")
         }.toString()
@@ -328,10 +336,13 @@ object ValhallaRouter {
         val client = http.newBuilder().callTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS).build()
         // The matched path's own edges, asked for alongside: every turn's street name is checked
         // against them (see [checkedRoad]). No edges = no street names on turns.
-        val edgesAsync = java.util.concurrent.CompletableFuture.supplyAsync { matchedEdges(client, shape, costing) }
+        val edgesAsync = java.util.concurrent.CompletableFuture.supplyAsync { matchedEdges(client, shape, costing, ignoreOneways) }
         val text = runCatching {
             client.newCall(req).execute().use { resp -> if (resp.isSuccessful) resp.body?.string() else { onMatchFail?.invoke("http ${resp.code} ${resp.body?.string()?.take(120)}"); null } }
-        }.onFailure { onMatchFail?.invoke("no reply: ${it.javaClass.simpleName}") }.getOrNull() ?: return null
+        }.onFailure { onMatchFail?.invoke("no reply: ${it.javaClass.simpleName}") }.getOrNull() ?: run {
+            if (settleOnFailure) runCatching { edgesAsync.get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS) }
+            return null
+        }
         val edges = runCatching { edgesAsync.get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS) }.getOrNull()
         val check = NameCheck(edges)
         val matched = runCatching { parse(text, check, departSaid).firstOrNull() }.getOrNull() ?: run { onMatchFail?.invoke("unreadable reply"); return null }
@@ -460,13 +471,19 @@ object ValhallaRouter {
         return edges.subList(first, last + 1).sumOf { if (it.track) it.lengthM else 0.0 }
     }
 
+    /** `costing_options.<costing>.ignore_oneways`: the match may ride a one-way street either way. */
+    private fun kotlinx.serialization.json.JsonObjectBuilder.oneWaysIgnored(costing: String) {
+        putJsonObject("costing_options") { putJsonObject(costing) { put("ignore_oneways", true) } }
+    }
+
     /** The edges `trace_attributes` matched [shape] to, or null. [Edge.soft] marks the pieces
      *  inside a junction (internal edges, turn channels), which carry whichever street's name
      *  the mapper gave them. */
-    private fun matchedEdges(client: OkHttpClient, shape: List<LatLng>, costing: String): List<Edge>? {
+    private fun matchedEdges(client: OkHttpClient, shape: List<LatLng>, costing: String, ignoreOneways: Boolean = false): List<Edge>? {
         val body = buildJsonObject {
             putJsonArray("shape") { shape.forEach { p -> add(buildJsonObject { put("lat", p.lat); put("lon", p.lng) }) } }
             put("costing", costing)
+            if (ignoreOneways) oneWaysIgnored(costing)
             put("shape_match", "map_snap")
             putJsonObject("filters") {
                 putJsonArray("attributes") {

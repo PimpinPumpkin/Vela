@@ -24,6 +24,13 @@ says so.
   app.
 - One list exported on its own (#822), from the list editor's title row. Checked on a Pixel 4a:
   a list's exported file, imported after the list was deleted, brought it back with its place.
+- Riding a GPX track: open or share a `.gpx` file and the trip follows the track with spoken
+  turns. Ridden on release builds on tracks of 1.5 to 12 km, started away from the track, and
+  left and rejoined. The track is matched with one-way streets ridden either way, a walking match
+  spliced in only where the bike match leaves it, and out-and-backs, crossing jogs and turns the
+  road does not make dropped. The voice says "Go to the start of the route", "Route started",
+  "Left the route" and "Following the route", and the prompts come at a cyclist's distances.
+  The 17 non-English phrasings have not been read by a native speaker.
 
 ### October 2026
 

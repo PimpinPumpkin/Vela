@@ -290,6 +290,9 @@ object NavEngine {
         // The speed the heading term needs, MODE-AWARE (NavSession passes it): [HEADING_MIN_MPS]
         // driving; a walker or cyclist keeps the moving floor.
         headingMinMps: Double = HEADING_MIN_MPS,
+        // A GPX track ride (TrackRide): the approach bands and the "then" distance are a
+        // cyclist's ([farBand], [nearBand], [TRACK_CHAIN_M]). False keeps every other drive as is.
+        trackRide: Boolean = false,
     ): Pair<NavState, List<NavEvent>> {
         val events = mutableListOf<NavEvent>()
         val maneuvers = route.maneuvers
@@ -528,8 +531,8 @@ object NavEngine {
         // 35/10 s (were 25/8, 2026-07-17): a real-drive A/B had Google announcing up to ~0.2 mi
         // sooner at highway speed and lockstep in town — the floors keep city/walking behavior
         // byte-identical, the T is what moves the open-road prompt earlier (~+0.2 mi at 70 mph).
-        val farM = maxOf(400.0, round50(v * 35.0))    // ~35 s out on the open road
-        val nearM = maxOf(150.0, round50(v * 10.0))   // ~10 s out
+        val farM = farBand(v, trackRide)    // ~35 s out on the open road
+        val nearM = nearBand(v, trackRide)  // ~10 s out
         // At highway pace the full voice gives a maneuver ONE approach line, FAST_APPROACH_S out
         // ("In a quarter mile" from 50 to 80 mph), and its line at the turn (oneApproach). Far,
         // near and at the turn made eight lines of one exit, the fork on its ramp and the merge
@@ -567,13 +570,15 @@ object NavEngine {
         // within CHAIN_M, rides on this one's lines: "Turn right onto Elm Street, then turn left
         // onto Oak Avenue". Said apart, the second turn's approach landed on top of the first
         // turn's own line or was cut by it. Never on a line that already carries a stop.
-        val nextIdx = if (isArrive || isDepart || thenStopHere) -1 else chainedNext(maneuvers, manAlong, idxCur)
+        val nextIdx = if (isArrive || isDepart || thenStopHere) -1 else chainedNext(maneuvers, manAlong, idxCur, if (trackRide) TRACK_CHAIN_M else CHAIN_M)
         // FURTHER ON, BUT DUE AT ONCE. A next step past CHAIN_M whose first prompt would fire as
         // soon as this turn is made rides on the line at this turn only: "Take the ramp, then keep
         // left". Said apart, "Take the exit" and "In a quarter mile, keep slight left" came a
         // second apart. Its bands the car reaches within BAND_MERGE_S of here count as said; a
-        // later one is still said. A step with lanes says them in the "then".
-        val laterIdx = if (nextIdx >= 0 || isArrive || isDepart || thenStopHere) -1 else dueNext(maneuvers, manAlong, idxCur, farM + v.coerceAtLeast(MIN_PACE_MPS) * BAND_MERGE_S)
+        // later one is still said. A step with lanes says them in the "then". Not on a track
+        // ride: there the next turn is said on its own line with its distance, so a "then" means
+        // the two turns are a few meters apart ([TRACK_CHAIN_M]).
+        val laterIdx = if (nextIdx >= 0 || isArrive || isDepart || thenStopHere || trackRide) -1 else dueNext(maneuvers, manAlong, idxCur, farM + v.coerceAtLeast(MIN_PACE_MPS) * BAND_MERGE_S)
         // A merge named in the "then" is said: it has one line, and this was it.
         val laterBands = if (laterIdx < 0) emptySet() else if (maneuvers[laterIdx].type == ManeuverType.MERGE) setOf(0, 1) else {
             val gap = manAlong[laterIdx] - manAlong[idxCur]
@@ -892,11 +897,11 @@ object NavEngine {
 
     /** The next maneuver the voice speaks after [k], when it is within [CHAIN_M] of it and is not
      *  the arrival (which has lines of its own); else -1. */
-    internal fun chainedNext(ms: List<Maneuver>, manAlong: DoubleArray, k: Int): Int {
+    internal fun chainedNext(ms: List<Maneuver>, manAlong: DoubleArray, k: Int, chainM: Double = CHAIN_M): Int {
         var j = k + 1
         while (j < ms.size && quiet(ms, j)) j++
         if (j >= ms.size || ms[j].type == ManeuverType.ARRIVE || ms[j].type == ManeuverType.DEPART) return -1
-        return if (manAlong[j] - manAlong[k] <= CHAIN_M) j else -1
+        return if (manAlong[j] - manAlong[k] <= chainM) j else -1
     }
 
     /** True when step [j], named as "then [said]" on the turn-now line of step [k], would say the
@@ -913,6 +918,25 @@ object NavEngine {
         val toOwnNow = dtn + (manAlong[j] - manAlong[k]) - turnNowM
         return toOwnNow / speedMps.coerceAtLeast(MIN_PACE_MPS) < CHAIN_REPEAT_S
     }
+
+    /** A track ride's "then" distance: a cyclist's town block, where [CHAIN_M] is a car's. */
+    const val TRACK_CHAIN_M = 60.0
+    /** The approach bands' floors on a track ride: at riding speed the 35 s and 10 s bands are
+     *  well under a car's 400 m and 150 m floors, and those floors made nearly every turn's first
+     *  line due the moment the turn before it was made, so it was chained ("Turn left, then turn
+     *  right" with the right 300 m on). */
+    const val TRACK_FAR_MIN_M = 150.0
+    const val TRACK_NEAR_MIN_M = 50.0
+
+    /** The far approach band at [v] m/s: about 35 s out, at least 400 m (a track ride: [TRACK_FAR_MIN_M]). */
+    internal fun farBand(v: Double, trackRide: Boolean = false) = maxOf(if (trackRide) TRACK_FAR_MIN_M else 400.0, round50(v * 35.0))
+    /** The approach bands (0 far, 1 near) a turn [toTurnM] ahead is already inside at [v] m/s:
+     *  the ones the engine counts as said when it says that turn's line there. */
+    internal fun bandsWithin(toTurnM: Double, v: Double, trackRide: Boolean = false): Set<Int> =
+        setOfNotNull(0.takeIf { toTurnM <= farBand(v, trackRide) }, 1.takeIf { toTurnM <= nearBand(v, trackRide) })
+
+    /** The near approach band at [v] m/s: about 10 s out, at least 150 m (a track ride: [TRACK_NEAR_MIN_M]). */
+    internal fun nearBand(v: Double, trackRide: Boolean = false) = maxOf(if (trackRide) TRACK_NEAR_MIN_M else 150.0, round50(v * 10.0))
 
     /** A "then" past [CHAIN_M] means soon: never for a step further than this. */
     const val THEN_SOON_M = 500.0
@@ -1030,8 +1054,8 @@ object NavEngine {
      *  prepares them while the route preview is up, so the first prompts of a drive need no
      *  synthesis while the camera flies in. A line this misses (a real distance on a short step, a
      *  higher speed) is simply synthesized when spoken, as before. */
-    fun startPrompts(route: Route, imperial: Boolean, count: Int = 2): List<String> =
-        upcomingPrompts(route, fromStep = 1, spoken = emptySet(), speedMps = 0.0, imperial = imperial, count = count, nearestFirst = false)
+    fun startPrompts(route: Route, imperial: Boolean, count: Int = 2, trackRide: Boolean = false): List<String> =
+        upcomingPrompts(route, fromStep = 1, spoken = emptySet(), speedMps = 0.0, imperial = imperial, count = count, nearestFirst = false, trackRide = trackRide)
 
     /**
      * The lines [update] is about to speak, from the turn at [fromStep] on, for the voice to get
@@ -1042,12 +1066,12 @@ object NavEngine {
      * the current turn) are left out. A line this misses (a real distance on a short step, a
      * speed that has moved a band) is synthesized when spoken, as before.
      */
-    fun upcomingPrompts(route: Route, fromStep: Int, spoken: Set<Int>, speedMps: Double, imperial: Boolean, count: Int = 2, nearestFirst: Boolean = true): List<String> {
+    fun upcomingPrompts(route: Route, fromStep: Int, spoken: Set<Int>, speedMps: Double, imperial: Boolean, count: Int = 2, nearestFirst: Boolean = true, trackRide: Boolean = false): List<String> {
         val ms = route.maneuvers
         val out = LinkedHashSet<String>()
         var taken = 0
-        val far = maxOf(400.0, round50(speedMps * 35.0))
-        val near = maxOf(150.0, round50(speedMps * 10.0))
+        val far = farBand(speedMps, trackRide)
+        val near = nearBand(speedMps, trackRide)
         for (i in fromStep.coerceAtLeast(1) until ms.size) {
             if (taken >= count) break
             val m = ms[i]

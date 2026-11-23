@@ -36,7 +36,7 @@ class NavEngineChainTest {
         return Route(poly, listOf(RouteLeg(1600.0 + gap, 160.0, null, ms)), 1600.0 + gap, 160.0, null)
     }
 
-    private fun drive(r: Route, gap: Double, mps: Double = 10.0): List<String> {
+    private fun drive(r: Route, gap: Double, mps: Double = 10.0, trackRide: Boolean = false): List<String> {
         var st = NavState()
         val said = ArrayList<String>()
         var m = 0.0
@@ -46,7 +46,7 @@ class NavEngineChainTest {
                 m <= 1000.0 + gap -> pt(1000.0, -(m - 1000.0)) to 180.0
                 else -> pt(1000.0 + (m - 1000.0 - gap), -gap) to 90.0
             }
-            val (s, ev) = NavEngine.update(r, st, here, speedMps = mps, bearingDeg = brg)
+            val (s, ev) = NavEngine.update(r, st, here, speedMps = mps, bearingDeg = brg, trackRide = trackRide)
             st = s
             ev.filterIsInstance<NavEvent.Speak>().forEach { said += it.text }
             m += 5.0
@@ -172,5 +172,49 @@ class NavEngineChainTest {
         // 80 m at 10 m/s is 8 s: long enough for the reminder to be worth saying.
         val said = drive(route(80.0), 80.0)
         assertEquals("$said", "Turn left onto Oak Avenue", said.last { "Oak Avenue" in it })
+    }
+
+    @Test fun `on a track ride a turn 150 m on is said on its own`() {
+        // Riding at 5 m/s, Oak Avenue 150 m after Elm Street. A car's 400 m far band makes the
+        // second turn's first line due at once, so it rides on the first: "..., then turn left".
+        val car = drive(route(150.0), 150.0, mps = 5.0)
+        assertTrue("$car", car.any { it.startsWith("Turn right") && "then" in it })
+        // A track ride's bands are a cyclist's: each turn is said on its own.
+        val ride = drive(route(150.0), 150.0, mps = 5.0, trackRide = true)
+        assertTrue("$ride", ride.none { "then" in it })
+        assertTrue("$ride", ride.any { it.startsWith("Turn right onto Elm Street") })
+        assertTrue("$ride", ride.any { it.startsWith("Turn left onto Oak Avenue") || it.endsWith("turn left onto Oak Avenue") })
+    }
+
+    @Test fun `on a track ride turns 50 m apart still ride together`() {
+        val ride = drive(route(50.0), 50.0, mps = 5.0, trackRide = true)
+        assertTrue("$ride", ride.any { it.startsWith("Turn right") && "then turn left" in it })
+    }
+
+    /** East 30 m from the start, left onto Oak Avenue, north 300 m. */
+    private fun shortStart(): Route {
+        val poly = (0..3).map { pt(it * 10.0, 0.0) } + (1..30).map { pt(30.0, it * 10.0) }
+        val ms = listOf(
+            Maneuver(ManeuverType.DEPART, "Start your route", poly.first(), 30.0, 6.0),
+            Maneuver(ManeuverType.TURN_LEFT, "Turn left onto Oak Avenue", pt(30.0, 0.0), 300.0, 60.0, road = "Oak Avenue", instructionNoRoad = "Turn left"),
+            Maneuver(ManeuverType.ARRIVE, "Arrive", poly.last(), 0.0, 0.0),
+        )
+        return Route(poly, listOf(RouteLeg(330.0, 66.0, null, ms)), 330.0, 66.0, null)
+    }
+
+    @Test fun `a turn the track start line named is not said again`() {
+        // A drive begun on the track: on the first fix the engine is on the departure step, says
+        // nothing, and moves to the left turn 30 m on. NavSession's start line names that turn and
+        // records the bands it is inside (NavEngine.bandsWithin); the engine must not say it again.
+        val r = shortStart()
+        val (first, ev) = NavEngine.update(r, NavState(), pt(0.0, 0.0), speedMps = 0.0, bearingDeg = 90.0, trackRide = true)
+        assertTrue("$ev", ev.none { it is NavEvent.Speak })
+        assertEquals(1, first.stepIndex)
+        val marked = first.copy(spoken = first.spoken + NavEngine.bandsWithin(first.distanceToNextManeuver, 0.0, trackRide = true))
+        val (_, ev2) = NavEngine.update(r, marked, pt(3.0, 0.0), speedMps = 3.0, bearingDeg = 90.0, trackRide = true)
+        assertTrue("$ev2", ev2.filterIsInstance<NavEvent.Speak>().none { it.text.startsWith("In ") })
+        // Unmarked, the engine says the approach line itself: the duplicate this guards against.
+        val (_, ev3) = NavEngine.update(r, first, pt(3.0, 0.0), speedMps = 3.0, bearingDeg = 90.0, trackRide = true)
+        assertTrue("$ev3", ev3.filterIsInstance<NavEvent.Speak>().any { it.text.startsWith("In ") })
     }
 }

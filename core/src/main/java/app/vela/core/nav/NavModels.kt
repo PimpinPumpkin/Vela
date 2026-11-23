@@ -31,6 +31,8 @@ data class NavState(
                                        // (NavEngine.chainedNext): its own approach is not said again
     val backToRoute: BackToRoute? = null, // off the route with no signal and no way back planned
                                           // (NavSession): where the route is, for the banner
+    val toTrackM: Double = -1.0,       // a GPX track ride (TrackRide) away from its line: meters to it (its
+                                       // start until the rider has joined it); -1 otherwise
 )
 
 /**

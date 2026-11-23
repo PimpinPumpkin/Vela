@@ -771,6 +771,8 @@ class GoogleMapsDataSource @Inject constructor(
         behind: List<LatLng>,
         turnRound: app.vela.core.data.TurnRoundVerdict?,
     ): List<Route> {
+        // A GPX track being ridden answers bicycle trips to its end, reroutes included (TrackRide).
+        if (mode == TravelMode.BICYCLE) app.vela.core.data.TrackRide.routeFor(http, destination, waypoints)?.let { return it }
         if (mode != TravelMode.DRIVE) return directionsPlain(origin, destination, mode, waypoints, avoidTolls, avoidHighways, avoidFerries, urgent, departBearingDeg, budgetMs)
         // The map's roads round the destination are asked for while the routes are fetched, so
         // the word on the last turn (withLotTurn) is a read from memory by the time they are built.
