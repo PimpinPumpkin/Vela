@@ -295,6 +295,10 @@ off the list when it has been.
   26 emulator. Not yet on a drive: a turn taken slowly, a corner the car cuts, and a phone in a
   loose mount, with the nav trace on (`hold=` in logcat says which corner held the arrow).
 
+- A paused drive drawn by the free-drive follow (SPEC 4.6, Pause): checked with mock fixes on a
+  Pixel 4a (pause at 11 m/s, resume, End while paused). Not yet on a drive off the route, where a
+  pause is used.
+
 - "Save where I park" (`AutoParking`, `ParkWatch`; SPEC, Parking): the rules are unit-tested and
   the leave-at-the-destination path was checked on a Pixel 4a with a mock drive. The Bluetooth
   option's permission prompts and its save path (through the adb test hook, with Vela not

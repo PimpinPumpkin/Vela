@@ -2279,8 +2279,15 @@ a recorded trip keeps each synthesized fix as an `N` line of kind `d`, never as 
 
 While `NavSession.paused` is set, `onLocation` records the fix and returns before the engine.
 Nothing downstream runs: no off-route detection, reroute, arrival, stop cue, voice, recheck or
-offer. The puck keeps moving because the position it is drawn from is not held, and the arrival clock slides
-on a 30-second tick. Resume reroutes once when the fix is outside the corridor, otherwise speaks
+offer. The arrival clock slides on a 30-second tick. The map draws a paused drive the way it
+draws a drive with no route (`navMode` is off while `navPaused`): the free-drive follow moves the
+dot and the camera (4.7), heading-up from the first frame at the drive's last speed, since a
+paused drive is usually off its route and the route-held arrow would be wrong. The drive's
+bearing, tilt and padding stay through the pause, which keeps the map from turning north-up and
+back, and the follow adds no look-ahead of its own while the padding frames the road ahead. The
+nav camera's teardown runs when the drive ends. Pixel 4a, Davis straight at 11 m/s: pausing
+turned the camera 3 degrees off the course for under 2 s; paused frames ran at 48 fps against
+59 navigating. Resume reroutes once when the fix is outside the corridor, otherwise speaks
 the step ahead with its distance in its spoken wording (`resumeLine`: "In half a mile, make a
 U-turn"), bare inside `RESUME_BARE_M` (60 m); auto-resume says the same. Auto-resume is armed by the stop: a stationary or off-route fix sets
 `autoResumeArmed`, and then `AUTO_RESUME_HITS` (3) consecutive moving, on-route fixes resume.

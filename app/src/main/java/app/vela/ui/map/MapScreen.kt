@@ -3923,7 +3923,10 @@ private fun MapSurface(
         candidatePin = state.navTapCandidate?.location?.takeIf { state.navigating },
         // The flag is left for a trip that ends at "your location", which has no place to draw.
         destinationPin = if (chooserUp && chooserDest == null) state.myLocation else null,
-        navMode = state.navigating,
+        // A paused drive draws the way a drive with no route does (SPEC 4.6, Pause): the dot and the
+        // follow camera of the bare map, smooth between fixes, and no arrow held to a route the
+        // engine is not checking.
+        navMode = state.navigating && !state.navPaused,
         navDriveMode = state.travelMode == app.vela.core.model.TravelMode.DRIVE,
         navLabelExclude = navLabelExclude,
         navUpcomingRoads = navUpcomingRoads,
@@ -3959,7 +3962,8 @@ private fun MapSurface(
         // to look at (Google does the same): the results sheet to its bar, the place sheet to
         // its minimized card. The bar / a drag brings them back.
         // A start view that is not the phone's position holds the map until the locate button.
-        driveFollowing = driveFollowing && !state.startHold,
+        driveFollowing = (driveFollowing && !state.startHold) || (state.navigating && state.navPaused && !state.navCameraDetached),
+        navPaused = state.navigating && state.navPaused,
         onMapTap = onMapTap,
         onUserPan = onUserPan,
         onScaleChanged = { metersPerPixelState.value = it },

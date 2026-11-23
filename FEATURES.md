@@ -189,8 +189,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   screen and the directions of the next route, instead of a dedication name no sign shows.
 - Street-name callouts where cross streets meet your route, with your turn and exit highlighted.
 - The number of the road you are on, as a shield on the route line about every mile.
-- Pause holds the drive with no rerouting, voice or offers. "Pause button on the navigation bar"
-  moves it.
+- Pause holds the drive with no rerouting, voice or offers, and the map follows you as it does
+  with no route. "Pause button on the navigation bar" moves it.
 - An overview button fits the rest of the route, and Re-center returns to the drive.
 - The compass switches heading-up and north-up. "Start drives north-up" sets the default, and
   "Keep north up" holds every drive north-up.

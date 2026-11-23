@@ -212,7 +212,10 @@ over the whole route smears the cut across `routeLength / 256` meters.
   paint lands at once and geometry a few frames later.
 - "Road behind you" (Settings > Navigation, off by default) keeps the driven part gray. Off,
   nothing is drawn behind the arrow.
-- A paused drive draws the line ahead in `ROUTE_PAUSED_COLOR` (`#9C8AD6`, lavender).
+- A paused drive draws the line ahead in `ROUTE_PAUSED_COLOR` (`#9C8AD6`, lavender). The arrow
+  and the camera are then the bare map's (the free-drive follow): a paused drive is usually off
+  its route, where an arrow held to the route is wrong. The camera keeps the drive's
+  angle and heading through the pause (SPEC 4.6, Pause).
 
 ### The arrow
 
