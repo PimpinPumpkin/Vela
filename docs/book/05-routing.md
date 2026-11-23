@@ -300,21 +300,20 @@ route runs the same way as the fastest, nothing is said. When it differs, the fa
 already one of the routes. Each row shows its own time and distance. The word is "may" because
 the answer is read from the route, with no toll record behind it.
 
-Google gives no toll price. For the toll roads Vela holds a table for, a route row shows the toll
-for a car, priced at the time the route reaches the road. Quebec has two toll crossings, the A-25
-bridge between Montreal and Laval and the A-30 bridge over the St. Lawrence. Their lines come from
-OpenStreetMap and their rates from the operators' published grids: the A-25 costs $4.12 in the
-weekday peaks and $3.30 at other times, the A-30 $4.40 at all hours. Without a transponder the A-25
-bills the plate and adds an administration fee of $6.50 for each crossing, which the row shows too.
-"I have a toll transponder" removes it. The grids change each year and the table in the code names
-the date of each. Electric vehicles do not pay, and a truck pays more.
+Google gives no toll price. For a road in Vela's toll file, a route row shows the toll for a car
+in place of "May have tolls". So far the file holds Ontario's Highway 407 ETR, which is priced by
+the kilometer, with a rate for each of 12 zones that changes with the direction and the hour.
+Vela does not know where one zone ends and the next begins, so it shows a range: the kilometers
+you drive on the road, at the cheapest zone's rate and at the dearest zone's rate for your
+direction and the time you reach the road. The $1 trip toll is in both ends of the range. Without
+a transponder the camera charge of $5.30 per trip is added; "I have a toll transponder" removes
+it. The range is wide in the rush hours and narrow at night, where it reads as one price.
 
-Ontario's Highway 407 ETR is priced by the kilometer, with a rate for each of 12 zones that changes
-with the direction and the hour. Vela does not know where one zone ends and the next begins, so it
-shows a range: the kilometers you drive on the road, at the cheapest zone's rate and at the dearest
-zone's rate for your direction and the time you reach the road. The $1 trip toll is in both ends of
-the range. Without a transponder the camera charge of $5.30 per trip is added. The range is wide in
-the rush hours and narrow at night.
+The file is downloaded, not built into the code. A weekly job reads the 407's published rate
+chart, and each read vouches for the rates on it for 60 more days. A new chart becomes a set of
+rates of its own from the day it takes effect. If the job stops reading the chart, the price
+disappears after those 60 days and the route says "May have tolls" again, so an old price is
+never shown. The road's lines come from OpenStreetMap.
 
 The open router cannot avoid anything. The FOSSGIS profiles were built without excludable
 classes and a request carrying `exclude=` is rejected whole, so `OSRM_SUPPORTS_EXCLUDE` is

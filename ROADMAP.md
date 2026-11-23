@@ -263,6 +263,14 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- Toll prices from the toll file (#954, from #965; SPEC 4.3): on the API 26 emulator a Vaughan to
+  Markham drive showed "Toll about $8.94 + $5.30 fee" and "$10.00 + $5.30 fee" on its two 407
+  routes (the overnight band, so one price each). Not yet seen: a range at rush hour, the
+  transponder switch on a phone, a run of `tolls.yml` on GitHub (the `tolls` release does not
+  exist until its first run) and whether 407etr.com answers a GitHub runner. The price uses the
+  time now, not a Depart at time. More roads go in as entries in `tools/tolls/roads.json` with a
+  source; #965's two Quebec bridges are not in it yet.
+
 - Louder and Loudest for a voice from the phone's engine (`SystemVoiceBoost`, a
   `LoudnessEnhancer` on Vela's audio session, issue #979; SPEC 9.1): the step-to-gain mapping is
   unit-tested only. Not yet heard on a phone with Google TTS or Samsung TTS, through Bluetooth,

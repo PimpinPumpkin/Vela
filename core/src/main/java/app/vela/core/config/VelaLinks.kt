@@ -39,6 +39,7 @@ object VelaLinks {
     const val WORLD_BASEMAP = "worldBasemap"
     const val POI_PACK_MANIFEST = "poiPackManifest"
     const val FLOCK_MANIFEST = "flockManifest"
+    const val TOLLS_MANIFEST = "tollsManifest"
     const val ROAD_FEATURES_MANIFEST = "roadFeaturesManifest"
     const val MAP_FONTS = "mapFonts"
     const val MAP_FONTS_PACK = "mapFontsPack"
@@ -75,6 +76,7 @@ object VelaLinks {
         WORLD_BASEMAP to (RELEASES to "/basemap-tiles/basemap-world.pmtiles"),
         POI_PACK_MANIFEST to (RELEASES to "/poi-packs/poi-pack-manifest.json"),
         FLOCK_MANIFEST to (RELEASES to "/flock-cameras/flock-manifest.json"),
+        TOLLS_MANIFEST to (RELEASES to "/tolls/tolls-manifest.json"),
         ROAD_FEATURES_MANIFEST to (RELEASES to "/road-features/road-features-manifest.json"),
         MAP_FONTS to (PAGES to "/fonts"),
         MAP_FONTS_PACK to (RELEASES to "/map-fonts/map-fonts.zip"),
@@ -131,6 +133,7 @@ object VelaLinks {
     fun worldBasemap(): String = get(WORLD_BASEMAP)
     fun poiPackManifest(): String = get(POI_PACK_MANIFEST)
     fun flockManifest(): String = get(FLOCK_MANIFEST)
+    fun tollsManifest(): String = get(TOLLS_MANIFEST)
     fun roadFeaturesManifest(): String = get(ROAD_FEATURES_MANIFEST)
     fun mapFonts(): String = get(MAP_FONTS)
     fun mapFontsPack(): String = get(MAP_FONTS_PACK)

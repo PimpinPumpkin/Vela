@@ -181,6 +181,9 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
             app.vela.offline.RegionPolys.ensureLoaded(this@VelaApp)
             app.vela.data.FlockCameras.ensureLoaded(this@VelaApp)
             app.vela.data.FlockCameras.refresh(this@VelaApp, app.vela.core.config.VelaLinks.flockManifest())
+            // Toll prices (SPEC 7): the bundled file, then a newer one from the tolls release.
+            app.vela.data.TollFile.ensureLoaded(this@VelaApp)
+            app.vela.data.TollFile.refresh(this@VelaApp, app.vela.core.config.VelaLinks.tollsManifest())
         }
         app.vela.ui.SimLocation.onChange = {
             locationProvider.pinned = it

@@ -1497,36 +1497,41 @@ through what the plan avoided. They apply to DRIVE.
   else the avoiding route added at the END of the list, since other lists index into it, and the
   flock counts run again. A route set that changed while the request ran is left alone. An
   avoiding route tagged `avoidNotHonored` says nothing.
-- Toll prices (`Tolls.charges`, `routeTollText`): a route row shows "Toll about $X" for a car where
-  a table holds the road. Google's reply gives no toll price, so the prices come from the operators'
-  published rate grids, each dated in the code. A held road is matched to the route's line by
-  `RouteOverlap.runsAlong`: the road's line is walked every `SAMPLE_M` (25 m) and lies on the route
-  when at least `MIN_SAMPLES` (3) steps are within `MAX_OFF_M` (40 m) of it and it runs the way the
-  route does there, so a road that crosses the route is not on it. A toll is priced at the time the
-  route reaches it, now plus its share of the route's time, on Eastern time (`Tolls.ZONE`).
-  "I have a toll transponder" (`TollTransponder`, off by default) drops the fees below from the row.
-- Quebec's two toll crossings (`QuebecTolls`, `QuebecTollBridges`): the `bridge=yes` and `toll=yes`
-  OpenStreetMap ways of the A-25 and the A-30 (queried 2026-10-31), matched in either direction.
-  Car (category B, two axles): A-25, grid of 1 June 2025, $4.12 in the peaks of a working day
-  (06:01 to 09:00, 15:01 to 18:00) and $3.30 at other times, plus $6.50 for a crossing by a vehicle
-  with no account (the grid's administration fee on the first payment request), shown as
-  "+ $6.50 fee". A-30, grid of 28 February 2026, $4.40 at every hour, no such fee. A weekday public
-  holiday counts as a working day. Electric vehicles are free on both and trucks pay more: neither
-  is modeled.
-- Highway 407 ETR (`Ontario407`, `Ontario407Data`): the toll is per kilometer by 12 zones, direction
-  and time band, plus a $1 trip toll and a $5.30 camera charge per trip without a transponder (rate
-  chart from 1 January 2026, `407etr.com/en/rate-chart-light`). The zone boundaries are not held: the
-  exits in OpenStreetMap carry only numbers. So the price is a range, from the cheapest zone's rate
-  to the dearest zone's rate for the direction and band (`RATES`, read from the page's own tables),
-  times the kilometers driven on the road. The road is the 477 mainline ways tagged `ref=407 ETR`,
-  `toll=yes`, `oneway=yes` (queried 2026-10-31), in traffic direction. `runs` samples the route every
-  50 m and counts a sample on the road when a line going the same way (within 60 degrees) is within
-  25 m of it. A run holds across a gap of 300 m and counts from 1 km, so an overpass is not a trip.
-  Each run is priced at its entry time: weekday bands start 05:00, 07:00, 09:30, 10:30, 14:30,
-  15:30, 18:00 and 21:00, weekend bands 08:30, 10:00, 19:00 and 21:00, and the last band runs
-  overnight. Saturday and Sunday are the weekend; a weekday holiday is priced as a weekday.
-  `TollCharge.cents` and `maxCents` hold the range with the $1 trip toll of each run, `feeCents` the
-  camera charges. The row reads "Toll about $A to $B + $C fee".
+- Toll prices (`Tolls`, `routeTollText`): a route on a road in the toll file shows "Toll about $A
+  to $B + $C fee" in place of "May have tolls". Google's reply gives no toll price. The file
+  (`tolls.json`, the table in 7.1) holds each road's OpenStreetMap lines in the direction of traffic and
+  its rate periods. Only Highway 407 ETR is in it so far. A road is priced by the kilometer, with
+  the cheapest and dearest of its zones' rates for the direction, the kind of day and the time
+  band, since the 407's zone boundaries are not in OpenStreetMap (its exits carry only numbers).
+  `Road.runs` samples the route every 50 m and counts a sample on the road when a piece of it
+  going the same way (within 60 degrees) is within 25 m; the pieces are filed in a 0.01 degree
+  grid. A run holds across a gap of 300 m and counts from 1 km, so an overpass is not a trip, and
+  goes east or west by its ends. Each run is priced at the time the route reaches it (now plus its
+  share of the route's time, in the road's own time zone) from the period in force that day, plus
+  the period's trip toll, with its per-trip fee for a driver without a transponder beside it. A
+  trip on a day no period covers gives the road no price. Before the day's first band is the
+  overnight band. Saturday and Sunday are the weekend; a weekday holiday is priced as a weekday.
+  A range under 25 cents or 5 percent reads "Toll about $B". "I have a toll transponder"
+  (`TollTransponder`, off by default) drops the fee. The toll is worked out off the main thread
+  once per route and file (`TollFile.generation`).
+- The toll file: `{version, generated, note, roads: [...]}`, a road `{id, name, currency, zone,
+  box: [S,W,N,E], kind, lines_source, lines, periods}` with `kind` `distance` and `currency` `CAD`
+  (a road of another kind or currency is left out), and a period `{effective, valid_until,
+  source, trip_cents, fee_cents, bands}`, bands keyed `east`, `west` or `any`, then `weekday` or
+  `weekend`, as `[start minute, least cents/km, most cents/km]`. `scripts/build-tolls.py` builds
+  it from `tools/tolls/roads.json`. A road with `fetch` has its rates read from its source page,
+  and the run that reads it ends the period it shows `VOUCH_DAYS` (60) days later (or 60 days
+  after its effective date when that is later); a period whose end is more than `RENEW_DAYS` (30)
+  away and whose rates are unchanged is kept as it was, so a quiet week publishes nothing. A chart
+  with a later effective date is a period of its own and ends the earlier one the day before. A
+  page the script cannot read exits 1 (a red run: the parser needs fixing); no answer exits 3 and
+  the published file stays. So a source that stops answering leaves no price after 60 days, never
+  an old one. A road without `fetch` keeps the periods written for it. The 407 is read from
+  `407etr.com/en/rate-chart-light`: four tables of 12 zones (westbound and eastbound tabs, each
+  weekdays then weekends), the effective date, the $1 trip toll and the $5.30 camera charge. Its
+  lines are the 477 mainline ways tagged `ref=407 ETR`, `toll=yes`, `oneway=yes` (queried
+  2026-10-31). `TollFile` loads the newer of the bundled copy and the one downloaded from the
+  `tolls` release, and loads a download before keeping it.
 
 #### Walking
 
@@ -5350,6 +5355,7 @@ exists and shows one status line asking the user to download those regions again
 | Address overlay | `address-overlays.yml`, `scripts/build-address-region.sh` | `address-overlays` | `address-overlay-manifest.json` | 90 days | streamed |
 | Maxspeed overlay | `maxspeed-overlays.yml`, `scripts/build-maxspeed-region.sh` | `maxspeed-overlays` | `maxspeed-overlay-manifest.json` | 90 days | streamed |
 | ALPR cameras | `flock-cameras.yml`, `scripts/build-flock-cameras.py` | `flock-cameras` | `flock-manifest.json` | Mondays 08:17 UTC | bundled asset, refreshed at launch |
+| Toll prices (4.3) | `tolls.yml`, `scripts/build-tolls.py`, source `tools/tolls/roads.json` | `tolls` | `tolls-manifest.json` | checked Mondays 09:41 UTC, published when it changed | bundled asset, refreshed at launch |
 | UK fuel prices (5.8) | `fuel-gb.yml`, `tools/build-fuel-gb.py` | `fuel-gb` | `fuel-gb-manifest.json` | checked hourly, published when the source changed | `fuelgb/`, checked at most every 3 h when a UK gas station needs a price |
 | Glyphs | `scripts/build-map-fonts.sh` | `map-fonts`, asset `map-fonts.zip` | none | by hand | `glyphs/<stack>/<range>.pbf` |
 
@@ -7820,6 +7826,8 @@ is separate and also never committed. The `MAPTILER_KEY` secret reaches `BuildCo
 - `bake-conductor.yml` starts the data bakes (section 7.3).
 - `fuel-gb.yml` publishes the UK fuel prices hourly on its own cron (section 5.8), and opens an
   issue when their source stops updating.
+- `tolls.yml` rebuilds the toll price file on Mondays on its own cron (section 4.3) and publishes
+  it only when it changed.
 - `old-android-smoke.yml` installs a release build on Android 8.0 (API 26, the minimum) and
   Android 9 emulators and checks that it starts, loads Cronet, runs a search and opens a place
   without a crash. It runs every Sunday, the day before the weekly promotion to stable, from the

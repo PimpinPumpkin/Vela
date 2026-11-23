@@ -318,7 +318,8 @@ fun GoogleStyleDirectionsPanel(
                         val via = route.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) }
                         // The toll note shows on the open route too, as Google's card says it, not only
                         // in the list of other routes.
-                        val tolls = route.tolls?.let { stringResource(if (it == app.vela.core.model.TollNote.NO_TOLLS) R.string.route_no_tolls else R.string.route_may_have_tolls) }
+                        // A road in the toll file gives the price in place of the note.
+                        val tolls = routeTollText(route) ?: route.tolls?.let { stringResource(if (it == app.vela.core.model.TollNote.NO_TOLLS) R.string.route_no_tolls else R.string.route_may_have_tolls) }
                         Text(
                             when {
                                 isFastest && routes.size > 1 -> listOfNotNull(stringResource(R.string.exp_chooser_fastest), via, tolls).joinToString(" · ")
@@ -435,8 +436,7 @@ fun GoogleStyleDirectionsPanel(
                                         listOfNotNull(
                                             formatDistance(r.distanceMeters),
                                             r.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) },
-                                            r.tolls?.let { stringResource(if (it == app.vela.core.model.TollNote.NO_TOLLS) R.string.route_no_tolls else R.string.route_may_have_tolls) },
-                                            routeTollText(r),
+                                            routeTollText(r) ?: r.tolls?.let { stringResource(if (it == app.vela.core.model.TollNote.NO_TOLLS) R.string.route_no_tolls else R.string.route_may_have_tolls) },
                                             if (cams > 0) androidx.compose.ui.res.pluralStringResource(R.plurals.dir_cameras_on_route, cams, cams) else null,
                                             if (i == fewestCamIdx) stringResource(R.string.exp_chooser_fewest_cams) else null,
                                         ).joinToString(" · "),

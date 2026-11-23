@@ -1,0 +1,88 @@
+name: Toll prices
+
+# Rebuilds the toll price file (SPEC 7, Toll prices) from tools/tolls/roads.json and each fetched
+# road's source page, and publishes it to the `tolls` release when it changed. The app downloads a
+# newer version at launch. Each run that reads a page vouches for its rates for 60 more days, so a
+# source that stops answering leaves no price, never an old one. A week with nothing new uploads
+# nothing and spends no API request. The `tolls` release is a data release (fixed tag, prerelease):
+# never delete it.
+
+on:
+  schedule:
+    - cron: "41 9 * * 1" # Mondays 09:41 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write # the tolls release
+
+concurrency:
+  group: tolls
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: |
+            scripts
+            tools
+
+      - name: Build and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          source scripts/bake-lib.sh # CELLS_RELEASE_TARGET, the root commit data releases sit on
+          source scripts/gh-retry.sh
+          export GH_RETRY_TRIES=3
+          REL="https://github.com/$REPO/releases/download/tolls"
+          summary() { echo "$1" >> "$GITHUB_STEP_SUMMARY"; }
+          mkdir -p out
+
+          args=(--out out --status status.txt)
+          if curl -fsSL -m 60 -o previous.json "$REL/tolls.json"; then args+=(--previous previous.json); fi
+
+          rc=0
+          python3 scripts/build-tolls.py "${args[@]}" > build.log 2>&1 || rc=$?
+          cat build.log
+          if [ "$rc" -eq 3 ]; then
+            echo "::warning::A toll source did not answer. The published file stays; its rates last 60 days from the last read."
+            summary "A toll source did not answer. The published file stays."
+            exit 0
+          fi
+          # 1: a source answered with a page the script cannot read. Someone has to fix the parser.
+          [ "$rc" -eq 0 ] || exit "$rc"
+          sed 's/^/    /' build.log >> "$GITHUB_STEP_SUMMARY"
+
+          if grep -q '^changed=false' status.txt; then
+            summary "Nothing changed since the published file. Nothing uploaded."
+            exit 0
+          fi
+
+          version="$(cat out/tolls_version.txt)"
+          cat > out/tolls-manifest.json <<JSON
+          {
+            "version": $version,
+            "sizeBytes": $(wc -c < out/tolls.json | tr -d ' '),
+            "url": "$REL/tolls.json",
+            "updatedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          JSON
+
+          NOTES="Toll prices for Vela Maps, built by scripts/build-tolls.py and checked weekly by tolls.yml. Road lines from OpenStreetMap (ODbL); rates from each road's published rate chart. Data files for the app; do not delete."
+          if ! view_err="$(gh release view tolls --repo "$REPO" --json tagName 2>&1 >/dev/null)"; then
+            if grep -qi "not found" <<<"$view_err"; then
+              gh_retry gh release create tolls --repo "$REPO" --prerelease --target "$CELLS_RELEASE_TARGET" \
+                --title "Toll prices" --notes "$NOTES" >/dev/null || exit 1
+            else
+              echo "$view_err"; exit 1
+            fi
+          fi
+          # The file before its manifest, so an app never reads a version whose file is not up yet.
+          gh_retry gh release upload tolls out/tolls.json --repo "$REPO" --clobber || exit 1
+          gh_retry gh release upload tolls out/tolls-manifest.json --repo "$REPO" --clobber || exit 1
+          summary "Published version $version."
