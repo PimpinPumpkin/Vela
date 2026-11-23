@@ -131,8 +131,10 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   each with its time and distance. "No-toll route option" turns it off.
 - A route on Ontario's Highway 407 ETR shows a toll range for a car, from the kilometers driven and the
   road's published rates for the direction and the hour, with the camera charge when there is no
-  transponder. The rates are a file Vela downloads and a weekly job refreshes; a rate that is not
-  refreshed lapses instead of showing an old price.
+  transponder. A route over the A-25 or A-30 bridge in Quebec shows the toll for a car at the time
+  it reaches the bridge, with the A-25's administration fee when there is no transponder. The rates
+  are a file Vela downloads and a weekly job refreshes; a rate that is not refreshed lapses instead
+  of showing an old price.
 - Walking uses the open foot router. "Bike routes prefer bike lanes and quiet streets" is on by
   default.
 - Ride a GPX track: open or share a `.gpx` file with Vela and the trip to its end follows the

@@ -301,7 +301,7 @@ already one of the routes. Each row shows its own time and distance. The word is
 the answer is read from the route, with no toll record behind it.
 
 Google gives no toll price. For a road in Vela's toll file, a route row shows the toll for a car
-in place of "May have tolls". So far the file holds Ontario's Highway 407 ETR, which is priced by
+in place of "May have tolls". The file holds Ontario's Highway 407 ETR, which is priced by
 the kilometer, with a rate for each of 12 zones that changes with the direction and the hour.
 Vela does not know where one zone ends and the next begins, so it shows a range: the kilometers
 you drive on the road, at the cheapest zone's rate and at the dearest zone's rate for your
@@ -309,11 +309,22 @@ direction and the time you reach the road. The $1 trip toll is in both ends of t
 a transponder the camera charge of $5.30 per trip is added; "I have a toll transponder" removes
 it. The range is wide in the rush hours and narrow at night, where it reads as one price.
 
+The file also holds Quebec's two toll crossings, the A-25 bridge between Montreal and Laval and
+the A-30 bridge over the St. Lawrence. A car pays for each crossing, both ways, however much of
+the bridge it drives. The A-25 costs $4.20 in the weekday peaks (6:01 to 9:00 and 15:01 to
+18:00) and $3.36 at other times. A car with no account is billed by its plate, with a $6.50
+administration fee for each crossing, which the row shows too. The A-30 costs $4.40 at all hours
+and is paid at the booth. An electric vehicle registered in Quebec with a transponder does not
+pay, and a truck pays more.
+
 The file is downloaded, not built into the code. A weekly job reads the 407's published rate
 chart, and each read vouches for the rates on it for 60 more days. A new chart becomes a set of
 rates of its own from the day it takes effect. If the job stops reading the chart, the price
 disappears after those 60 days and the route says "May have tolls" again, so an old price is
-never shown. The road's lines come from OpenStreetMap.
+never shown. The bridges publish their rates as PDF files, which the job does not read, so their
+rates are written into the file by hand, each with the last day it is used: 31 January 2027 for
+the A-30, whose rates end then, and 31 May 2027 for the A-25, whose grid changes each 1 June. A
+rate not renewed by then lapses the same way. The roads' lines come from OpenStreetMap.
 
 The open router cannot avoid anything. The FOSSGIS profiles were built without excludable
 classes and a request carrying `exclude=` is rejected whole, so `OSRM_SUPPORTS_EXCLUDE` is

@@ -269,7 +269,8 @@ off the list when it has been.
   transponder switch on a phone, a run of `tolls.yml` on GitHub (the `tolls` release does not
   exist until its first run) and whether 407etr.com answers a GitHub runner. The price uses the
   time now, not a Depart at time. More roads go in as entries in `tools/tolls/roads.json` with a
-  source; #965's two Quebec bridges are not in it yet.
+  source. The A-25 and A-30 bridges are in it as `crossing` roads with written periods: not yet
+  seen on a phone, and the A-30's period ends 2027-01-31, the A-25's 2027-05-31.
 
 - Louder and Loudest for a voice from the phone's engine (`SystemVoiceBoost`, a
   `LoudnessEnhancer` on Vela's audio session, issue #979; SPEC 9.1): the step-to-gain mapping is
