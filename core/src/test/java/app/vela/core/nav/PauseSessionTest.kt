@@ -128,4 +128,18 @@ class PauseSessionTest {
         assertFalse("$notes", s.state.value.paused)
         s.stop()
     }
+
+    @Test fun `a drive started while already rolling along its route says to continue on its road`() {
+        NavStringsRegistry.setLocale(Locale.ENGLISH)
+        val s = session(AtomicInteger(), answerDelayMs = 0)
+        val plan = planned()
+        assertTrue(s.rollingOpener(plan, at(100.0, 3.0), 92.0, false) == "Continue on Covell Boulevard")
+        // Going the other way, standing still, or away from the line: the usual opener.
+        assertTrue(s.rollingOpener(plan, at(100.0, 3.0), 270.0, false) == null)
+        assertTrue(s.rollingOpener(plan, at(100.0, 3.0), null, false) == null)
+        assertTrue(s.rollingOpener(plan, at(100.0, 120.0), 90.0, false) == null)
+        // A departure that names no road: nothing at the start.
+        val bare = plan.copy(legs = plan.legs.map { leg -> leg.copy(maneuvers = leg.maneuvers.mapIndexed { i, m -> if (i == 0) m.copy(road = null, instruction = "Start your route") else m }) })
+        assertTrue(s.rollingOpener(bare, at(100.0, 3.0), 90.0, false) == "")
+    }
 }

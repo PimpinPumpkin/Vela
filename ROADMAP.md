@@ -291,9 +291,10 @@ off the list when it has been.
   estimate can soak up a long, steady turn).
 
 - A paused drive that stays paused (route work in flight canceled, auto-resume only going the
-  route's way), a drive off its route drawn where the car is, and straight-on-where-the-route-turns
-  counted as off route two fixes past the corner (SPEC 4.6, Pause, Progress and off route): session
-  and engine tests, and a mock drive past a corner on a Pixel 4a. Not yet seen on a drive.
+  route's way), the "Continue on" opener for a start while already rolling, a drive off its route
+  drawn where the car is, and straight-on-where-the-route-turns counted as off route two fixes
+  past the corner (SPEC 4.6, Pause, Progress and off route): session and engine tests, and a mock
+  drive past a corner on a Pixel 4a. Not yet seen on a drive.
 
 - A reroute whose first turn is too near to make shows at once and is swapped quietly once the
   car is past that turn (`followLate`; SPEC 4.6, Rerouting): `LateTurnSessionTest`, and a mock

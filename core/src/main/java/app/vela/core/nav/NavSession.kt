@@ -374,7 +374,15 @@ class NavSession @Inject constructor(
             note("start: the car is over ${START_REPLAN_M.toInt()} m from the route, planning again from here")
             reroute(from!!, fromCourseDeg)
         } else if (!track) {
-            voice.speakOpener(openerFor(route))
+            // Already rolling along the route: "Continue on X", or nothing when the departure names
+            // no road, as Google does; "Starting navigation. Start your route" said at speed read
+            // as being told to start what the car was already doing.
+            val rolling = rollingOpener(route, from, fromCourseDeg, lastImperial)
+            if (rolling == null) voice.speakOpener(openerFor(route))
+            else {
+                note("start: already going the route's way")
+                if (rolling.isNotEmpty()) voice.speakOpener(rolling)
+            }
         }
         diag.record(
             "nav",
@@ -390,6 +398,27 @@ class NavSession @Inject constructor(
         if (app.vela.core.data.TrackRide.isTrack(route)) return trackStartLine(route, 0, 0.0, imperial).text
         val first = Heading.withCardinal(route.maneuvers.firstOrNull()?.spokenInstruction().orEmpty(), route.polyline)
         return app.vela.core.i18n.NavStringsRegistry.current().startNav(first)
+    }
+
+    /**
+     * The opener for a drive started while the car is already going along [route]: on the line
+     * near [from] and within [START_ROLLING_DEG] of its way ([courseDeg] is passed only while
+     * moving). "Continue on X" for the road the departure names, empty when it names none (the
+     * first turn's own prompt comes when it is due). Null when the car is not rolling along it.
+     */
+    internal fun rollingOpener(route: Route, from: LatLng?, courseDeg: Double?, imperial: Boolean): String? {
+        if (from == null || courseDeg == null || mode != TravelMode.DRIVE) return null
+        val path = route.polyline
+        if (path.size < 2) return null
+        val cum = RouteProjection.cumulative(path)
+        val along = RouteProjection.alongMeters(path, cum, from, START_ROLLING_M) ?: return null
+        val a = RouteProjection.pointAt(path, cum, along)
+        val b = RouteProjection.pointAt(path, cum, (along + 15.0).coerceAtMost(cum.last()))
+        if (a.distanceTo(b) < 1.0) return null
+        if (kotlin.math.abs(RouteCorners.signedDelta(RouteCorners.bearing(a, b), courseDeg)) > START_ROLLING_DEG) return null
+        val dep = route.maneuvers.firstOrNull()?.takeIf { it.type == ManeuverType.DEPART } ?: return null
+        val road = (dep.road ?: dep.ref)?.takeIf { SpokenRoadNames.enabled && it.isNotBlank() } ?: return ""
+        return app.vela.core.i18n.NavStringsRegistry.current().continueOn(road)
     }
 
     /** A track ride's start line, and the turn it announced ([step], -1 for none) at [toStepM]. */
@@ -2048,6 +2077,10 @@ class NavSession @Inject constructor(
             else RerouteAttempt(urgent = true, timeoutMs = REROUTE_FETCH_TIMEOUT_MS)
 
         const val REROUTE_SPEAK_MIN_MS = 30_000L   // "Rerouting" spoken at most this often (retries are silent)
+        /** A drive starts "rolling" ([rollingOpener]) when the car is this near the route... */
+        const val START_ROLLING_M = 40.0
+        /** ...and going within this of its way. */
+        const val START_ROLLING_DEG = 45.0
         const val START_REPLAN_M = 150.0           // Start this far from the route plans again from the car, quietly
         const val RESUME_BARE_M = 60.0             // a resumed drive says the step ahead without its distance this close
         const val BACK_ON_COURSE_HITS = 2          // consecutive on-corridor fixes before an in-flight reroute

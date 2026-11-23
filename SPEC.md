@@ -2241,6 +2241,13 @@ START_REPLAN_M                 150   Start this far from the route plans again f
   old line, and the opener is said for the route that lands, or for the old one when the fetch
   fails or is discarded. The adopted block's reason is `start-replan`. A new session also clears
   the last drive's reroute timers, so its cooldown cannot skip this replan.
+- Start while already rolling along the route: within `START_ROLLING_M` (40 m) of the line and
+  going within `START_ROLLING_DEG` (45) of its way (`rollingOpener`; the course is passed only at
+  3 m/s or more), the opener is `NavStrings.continueOn` for the road the departure names
+  ("Continue on Covell Boulevard"; a language without its own says its "continue onto"), or
+  nothing when it names none, and the first turn's prompt comes when it is due. "Starting
+  navigation. Start your route" said at speed read as being told to start what the car was
+  already doing.
 
 - `NavSession.rerouteGate` allows one fetch at a time and enforces the cooldown. A job older
   than its deadline plus the grace is abandoned and a new one starts. The fetch runs on an

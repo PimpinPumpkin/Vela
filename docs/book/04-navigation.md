@@ -140,6 +140,9 @@ turn. The voice says "turn left" 25 m out either way.
   said where the lane leaves the road.
 - The first instruction is spoken once by the drive's opener ("Starting navigation. Head east on
   ..."). The engine skips it.
+- A drive started while the car is already rolling along the route, within 40 m of it and going
+  its way, opens with "Continue on" the road instead, or says nothing until the first turn's
+  prompt when the departure names no road.
 - Off route, the voice says only "Rerouting". Prompts computed against a route you are not on
   name streets that are not there.
 

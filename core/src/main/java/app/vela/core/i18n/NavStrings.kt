@@ -99,6 +99,9 @@ interface NavStrings {
 
     /** Spoken when navigation begins — EN "Starting navigation. <first instruction>". */
     fun startNav(firstInstruction: String): String
+    /** The opener of a drive started while already rolling along its route, on [road]
+     *  (NavSession.rollingOpener). A language without its own says its "continue onto" phrase. */
+    fun continueOn(road: String): String = phrase("continue", null, road, null, null, null)
 
     /** Spoken as each intermediate stop is passed — EN "You've reached <label>" (blank → "your stop"). */
     fun reachedStop(label: String): String
@@ -259,6 +262,7 @@ object EnNavStrings : NavStrings {
     override fun destinationWillBe(left: Boolean?): String = left?.let { if (it) "Your destination will be on the left" else "Your destination will be on the right" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Starting navigation. $firstInstruction"
+    override fun continueOn(road: String) = "Continue on $road"
 
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "You've reached $label" else "You've reached your stop"
