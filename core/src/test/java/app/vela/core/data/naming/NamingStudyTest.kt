@@ -334,7 +334,7 @@ class NamingStudyTest {
         val changed = java.util.Collections.synchronizedList(ArrayList<String>())
         app.vela.core.data.ValhallaRouter.onChanged = { stated, len, runs, out -> if (stated.isNotEmpty()) changed += "'$stated' (step ${len.toInt()} m) -> '$out' | $runs" }
         RouteGeometry.onTurnLane = { a, b, peel, whole, fold -> if (fold) changed += "turn lane folded: ${a.distanceMeters.toInt()} m bend ${peel.toInt()} whole ${whole.toInt()} | ${a.instruction} | ${b.instruction} @${"%.5f,%.5f".format(a.location.lat, a.location.lng)}" }
-        val src = IntArray(3); val audit = IntArray(5); val names = IntArray(3); var suspects = 0; var steps = 0; var lanes = 0; var turnsOnStretch = 0
+        val src = IntArray(3); val audit = IntArray(5); val fitTotals = IntArray(3); val names = IntArray(3); var suspects = 0; var steps = 0; var lanes = 0; var turnsOnStretch = 0
         val notes = ArrayList<String>()
         for (f in dir.listFiles { x -> x.name.endsWith(".txt") }!!.sortedBy { it.name }) {
             val line = app.vela.core.data.google.PolylineCodec.decode(f.readText().trim())
@@ -379,6 +379,16 @@ class NamingStudyTest {
             steps += hybrid.maneuvers.size; lanes += hybrid.maneuvers.count { it.lanes.isNotEmpty() }
             val a = app.vela.core.nav.StepAudit.check(hybrid)
             audit[0] += a.turns; audit[1] += a.agree; audit[2] += a.otherWay; audit[3] += a.noBend; audit[4] += a.unsaid
+            // What the final pass on a driving route (StepFit, in directions) would change here.
+            val fit = app.vela.core.nav.StepFit.fit(hybrid)
+            val offBefore = app.vela.core.nav.StepFit.turnsOffBend(hybrid); val offAfter = app.vela.core.nav.StepFit.turnsOffBend(fit.route)
+            fitTotals[0] += offBefore; fitTotals[1] += offAfter; if (fit.changed) { fitTotals[2]++; notes += "$tag: steps on the line ${fit.note}, off their bend $offBefore -> $offAfter" }
+            if (fit.changed && System.getProperty("velaOne") != null) {
+                val gc = app.vela.core.nav.RouteProjection.cumulative(hybrid.polyline)
+                val pb = app.vela.core.nav.NavEngine.placeSteps(hybrid, gc); val pa = app.vela.core.nav.NavEngine.placeSteps(fit.route, gc)
+                hybrid.maneuvers.forEachIndexed { i, m -> println("LINES    FIT before ${pb[i].toInt()} ${m.type} | ${m.instruction}") }
+                fit.route.maneuvers.forEachIndexed { i, m -> println("LINES    FIT after  ${pa[i].toInt()} ${m.type} | ${m.instruction}") }
+            }
             a.findings.forEach { notes += "$tag: AUDIT ${it.atM.toInt()} m ${it.what}" }
             // Names, against the road pieces under the whole line.
             if (len <= 180_000.0) {
@@ -405,6 +415,7 @@ class NamingStudyTest {
             if (System.getProperty("velaOne") != null) hybrid.maneuvers.forEach { println("LINES    ${at.toInt()} ${it.type} lanes=${it.lanes.size} | ${it.instruction}"); at += it.distanceMeters }
         }
         println("LINES trips=$trips sameWay=$noStretch notPlaced=$notPlaced | stretches matched ${src[0]} tiles ${src[1]} bare ${src[2]} | matched turn names kept ${names[0]} renamed ${names[1]} bare ${names[2]}")
+        println("LINES steps on the line: ${fitTotals[2]} routes changed, turns off their bend ${fitTotals[0]} -> ${fitTotals[1]}")
         println("LINES audit: ${audit[0]} turns, ${audit[1]} agree, ${audit[2]} other way, ${audit[3]} no bend, ${audit[4]} bends unsaid | drive suspects $suspects (the open router's own routes: $baseline) | steps $steps, with lanes $lanes")
         notes.filterNot { " STRAIGHT " in it && "DRIVE" in it }.forEach { println("LINES $it") }
         app.vela.core.data.ValhallaRouter.onChanged = null

@@ -782,7 +782,7 @@ class GoogleMapsDataSource @Inject constructor(
         val routes = directionsPlain(origin, destination, mode, waypoints, avoidTolls, avoidHighways, avoidFerries, urgent, departBearingDeg, budgetMs, behind, turnRound)
         // Off the caller's thread (the view model calls from Main): the tiles' protobuf is
         // decoded here. Every route at once, so a tile host that does not answer costs one wait.
-        return io { coroutineScope { routes.map { r -> async { withLotTurn(r, urgent) } }.awaitAll() } }.also { rs ->
+        return io { coroutineScope { routes.map { r -> async { withLotTurn(onLine(r), urgent) } }.awaitAll() } }.also { rs ->
             runCatching {
                 android.util.Log.i("VelaDirections", "ends: ${rs.joinToString { "${it.source} ${it.polyline.lastOrNull()?.distanceTo(destination)?.toInt()} m" }} from the pin")
             }
@@ -822,6 +822,15 @@ class GoogleMapsDataSource @Inject constructor(
      * is, or whose steps are Google's short ones, is left alone; so is one the map does not answer
      * for inside the wait.
      */
+    /** [route] with its turns where its line turns ([app.vela.core.nav.StepFit]), before the
+     *  last turn's parking-lot word, so the word lands on the turn that enters the lot. */
+    private fun onLine(route: Route): Route {
+        if (!route.drivable || !route.hasRealSteps || app.vela.core.data.TrackRide.isTrack(route)) return route
+        val f = runCatching { app.vela.core.nav.StepFit.fit(route) }.getOrNull() ?: return route
+        if (f.changed) runCatching { android.util.Log.i("VelaDirections", "steps on the line: moved ${f.moved}, dropped ${f.dropped}, jogs ${f.jogs}, onto ${f.onto}") }
+        return f.route
+    }
+
     private suspend fun withLotTurn(route: Route, urgent: Boolean): Route {
         if (!route.drivable || !route.hasRealSteps) return route
         return kotlinx.coroutines.withTimeoutOrNull(if (urgent) LOT_WORD_WAIT_URGENT_MS else LOT_WORD_WAIT_MS) {
@@ -2045,7 +2054,7 @@ class GoogleMapsDataSource @Inject constructor(
      *  (An on-device map-match for downloaded regions could plug in here next.) */
     override suspend fun nameRoute(route: Route, origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean, departBearingDeg: Double?): Route {
         val named = nameRoutePlain(route, origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg)
-        return if (mode == TravelMode.DRIVE) io { withLotTurn(named, urgent = false) } else named
+        return if (mode == TravelMode.DRIVE) io { withLotTurn(onLine(named), urgent = false) } else named
     }
 
     private suspend fun nameRoutePlain(route: Route, origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean, departBearingDeg: Double?): Route = io {

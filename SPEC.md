@@ -1411,6 +1411,43 @@ mapped beside a one-way street, and a dual carriageway's approach to a junction
 turn agrees with the line in `StepAudit`, and the simulated drives flag nothing new.
 `TurnLaneFoldTest`.
 
+#### Steps on the line
+
+`StepFit.fit` runs on every driving route with real steps, from every source, as the last step
+before the parking-lot wording (`GoogleMapsDataSource.onLine`, from `directions` and
+`nameRoute`; not on a GPX track ride). It checks each TURN or SHARP left or right where
+`NavEngine.placeSteps` puts it (the same placement the engine counts from), by the line's turn
+there: its heading over the `LEG_M` (12 m) after a point against the 12 m before.
+`StepAudit.bendAt` reads 8 to 40 m out and sees a corner from 40 m away, so it is not used here.
+
+- The line turns the step's way by `TURN_DEG` (30) or more within `OK_M` (20 m): kept.
+- Else it moves onto the nearest point within `MOVE_M` (75 m) that turns its way, between the
+  steps either side of it, with no other step within `CLAIM_M` (20 m), at the turn's strongest
+  point within 6 m. The meters between go to or from the step before it.
+- Else, naming no road or ref, it is dropped and its meters and seconds go to the step before,
+  unless the line turns its way over `GENTLE_LEG_M` (25 m) either side within `OK_M`: a ramp's
+  gentle curve is a turn too. A turn that names a road is kept. A bare turn a moved turn has
+  passed is dropped. A turn may move past bare turns that are off their bend too, never past
+  one on its bend or one that names a road.
+- Two such turns within `JOG_M` (15 m), neither naming a road, whose headings `JOG_SIDE_M`
+  (25 m) before the first and after the second are within `JOG_STRAIGHT_DEG` (30) are dropped
+  together.
+- A turn naming no road, followed within `ONTO_M` (60 m) by a STRAIGHT or CONTINUE onto a named
+  road, takes that road (`osrmPhrase("turn", ...)`, "Turn right onto Elm Street") and the
+  continue's length, time and renames.
+- Turns within `END_M` (40 m) of either end are left alone, and the first step of every leg.
+
+A match through a parking lot hops between aisles and can put a pair of turns a meter apart 30
+to 60 m from the corners the line turns at, where it runs straight; the pass leaves one turn on
+each corner. `Route.made` gains `fit=m<moved>d<dropped>j<jogs>o<onto>` when it
+changed anything, and `VelaDirections` logs the counts. `StepFitTest`;
+`StepFitStudyTest.tripsThroughStepFit -DvelaTrips=<folder>` runs recorded trips through it and
+prints counts and step types only; `NamingStudyTest.replayCapturedLines` prints what it changes
+on the stored lines (`-DvelaOne` lists the steps before and after). On the 46 stored Google lines
+it changes 6 routes: five turns placed 29 to 44 m short of their corner move onto it (Denver
+twice, Houston, Tel Aviv, Tokyo), and one bare left in Prague where the line runs straight
+(`StepAudit`'s one "no bend") is dropped; turns off their bend go from 10 to 4.
+
 #### Checking a trip
 
 Every hybrid logs its stretch sources and `steps vs line: N turns, N agree, ...` under

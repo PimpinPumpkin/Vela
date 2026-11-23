@@ -290,6 +290,10 @@ off the list when it has been.
   real turn to show it never holds back a real one (the linear acceleration sensor's gravity
   estimate can soak up a long, steady turn).
 
+- Turns placed on the line's corners (`StepFit`; SPEC 4.2, Steps on the line): unit-tested and
+  run over the 46 stored Google lines and over recorded trips offline. Not yet heard on a drive:
+  an arrival through a parking lot, and a ramp's bare turn now said onto its road.
+
 - The corner hold (`RouteCorners`; SPEC 4.7): checked with mock fixes on a Pixel 4a (straight
   past a left turn, and the turn with no gyroscope signal) and with an injected yaw on the API
   26 emulator. Not yet on a drive: a turn taken slowly, a corner the car cuts, and a phone in a

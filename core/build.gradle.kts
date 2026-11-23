@@ -67,6 +67,7 @@ tasks.withType<Test>().configureEach {
     System.getProperty("velaCells")?.let { systemProperty("velaCells", it) }
     System.getProperty("velaLive")?.let { systemProperty("velaLive", it) }
     System.getProperty("velaGpx")?.let { systemProperty("velaGpx", it) }
+    System.getProperty("velaTrips")?.let { systemProperty("velaTrips", it) }
     System.getProperty("velaStudy")?.let { systemProperty("velaStudy", it) }
     System.getProperty("velaOne")?.let { systemProperty("velaOne", it) }
     System.getProperty("velaLines")?.let { systemProperty("velaLines", it) }

@@ -180,6 +180,15 @@ when the route is built, never while drawing.
 `StepAudit` checks every hybrid and logs one line: each left or right must sit where the line
 bends that way, and each sharp corner must have a step.
 
+Every driving route then gets one last pass, `StepFit`, whatever made it. Each left or right is
+looked at where the engine will place it, and the line has to turn that way within 20 m. One
+that does not moves onto the nearest corner its way within 75 m that no other step is on, or,
+naming no road, is dropped. Two unnamed turns 15 m apart that end up heading the way they
+started are dropped together, and an unnamed turn followed within 60 m by "Continue onto" a road
+becomes the turn onto that road. A match through a parking lot hops between aisles and can put
+a pair of turns 30 to 60 m from the corners the line actually turns at; the pass leaves one turn
+on each corner, and the parking-lot wording then lands on the turn that enters the lot.
+
 If the pieces cannot be joined, the older via snap runs when Google's line strays more than
 700 m from the open route (see Alternates). Failing that, the open route is driven.
 

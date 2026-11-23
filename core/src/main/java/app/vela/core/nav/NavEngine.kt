@@ -1239,6 +1239,13 @@ object NavEngine {
     private fun geomFor(route: Route): RouteGeom {
         geomCache?.let { if (it.route === route) return it }
         val cum = cumulative(route.polyline)
+        return RouteGeom(route, cum, placeSteps(route, cum)).also { geomCache = it }
+    }
+
+    /** Where each step of [route] sits along its line, meters ([cum] its running length): its
+     *  location projected onto the line, in order. What the engine counts turns and distances
+     *  from, and what [StepFit] checks a turn against. */
+    internal fun placeSteps(route: Route, cum: DoubleArray): DoubleArray {
         val total = cum.lastOrNull() ?: 0.0
         val maneuvers = route.maneuvers
         val manAlong = DoubleArray(maneuvers.size)
@@ -1255,7 +1262,7 @@ object NavEngine {
                 ).coerceAtLeast(fromM)
             fromM = manAlong[k]
         }
-        return RouteGeom(route, cum, manAlong).also { geomCache = it }
+        return manAlong
     }
 
     internal fun cumulative(path: List<LatLng>): DoubleArray {
