@@ -290,6 +290,11 @@ off the list when it has been.
   real turn to show it never holds back a real one (the linear acceleration sensor's gravity
   estimate can soak up a long, steady turn).
 
+- The corner hold (`RouteCorners`; SPEC 4.7): checked with mock fixes on a Pixel 4a (straight
+  past a left turn, and the turn with no gyroscope signal) and with an injected yaw on the API
+  26 emulator. Not yet on a drive: a turn taken slowly, a corner the car cuts, and a phone in a
+  loose mount, with the nav trace on (`hold=` in logcat says which corner held the arrow).
+
 - "Save where I park" (`AutoParking`, `ParkWatch`; SPEC, Parking): the rules are unit-tested and
   the leave-at-the-destination path was checked on a Pixel 4a with a mock drive. The Bluetooth
   option's permission prompts and its save path (through the adb test hook, with Vela not

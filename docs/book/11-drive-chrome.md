@@ -247,6 +247,13 @@ the phone is being pushed sideways: a car turning at speed pushes, a mount twist
 The camera leads the arrow by a third of a second of the measured turn, inside the same limits.
 The nav trace's `gyro_dps` column says which way each frame was drawn.
 
+Between fixes the arrow glides along the route, so at a corner a car drives straight through it
+went round the turn for a second or two. With the gyroscope on, the arrow waits at a sharp
+corner (35 degrees or more) 3 m past it, pointing along the road it is on, until the gyroscope
+feels the car turn that way or a fix lands on the road the corner turns onto. On a mock drive
+straight past a left turn the arrow kept pointing ahead and waited at the corner until the
+reroute; turned with no gyroscope signal, it waited 1 s for the next fix (SPEC 4.7).
+
 The arrow only moves forward, so carrying on at its modeled speed through a stop can leave it
 past the car. Between fixes the model slows at the braking the last two fixes' speeds show, or the
 accelerometer's if that is harder, so the arrow stops with the car: on a mock stop at 2.5 m/s²

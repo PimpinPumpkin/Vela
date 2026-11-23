@@ -450,7 +450,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - "Nav smoothness trace" and "Building overlay debug" are developer aids.
 - The drive arrow turns when the phone feels the car turn, held to the road so a wobbly mount
   cannot turn it ("Turn the arrow with the gyroscope", on by default; off follows the road
-  ahead).
+  ahead). At a sharp corner it waits until the car turns.
 
 ## Not in Vela
 

@@ -2372,6 +2372,20 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
     60 degrees a second, 0.9 (2.7 before the cap). Unit tests: a mount swinging 9.5 degrees
     twice a second turns the arrow under 2 degrees toward a corner already inside the
     envelope, and a 30 degree a second turn at 10 m/s is 22 degrees in after one second.
+  - Corner hold (`RouteCorners`, at `CORNER_HOLD_MIN_MPS` (2 m/s) or more with a live reading):
+    a corner is a vertex where the line's bearing over the `LEG_M` (12 m) before it and after it
+    differ by `CORNER_DEG` (35) or more, and corner vertices within `MERGE_M` (15 m) are one. From
+    `CORNER_REF_M` (20 m) before the next corner the car is not past, the heading is held to the
+    bearing into it and progress stops `CORNER_HOLD_SLACK_M` (3 m) past it. A yaw of
+    `CORNER_YAW_DPS` (5 degrees a second) or more toward the turn lets it go. The car is past a
+    corner (`RouteCorners.passed`) once the engine puts it `PASSED_FAR_M` (60 m) beyond, or
+    `PASSED_M` (4 m) beyond with the last fix at least 4 m out along the road the corner turns
+    onto: the engine's own position keeps moving along the route for a few meters while a car
+    goes straight on. Davis fixture, 5th St left onto K St, Pixel 4a release build with mock
+    fixes: straight through, the arrow stayed at 77.6 degrees while the chord swung to 4.7, and
+    progress stopped at the corner plus 3 m until the reroute; turning with no gyroscope
+    signal, it waited 1.0 s there until a fix landed on K St. API 26 emulator with a 28.6
+    degree a second yaw through the same turn: progress ran through the corner without a stop.
 - Snap tolerance (`puckSnapTolerance`): driving, 22 m plus a speed term of up to 13 m. Walking
   and cycling, 8 m plus 1.2 times the fix accuracy, capped at 16 m. The heading gate is skipped
   below 1 m/s driving and 2.5 m/s on foot or by bike.
@@ -7320,7 +7334,8 @@ from GitHub (5.8). With "Use Vela without Google" on, only the open services are
   speed, bearing window, chord bearing, display bearing, camera bearing, frame dt, and the yaw
   rate that turned the arrow (`gyro_dps`, empty unless gyroscope mode drew the frame; the header
   says whether the switch was on). It holds no position, so unlike a recorded trip it can be attached to a public issue. With
-  `debug.vela.tune.navTraceLog 1` (adb only) each row, and each fix the puck takes (its
+  `debug.vela.tune.navTraceLog 1` (adb only) each row, with the corner the arrow is held at
+  (`hold=`, meters along the route, NaN for none), and each fix the puck takes (its
   along-route meters, speed and age), also goes to logcat as `VelaNavTrace` on the
   `elapsedRealtime` clock, which `scripts/mockdrive/lagcheck.py` lines up with MockDrive's send
   times.

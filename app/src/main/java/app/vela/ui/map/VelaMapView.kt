@@ -3464,6 +3464,35 @@ fun VelaMapView(
                     if (navPuck.progressM <= navPuck.settleToM) navPuck.settleToM = Double.NaN
                     else navPuck.progressM = maxOf(navPuck.settleToM, navPuck.progressM - STOP_SETTLE_RATE_MPS * dtT.coerceAtMost(0.5))
                 }
+                // CORNER HOLD (gyroscope arrow on, SPEC 4.7): between fixes the arrow glides along
+                // the route, so at a corner the car drives straight through it went round the turn
+                // for a second or two. While the gyroscope says the car is not turning that way and
+                // no fix has come in out along the road the corner turns onto, it waits there,
+                // pointing along the road it is on. The car turning, or such a fix, lets it go.
+                navPuck.holdDeg = Double.NaN
+                navPuck.holdAtM = Double.NaN
+                val gyroLive = !gyroYaw[0].isNaN() && android.os.SystemClock.elapsedRealtime() - gyroYaw[1] < GYRO_FRESH_MS &&
+                    app.vela.ui.GyroTurn.on.value
+                if (gyroLive && navPuck.speed >= CORNER_HOLD_MIN_MPS) {
+                    if (navPuck.cornersOf !== routePolyline) {
+                        navPuck.cornersOf = routePolyline
+                        navPuck.corners = app.vela.core.nav.RouteCorners.find(routePolyline, routeCum)
+                        navPuck.cornerFreed = Double.NaN
+                    }
+                    val c = navPuck.corners.firstOrNull { !app.vela.core.nav.RouteCorners.passed(it, navPuck.targetM, navPuck.lastFixLoc) }
+                    // From CORNER_REF_M before it the heading is held to the road it is on too: the
+                    // reference chord spans the corner from that far out and leaned the arrow into it.
+                    if (c != null && c.atM != navPuck.cornerFreed && navPuck.progressM > c.atM - CORNER_REF_M) {
+                        val yaw = navPuck.gyro.rate
+                        val turning = kotlin.math.abs(yaw) >= CORNER_YAW_DPS && kotlin.math.sign(yaw) == kotlin.math.sign(c.turnDeg)
+                        if (turning) navPuck.cornerFreed = c.atM
+                        else {
+                            if (navPuck.progressM > c.atM + CORNER_HOLD_SLACK_M) navPuck.progressM = c.atM + CORNER_HOLD_SLACK_M
+                            navPuck.holdDeg = c.inDeg
+                            navPuck.holdAtM = c.atM
+                        }
+                    }
+                }
                 val puckM = puckAt?.let { app.vela.core.nav.RouteSmoothing.mapAlong(it, puckCum, navPuck.progressM) }
                     ?: (navPuck.progressM * (if (routeCum.isNotEmpty() && routeCum.last() > 0.0 && puckCum.isNotEmpty()) puckCum.last() / routeCum.last() else 1.0))
                 val (_, segBrg) = pointAtMeters(puckLine, puckCum, puckM)
@@ -3535,7 +3564,8 @@ fun VelaMapView(
                     if (navPuck.gyro.heading.isNaN() && !navPuck.displayBearing.isNaN()) navPuck.gyro.seed(navPuck.displayBearing.toDouble())
                     val (rA, _) = pointAtMeters(puckLine, puckCum, puckM - headWin)
                     val (rB, _) = pointAtMeters(puckLine, puckCum, puckM + headWin)
-                    val refBrg = if (kotlin.math.abs(rA.lat - rB.lat) + kotlin.math.abs(rA.lng - rB.lng) < 1e-7) segBrg.toDouble()
+                    val refBrg = if (!navPuck.holdDeg.isNaN()) navPuck.holdDeg // held at a corner (above): the road it is on
+                        else if (kotlin.math.abs(rA.lat - rB.lat) + kotlin.math.abs(rA.lng - rB.lng) < 1e-7) segBrg.toDouble()
                         else bearingDeg(rA, rB).toDouble()
                     // Held to the directions the route takes around the arrow, so a wobbling mount
                     // cannot turn it on a straight.
@@ -3553,7 +3583,8 @@ fun VelaMapView(
                     val lead = (gh.rate * CAM_GYRO_LEAD_S).coerceIn(-CAM_GYRO_LEAD_MAX_DEG, CAM_GYRO_LEAD_MAX_DEG)
                     val camRel = (app.vela.core.location.GyroHeading.delta(refBrg, gh.heading) + lead)
                         .coerceIn(app.vela.core.location.GyroHeading.lowEdge(env[0]), app.vela.core.location.GyroHeading.highEdge(env[1]))
-                    navPuck.camChord = (((refBrg + camRel) % 360.0 + 360.0) % 360.0).toFloat()
+                    navPuck.camChord = if (!navPuck.holdDeg.isNaN()) navPuck.holdDeg.toFloat()
+                        else (((refBrg + camRel) % 360.0 + 360.0) % 360.0).toFloat()
                 } else {
                     navPuck.gyro.reset()
                     // 0.3 (was 0.2): with the camera's own bearing damping this is two-stage
@@ -3570,7 +3601,7 @@ fun VelaMapView(
                         android.os.SystemClock.elapsedRealtime(), navPuck.progressM, navPuck.speed,
                         win, chordBrg, navPuck.displayBearing,
                         mapRef?.cameraPosition?.bearing ?: Double.NaN, dtE,
-                        gyroRate?.toFloat() ?: Float.NaN,
+                        gyroRate?.toFloat() ?: Float.NaN, navPuck.holdAtM,
                     )
                 }
                 navPuck.drawn = pt // the camera follows this smoothed point, not the raw fix
@@ -9942,6 +9973,13 @@ private class NavPuck {
     var stoppedSinceMs = 0L
     var settleToM = Double.NaN    // the arrow glides back to here while the car stays stopped
     val gyro = app.vela.core.location.GyroHeading() // the gyroscope-turned heading (GyroTurn)
+    // Corner hold (SPEC 4.7): the route's sharp corners, the line they were found on, the corner the
+    // car was seen turning at (not held again), and the bearing held this frame (NaN for none).
+    var corners: List<app.vela.core.nav.RouteCorners.Corner> = emptyList()
+    var cornersOf: List<LatLng>? = null
+    var cornerFreed = Double.NaN
+    var holdDeg = Double.NaN
+    var holdAtM = Double.NaN // the corner [holdDeg] belongs to, for the trace
     val gyroEnv = DoubleArray(2) // its route envelope this frame (gyroEnvelope)
     // Braking the GPS speeds show (BRAKE_*): the last fix's Doppler speed and when it came, and the
     // deceleration from the fix before it, applied between fixes so the arrow slows with the car.
@@ -10037,6 +10075,12 @@ private const val CAM_LEAD_S = 0.4
  *  to the route chord. The camera leads the arrow by the measured rate times CAM_GYRO_LEAD_S (its
  *  own turn easing), at most CAM_GYRO_LEAD_MAX_DEG. */
 private const val GYRO_FRESH_MS = 250.0
+/** Corner hold (SPEC 4.7): only at this speed or more, the arrow waits this far past the corner,
+ *  a fix this far past it counts as through, and a yaw this fast toward the turn releases it. */
+private const val CORNER_HOLD_MIN_MPS = 2.0
+private const val CORNER_HOLD_SLACK_M = 3.0
+private const val CORNER_YAW_DPS = 5.0
+private const val CORNER_REF_M = 20.0
 /** The route envelope gyroscope mode holds the arrow to ([gyroEnvelope]): from this far behind
  *  the arrow (the car still finishing a turn the arrow has passed) to this far ahead (a car starts
  *  its arc about a turn radius before the corner, and the arrow can trail the car), in seconds of

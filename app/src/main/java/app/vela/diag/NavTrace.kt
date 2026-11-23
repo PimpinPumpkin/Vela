@@ -83,13 +83,15 @@ object NavTrace {
         frameDt: Float,
         /** The yaw rate turning the arrow (GyroTurn), NaN when the arrow follows the road ahead. */
         gyroDps: Float,
+        /** Meters along the route of the corner the arrow waits at (corner hold), NaN when none. */
+        holdM: Double = Double.NaN,
     ) {
         if (logging(elapsedMs)) {
             android.util.Log.d(
                 "VelaNavTrace",
                 String.format(
-                    java.util.Locale.US, "row er=%d p=%.2f v=%.2f win=%.1f chord=%.1f disp=%.1f cam=%.1f gyro=%.1f",
-                    elapsedMs, progressM, speed, windowM, chordBearing, displayBearing, cameraBearing, gyroDps,
+                    java.util.Locale.US, "row er=%d p=%.2f v=%.2f win=%.1f chord=%.1f disp=%.1f cam=%.1f gyro=%.1f hold=%.1f",
+                    elapsedMs, progressM, speed, windowM, chordBearing, displayBearing, cameraBearing, gyroDps, holdM,
                 ),
             )
         }
