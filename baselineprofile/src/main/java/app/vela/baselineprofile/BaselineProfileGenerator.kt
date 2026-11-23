@@ -27,9 +27,22 @@ class BaselineProfileGenerator {
         PERMISSIONS.forEach { device.executeShellCommand("pm grant app.vela $it") }
         startActivityAndWait()
         device.waitForIdle()
-        device.wait(Until.findObject(By.text("Get started")), 2000)?.click()
-        // The Google choice, left on its default: the paths that talk to Google are the hot ones.
-        device.wait(Until.findObject(By.text("Continue")), 2000)?.click()
+        // The first-run pages show on the first pass only: the rule keeps the app's data between
+        // passes.
+        if (device.wait(Until.hasObject(By.text("Get started")), 3000)) {
+            clickScrolledTo("Get started")
+            // The Google choice, left on its default: the paths that talk to Google are the hot
+            // ones. Its Continue sits under the camera and saved-drive choices, below the fold, and
+            // a tap that lands while the page settles is dropped, so it is tapped until it goes.
+            for (i in 0 until 3) {
+                clickScrolledTo("Continue")
+                if (device.wait(Until.gone(By.text("Continue")), 4000)) break
+            }
+        }
+        // A journey that stays on the first-run pages records them and nothing behind them.
+        check(!device.hasObject(By.text("Continue")) && !device.hasObject(By.text("Get started"))) {
+            "the journey never got past the first-run pages"
+        }
         dismissPrompts()
         Thread.sleep(5000) // style + first tiles settle
         dismissPrompts() // the offers that wait for a first fix or a network answer
@@ -72,6 +85,18 @@ class BaselineProfileGenerator {
             dismiss.click()
             device.waitForIdle()
         }
+    }
+
+    /** Clicks [text], scrolling the page up until it is on screen. Fails when it never shows. */
+    private fun MacrobenchmarkScope.clickScrolledTo(text: String) {
+        val w = device.displayWidth
+        val h = device.displayHeight
+        for (i in 0 until 8) {
+            device.wait(Until.findObject(By.text(text)), 1000)?.let { it.click(); device.waitForIdle(); return }
+            device.swipe(w / 2, (h * 0.75).toInt(), w / 2, (h * 0.25).toInt(), 10)
+            device.waitForIdle()
+        }
+        error("\"$text\" never came on screen")
     }
 
     private companion object {

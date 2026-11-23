@@ -83,6 +83,14 @@ jobs:
           name: baseline-profile
           path: app/src/release/generated/baselineProfiles/
 
+      - name: Check the profile reached the map
+        # A journey stuck on a first-run page still writes a profile, of that page alone.
+        run: |
+          f=app/src/release/generated/baselineProfiles/baseline-prof.txt
+          for c in app/vela/ui/map/MapScreenKt org/maplibre/android/maps/MapView; do
+            grep -q "$c" "$f" || { echo "::error::The profile has no $c: the journey never reached the map."; exit 1; }
+          done
+
       - name: Commit the profile to canary if it changed
         # main only: from another branch (a toolchain check on canary) the result is the artifact
         # above. The profile is generated from main's code and committed onto canary, the working

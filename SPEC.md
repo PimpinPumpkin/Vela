@@ -7493,9 +7493,12 @@ recomposition. Neither can be parallelized, so the rules send each less work.
   with the job's own token starts no workflow, so the canary build takes the profile with the
   next push there. From any other branch the artifact is the result.
 - The journey (`BaselineProfileGenerator`) grants the app's permissions, leaves the welcome
-  screen, takes the "no" side of each first-run prompt, pans the map and walks Settings. A
-  prompt left up covers the map and the run records that prompt alone. After changing the
-  journey, check that the file has `MapScreen` and `SettingsHub` entries.
+  pages on the first pass (each scrolled to its button, since the Google page's Continue is
+  below the fold, and Continue tapped again while the page stays up), takes the "no" side of
+  each first-run prompt, pans the map and walks Settings. A page or prompt left up covers the
+  map and the run records it alone. The test fails when the first-run pages are still up, and
+  the workflow fails without committing when the file has no `MapScreenKt` or MapLibre
+  `MapView` entry. After changing the journey, also check for `SettingsHub` entries.
 - On a Pixel 4a a cold start reaches its first frame in about 1,100 ms with nothing compiled
   and 830 to 900 ms with the profile compiled. The libraries' own rules give most of that. The
   app's rules add about 50 ms and take the 99th-percentile frame of a first Settings visit from
