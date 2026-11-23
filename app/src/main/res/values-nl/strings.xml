@@ -1530,4 +1530,11 @@
     </plurals>
     <string name="bulk_done">Klaar met selecteren</string>
     <string name="bulk_moved">%1$d verplaatst naar %2$s</string>
+    <string name="settings_lock_screen_nav">Rit weergeven op vergrendelingsscherm</string>
+    <string name="settings_lock_screen_nav_hint">De aan/uit-knop activeert de telefoon met de route in plaats van met het vergrendelscherm. Instellingen vraagt nog steeds om te ontgrendelen.</string>
+    <string name="settings_wake_for_turns">Scherm bij elke afslag activeren</string>
+    <string name="settings_wake_for_turns_hint">Met het scherm uit tijdens een rit, wordt de volgende afslag in grote letters op zwart geschreven wanneer deze in de buurt komt. Een tik op het scherm of de aan/uit-knop brengt de kaart terug.</string>
+    <string name="settings_gyro_turn">Draai de pijl met de gyroscoop</string>
+    <string name="settings_gyro_turn_hint">Tijdens een rit draait de pijl wanneer de telefoon merkt dat de auto daarit, de vorm van de weg volgend. Uit, volgt het de weg iets verderop.</string>
+    <string name="settings_offline_route_strip">De kaart samen met de route opslaan</string>
 </resources>
