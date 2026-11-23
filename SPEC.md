@@ -7486,9 +7486,12 @@ recomposition. Neither can be parallelized, so the rules send each less work.
   `app/src/release/generated/baselineProfiles/baseline-prof.txt` on a Gradle-managed emulator,
   and a release build bakes in the profile it finds there. Never run it on a connected phone:
   the harness uninstalls the app, which deletes saved places, trips and grants.
-- A changed profile is pushed to a `baseline-profile-refresh-<date>` branch. The repository
-  does not let Actions open pull requests, so the run ends with a warning that links the branch,
-  and the pull request is opened by hand.
+- A changed profile, from a run on main (the monthly schedule), is committed onto canary ("The
+  startup profile is refreshed for the current code") and reaches main with the next canary push
+  to main. The repository does not let Actions open pull requests, and a branch left for one by
+  hand went stale. The job fetches canary again and retries when canary moved under it. A push
+  with the job's own token starts no workflow, so the canary build takes the profile with the
+  next push there. From any other branch the artifact is the result.
 - The journey (`BaselineProfileGenerator`) grants the app's permissions, leaves the welcome
   screen, takes the "no" side of each first-run prompt, pans the map and walks Settings. A
   prompt left up covers the map and the run records that prompt alone. After changing the

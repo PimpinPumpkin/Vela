@@ -1,5 +1,5 @@
 # Regenerates the committed baseline profile (app/src/release/generated/baselineProfiles/) on a
-# headless emulator and opens a PR with the diff. The profile itself is BAKED by every normal CI
+# headless emulator and commits it to canary when it changed. The profile itself is BAKED by every normal CI
 # release build - this workflow only refreshes WHICH methods are recorded, so it runs on demand
 # (and monthly) rather than per push: per-nightly regeneration would cost ~15 emulator-minutes a
 # day for a file that only drifts when the app's hot paths change shape.
@@ -16,7 +16,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   generate:
@@ -84,28 +83,35 @@ jobs:
           name: baseline-profile
           path: app/src/release/generated/baselineProfiles/
 
-      - name: Open a PR if the profile changed
-        # main only: from another branch (a toolchain check on canary) the PR would carry every
-        # commit that branch has and main does not. There the artifact above is the result.
+      - name: Commit the profile to canary if it changed
+        # main only: from another branch (a toolchain check on canary) the result is the artifact
+        # above. The profile is generated from main's code and committed onto canary, the working
+        # branch, which reaches main with the next canary push to main. The repository does not let
+        # Actions open pull requests, and a branch left for one by hand went stale. A push with the
+        # job's own token starts no workflow, so the canary build takes the profile with the next
+        # push there.
         if: github.ref == 'refs/heads/main'
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           # git status, not git diff: the first profile is a new file, which a diff does not see.
           if [ -z "$(git status --porcelain app/src/release/generated/baselineProfiles/)" ]; then
             echo "Profile unchanged - nothing to do."
             exit 0
           fi
-          BRANCH="baseline-profile-refresh-$(date -u +%Y%m%d)"
+          keep="$(mktemp -d)"
+          cp -r app/src/release/generated/baselineProfiles "$keep/"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH"
-          git add app/src/release/generated/baselineProfiles/
-          git commit -m "Refresh the baseline profile"
-          git push origin "$BRANCH"
-          # The repository does not let Actions open pull requests (Settings > Actions > General).
-          # The branch is the result then: open the pull request from it by hand.
-          gh pr create --base main --head "$BRANCH" \
-            --title "Refresh the baseline profile" \
-            --body "Automated monthly regeneration on the emulator. The committed profile is what every release build bakes; merging ships the refreshed hot-path list with the next nightly." \
-            || echo "::warning::The refreshed profile is on branch $BRANCH. Open a pull request: https://github.com/${{ github.repository }}/compare/main...$BRANCH"
+          for attempt in 1 2 3; do
+            git fetch --depth=20 origin +refs/heads/canary:refs/remotes/origin/canary
+            git checkout -f -B profile-to-canary refs/remotes/origin/canary
+            rm -rf app/src/release/generated/baselineProfiles
+            mkdir -p app/src/release/generated
+            cp -r "$keep/baselineProfiles" app/src/release/generated/
+            git add -A app/src/release/generated/baselineProfiles/
+            if git diff --cached --quiet; then echo "canary already has this profile."; exit 0; fi
+            git commit -q -m "The startup profile is refreshed for the current code"
+            # canary can move while the job runs: fetch it again and redo the commit on top.
+            if git push origin HEAD:refs/heads/canary; then exit 0; fi
+            sleep $((attempt * 10))
+          done
+          echo "::warning::Could not push the refreshed profile to canary; it is in the artifact."
