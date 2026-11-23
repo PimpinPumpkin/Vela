@@ -91,7 +91,9 @@ object DirectionsParser {
         // (the data source can still snap that to an open router). Never a guess that
         // doubles back on itself.
         val polyline = googleGeometry?.takeIf { it.size >= 2 } ?: listOfNotNull(start, end)
-        val maneuvers = placeManeuvers(collectSteps(route), polyline)
+        // A reply with no step list still drives: a start and an arrival, so the drive tracks
+        // progress and arrives (the nav engine does nothing on a route with no steps).
+        val maneuvers = placeManeuvers(collectSteps(route), polyline).ifEmpty { bareSteps(polyline, distance, typicalDur) }
         // The legs of a trip asked through stops, each timed on its own. Kept only when they tile
         // the trip's distance; a direct trip's single leg says nothing the summary does not.
         val legTimes = route.atPath(P, "legs", 1).arr()?.mapNotNull { leg ->
@@ -165,6 +167,16 @@ object DirectionsParser {
     // Google prefixes lane steps with "Use the right 2 lanes to …" / "Use any lane
     // to …". Pull that clause out as a separate hint and leave a clean instruction.
     private val LANE_PHRASE = Regex("^(Use (?:the .+? lanes?|any lane)) to ", RegexOption.IGNORE_CASE)
+
+    /** A start at the first point of [poly] covering the whole trip, then the arrival. */
+    internal fun bareSteps(poly: List<LatLng>, distance: Double, duration: Double): List<Maneuver> {
+        if (poly.size < 2) return emptyList()
+        val phrase = app.vela.core.data.RouteGeometry::osrmPhrase
+        return listOf(
+            Maneuver(ManeuverType.DEPART, phrase("depart", null, null, null, null, null), poly.first(), distance, duration),
+            Maneuver(ManeuverType.ARRIVE, phrase("arrive", null, null, null, null, null), poly.last(), 0.0, 0.0),
+        )
+    }
 
     private fun collectSteps(route: JsonElement): List<Maneuver> {
         val raw = ArrayList<String>()

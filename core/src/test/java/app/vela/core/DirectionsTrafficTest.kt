@@ -56,6 +56,17 @@ class DirectionsTrafficTest {
         assertEquals(0, routes[0].trafficSpans.size)
     }
 
+    /** A reply with no step list (a very short trip) still gets a start and an arrival, so the
+     *  drive tracks progress and the turn card has a step to show. Davis fixture. */
+    @Test fun replyWithNoStepsGetsStartAndArrival() {
+        val ends = arr(4, 3 to arr(4, 2 to "[null,null,38.5449,-121.7405]", 3 to "[null,null,38.5460,-121.7380]"))
+        val summary = arr(11, 2 to "[320]", 3 to "[60]", 7 to ends)
+        val r = DirectionsParser.parse(Json.parseToJsonElement("[${arr(2, 1 to "[${arr(8, 0 to summary)}]")}]"))[0]
+        assertEquals(listOf(ManeuverType.DEPART, ManeuverType.ARRIVE), r.maneuvers.map { it.type })
+        assertEquals(320.0, r.maneuvers[0].distanceMeters, 1e-9)
+        assertEquals(38.5460, r.maneuvers.last().location.lat, 1e-6)
+    }
+
     /** Typical best→worst spread: summary[10][4] = [lowSeconds, highSeconds, label].
      *  Google's own depart-time planning hint; also confirms the live-traffic duration
      *  reads from summary[10][0][0]. Calibrated 2026-06-20 (Davis→SF). */

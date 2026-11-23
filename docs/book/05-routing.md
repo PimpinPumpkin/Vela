@@ -193,7 +193,8 @@ If the pieces cannot be joined, the older via snap runs when Google's line stray
   profile drives such a track as a slow road, and in much of Europe the track is closed to cars.
 - The open router does not answer: the on-phone route when a downloaded region covers the
   trip, with complete named turns and no traffic. Without a region, Google's routes with
-  Google's own short step lists (`GOOGLE_ABBREVIATED`).
+  Google's own short step lists (`GOOGLE_ABBREVIATED`). A reply with no steps at all gets a
+  start and an arrival, so the drive still tracks and arrives.
 - Neither answers and no region covers the trip: no route.
 
 During a drive, the recheck swaps in full steps, street names or traffic once the missing

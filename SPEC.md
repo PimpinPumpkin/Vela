@@ -1330,7 +1330,9 @@ sampled on Google's line over 700 m from the open route), and a planning fetch o
 
 `nameRoute` names a provisional alternate when it is picked: the via-snap with the same
 refusals, else `LineNamer` over the tiles, else Google's abbreviated steps
-(`GOOGLE_ABBREVIATED`). The route keeps its own Google time figures through naming.
+(`GOOGLE_ABBREVIATED`). The route keeps its own Google time figures through naming. A Google
+reply with no step list at all gets a start covering the trip and an arrival
+(`DirectionsParser.bareSteps`): the nav engine does nothing on a route with no steps.
 
 #### Ordering and alternates
 

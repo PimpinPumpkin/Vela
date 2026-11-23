@@ -4375,7 +4375,7 @@ private fun BoxScope.NavTurnBanner(
     val liveStep = state.nav.stepIndex
     val previewing = state.previewStepIndex != null
     // Show the previewed step when swiping ahead, else the live maneuver.
-    val shownIdx = (state.previewStepIndex ?: liveStep).coerceIn(0, mans?.lastIndex ?: 0)
+    val shownIdx = (state.previewStepIndex ?: liveStep).coerceIn(0, (mans?.lastIndex ?: 0).coerceAtLeast(0))
     val shown = mans?.getOrNull(shownIdx)
     // A roundabout's own EXIT step is not a "then": it repeats the same roundabout ("At the
     // roundabout, take the 2nd exit" twice read as two roundabouts, real drive 2026-10-03). The
