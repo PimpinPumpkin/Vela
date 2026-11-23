@@ -271,4 +271,23 @@ class TransitousTest {
         assertEquals(1, paired.size)
         assertEquals(setOf("BUS", "TRAM"), paired[0].modes.toSet())
     }
+
+    // Issue #999: one station listed under two names 15 m apart drew two badges on top of each
+    // other. Stations fold by name without the station words; a bus stop with the station's bare
+    // name and a different line's station keep their own icons.
+    @Test fun `one station under two names is one badge`() {
+        fun stop(id: String, name: String, lat: Double, lng: Double, modes: List<String>) =
+            Transitous.MapStop(name = name, stopId = id, lat = lat, lon = lng, modes = modes)
+        val merged = Transitous.mergeDirectionalPairs(listOf(
+            stop("u", "Bond Street Underground Station", 51.51442, -0.14944, listOf("SUBWAY")),
+            stop("p", "Bond Street Station", 51.51430, -0.14938, listOf("SUBWAY")),
+            stop("e", "Bond Street (Elizabeth line)", 51.51400, -0.15000, listOf("REGIONAL_RAIL")),
+            stop("b", "Bond Street", 51.51460, -0.14900, listOf("BUS")),
+        ))
+        assertEquals(3, merged.size)
+        val station = merged.first { it.stopId == "u" || it.stopId == "p" }
+        assertEquals(setOf("u", "p"), (listOf(station.stopId) + station.siblingIds).toSet())
+        assertTrue(merged.any { it.stopId == "e" } && merged.any { it.stopId == "b" })
+        assertEquals("bond st", Transitous.stationKey("Bond Street Underground Station"))
+    }
 }

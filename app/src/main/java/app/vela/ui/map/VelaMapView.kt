@@ -365,6 +365,9 @@ private const val TRANSIT_STOPS_SRC = "vela-transit-stops-src" // canonical GTFS
 private const val TRANSIT_STOPS_LAYER = "vela-transit-stops"
 private const val TRANSIT_STOP_IMG = "vela-transit-stop"
 private const val TRANSIT_STOP_INDEX_PROP = "vela_transit_stop_index"
+// Rail and subway stations from the basemap's poi layer (issue #999), below street zoom.
+private const val OSM_STATIONS_LAYER = "vela-osm-stations"
+private var lastOsmStationsKey: List<Boolean>? = null
 private const val AMBIENT_INDEX_PROP = "vela-ambient-index"
 private const val ACCURACY_SRC = "vela-me-accuracy-src"
 private const val ACCURACY_LAYER = "vela-me-accuracy"
@@ -1766,7 +1769,7 @@ fun VelaMapView(
         val style = styleRef ?: return@LaunchedEffect
         val vis = if (navMode) Property.NONE else Property.VISIBLE
         runCatching {
-            listOf("poi_r1", "poi_r7", "poi_r20", "poi_transit").forEach { id ->
+            listOf("poi_r1", "poi_r7", "poi_r20", "poi_transit", OSM_STATIONS_LAYER).forEach { id ->
                 style.getLayer(id)?.setProperties(PropertyFactory.visibility(vis))
             }
         }
@@ -2730,13 +2733,12 @@ fun VelaMapView(
                 st.getLayer(id)?.setProperties(PropertyFactory.iconSize(0.8f * sc))
             }
             st.getLayer(TRANSIT_STOPS_LAYER)?.setProperties(
-                PropertyFactory.iconSize(
-                    Expression.interpolate(
-                        Expression.linear(), Expression.zoom(),
-                        Expression.stop(15f, 0.78f * sc), Expression.stop(17f, 1.1f * sc), Expression.stop(19f, 1.4f * sc),
-                    ),
-                ),
+                PropertyFactory.iconSize(transitStopSize(sc)),
                 PropertyFactory.textSize(10.5f * lc),
+            )
+            st.getLayer(OSM_STATIONS_LAYER)?.setProperties(
+                PropertyFactory.iconSize(osmStationSize(sc)),
+                PropertyFactory.textSize(11f * lc),
             )
             val controlsScaled = Expression.interpolate(
                 Expression.linear(), Expression.zoom(),
@@ -4361,7 +4363,7 @@ fun VelaMapView(
                     // actually DRAWN there, icons only; when something is, nothing else can win.
                     val tapStyle = map.style
                     val bizIconLayers = if (tapStyle == null) emptyList() else (
-                        listOf(AMBIENT_LAYER) +
+                        listOf(AMBIENT_LAYER, OSM_STATIONS_LAYER) +
                             tapStyle.layers.map { l -> l.id }.filter { id -> id.startsWith("vela-places-") && !id.startsWith("vela-places-dots-") } +
                             OSM_POI_LAYERS
                         ).filter { id -> tapStyle.getLayer(id) != null }
@@ -5580,6 +5582,7 @@ fun VelaMapView(
                 lastAppliedSpeedCams = null
                 lastAppliedTransitStops = null
                 lastTransitBusHidden = null
+                lastOsmStationsKey = null
                 origPoiTransitFilter = null
                 lastAppliedRouteLine = null
                 lastAppliedAlternates = null
@@ -6881,24 +6884,22 @@ PropertyFactory.iconPadding(2f),
         style.addSource(GeoJsonSource(TRANSIT_STOPS_SRC, GeoJsonOptions().withMaxZoom(18)))
         // Deliberately a touch smaller than the POI markers (stops are dense), but not tiny -
         // the first cut (0.62-1.2) read too small on device (user 2026-07-13).
-        // A station is drawn a quarter larger than a bus stop.
-        fun bySize(bus: Float) = Expression.match(
-            Expression.get("kind"), Expression.literal(bus),
-            Expression.stop("train", bus * 1.25f), Expression.stop("metro", bus * 1.25f),
-        )
-        val stopSize = Expression.interpolate(
-            Expression.linear(), Expression.zoom(),
-            Expression.stop(15f, bySize(0.78f)),
-            Expression.stop(17f, bySize(1.1f)),
-            Expression.stop(19f, bySize(1.4f)),
-        )
+        val stopSize = transitStopSize(1f)
         style.addLayer(
             SymbolLayer(TRANSIT_STOPS_LAYER, TRANSIT_STOPS_SRC).apply {
-                // One step closer than the stops are FETCHED (user 2026-09-22, Midtown at 1000 ft was
-                // a carpet of bus badges; Google holds them back too). The fetch still starts at
-                // TRANSIT_STOPS_MIN_ZOOM (15) on purpose: while stops are loaded the basemap's own
-                // OSM bus icons stay hidden, so z15 shows neither instead of the basemap's.
-                setMinZoom(16f)
+                // Bus stops one step closer than the stops are FETCHED (user 2026-09-22, Midtown at
+                // 1000 ft was a carpet of bus badges; Google holds them back too). The fetch still
+                // starts at TRANSIT_STOPS_MIN_ZOOM (15) on purpose: while stops are loaded the
+                // basemap's own OSM bus icons stay hidden, so z15 shows neither instead of the
+                // basemap's. Stations show from the fetch on (issue #999), where the basemap's own
+                // stations step aside for them.
+                setMinZoom(15f)
+                setFilter(
+                    Expression.any(
+                        Expression.neq(Expression.get("kind"), Expression.literal("bus")),
+                        Expression.gte(Expression.zoom(), Expression.literal(16f)),
+                    ),
+                )
                 setProperties(
                     // A station where a subway or a train calls wears its glyph; a bus stop the bus.
                     // Stations place first, so their names win a crowded corner (issue #900).
@@ -6933,16 +6934,57 @@ PropertyFactory.iconPadding(2f),
                     PropertyFactory.textColor("#7f8ba0"),
                     PropertyFactory.textHaloColor("#0e1626"),
                     PropertyFactory.textHaloWidth(1.1f),
-                    // Google-style: bare badges from z15, NAMES only from z17 (user 2026-07-13) -
+                    // Google-style: bare bus badges, their NAMES only from z17 (user 2026-07-13) -
                     // a stop every block meant a wall of gray text at street zoom. Opacity step,
                     // not a second layer: the label still participates in collision (textOptional
-                    // keeps the icon when a name can't fit), it's just invisible until close.
+                    // keeps the icon when a name can't fit), it's just invisible until close. A
+                    // station's name shows with its badge (issue #999).
                     PropertyFactory.textOpacity(
-                        Expression.step(Expression.zoom(), Expression.literal(0f), Expression.stop(17f, 1f)),
+                        Expression.step(
+                            Expression.zoom(),
+                            Expression.match(Expression.get("kind"), Expression.literal(0f), Expression.stop("train", 1f), Expression.stop("metro", 1f)),
+                            Expression.stop(17f, 1f),
+                        ),
                     ),
                 )
             },
         )
+    }
+    // Rail and subway stations from the basemap tiles, from z13 (issue #999). Liberty's own
+    // poi_transit layer matches a "rail" class the tiles never carry (they say "railway"), so no
+    // station was drawn below the stop badges' street zoom. Under the stop layer and above the
+    // ambient places, so a station wins a crowded corner over a shop or a landmark; it steps aside
+    // where the stop layer has stations of its own (applyData), and a tap opens it as a stop.
+    if (style.getLayer(OSM_STATIONS_LAYER) == null) basemapSrc(style)?.let { src ->
+        val metro = Expression.literal(PoiIcons.STOP_METRO_IMG)
+        val stations = SymbolLayer(OSM_STATIONS_LAYER, src).withSourceLayer("poi").apply {
+            setMinZoom(13f)
+            setFilter(osmStationsFilter(covered = false))
+            setProperties(
+                PropertyFactory.iconImage(
+                    Expression.match(
+                        Expression.get("subclass"), Expression.literal(PoiIcons.STOP_TRAIN_IMG),
+                        Expression.stop("subway", metro), Expression.stop("light_rail", metro), Expression.stop("monorail", metro),
+                    ),
+                ),
+                PropertyFactory.iconSize(osmStationSize(1f)),
+                // The busier station first: two points for one station (the Underground and the
+                // main line) collide, and the first placed is the one kept.
+                PropertyFactory.symbolSortKey(Expression.coalesce(Expression.toNumber(Expression.get("rank")), Expression.literal(99))),
+                PropertyFactory.iconPadding(2f),
+                PropertyFactory.textField(osmStationTextField()),
+                PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                PropertyFactory.textSize(11f),
+                PropertyFactory.textMaxWidth(8f),
+                PropertyFactory.textOptional(true),
+                PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
+                PropertyFactory.textOffset(arrayOf(0f, 1.1f)),
+                PropertyFactory.textColor("#7f8ba0"),
+                PropertyFactory.textHaloColor("#0e1626"),
+                PropertyFactory.textHaloWidth(1.1f),
+            )
+        }
+        if (style.getLayer(TRANSIT_STOPS_LAYER) != null) style.addLayerBelow(stations, TRANSIT_STOPS_LAYER) else style.addLayer(stations)
     }
     if (style.getSource(ACCURACY_SRC) == null) {
         style.addSource(GeoJsonSource(ACCURACY_SRC, GeoJsonOptions().withMaxZoom(14)))
@@ -7627,6 +7669,7 @@ private fun applyPlaceLabelLanguage(style: StyleLayers) {
     PLACE_LABEL_LAYERS.forEach { id ->
         runCatching { style.getLayer(id)?.setProperties(PropertyFactory.textField(if (id in LINE_PLACED_LABEL_LAYERS) line else point)) }
     }
+    runCatching { style.getLayer(OSM_STATIONS_LAYER)?.setProperties(PropertyFactory.textField(osmStationTextField())) }
 }
 
 /** The tier filter plus "not behind the puck": every callout carries its own distance along the
@@ -9164,10 +9207,12 @@ private fun applyVelaLayerColors(style: StyleLayers, dark: Boolean, amoled: Bool
     // its pastel tint in dark, the same grammar every POI label follows. The creation-time
     // colors in ensureLayers were hardcoded for dark (no theme there) and read as gray with
     // a navy halo on the light map (issue #71 follow-up, 2026-07-14).
-    (style.getLayer(TRANSIT_STOPS_LAYER) as? SymbolLayer)?.setProperties(
-        PropertyFactory.textColor(PoiIcons.labelColorFor("transit", dark || amoled)),
-        PropertyFactory.textHaloColor(if (amoled) "#000000" else if (dark) "#11161C" else "#FFFFFF"),
-    )
+    listOf(TRANSIT_STOPS_LAYER, OSM_STATIONS_LAYER).forEach { id ->
+        (style.getLayer(id) as? SymbolLayer)?.setProperties(
+            PropertyFactory.textColor(PoiIcons.labelColorFor("transit", dark || amoled)),
+            PropertyFactory.textHaloColor(if (amoled) "#000000" else if (dark) "#11161C" else "#FFFFFF"),
+        )
+    }
     // Search-result labels stay NEUTRAL ink - Google doesn't category-tint result labels the
     // way it tints ambient POI labels (the red pin is the result signal, not the text color).
     (style.getLayer(MARKERS_LAYER) as? SymbolLayer)?.setProperties(
@@ -10823,6 +10868,7 @@ private fun applyData(
         val v = if (previewing) Property.NONE else Property.VISIBLE
         style.getLayer("poi_transit")?.setProperties(PropertyFactory.visibility(v))
         style.getLayer(TRANSIT_STOPS_LAYER)?.setProperties(PropertyFactory.visibility(v))
+        style.getLayer(OSM_STATIONS_LAYER)?.setProperties(PropertyFactory.visibility(v))
         lastPreviewTransitHidden = previewing
     }
     val fuelOnly = navMode && navDriveMode // walking/biking keeps the normal POI mix (Google does)
@@ -10967,6 +11013,18 @@ private fun applyData(
             }
         }
         lastTransitBusHidden = hideOsmBus
+    }
+    // The basemap's stations step aside where the stop layer has stations of its own, and follow
+    // the stop settings (Settings > Map) the way the stop layer does.
+    val stationsKey = listOf(
+        transitStops.any { stopKind(it.modes) != "bus" },
+        app.vela.ui.MapPoiPrefs.showTransit.value,
+        app.vela.ui.TransitLayer.stopMetro.value,
+        app.vela.ui.TransitLayer.stopTrain.value,
+    )
+    if (stationsKey != lastOsmStationsKey) {
+        runCatching { (style.getLayer(OSM_STATIONS_LAYER) as? SymbolLayer)?.setFilter(osmStationsFilter(stationsKey[0])) }
+        lastOsmStationsKey = stationsKey
     }
 
     // The location source: in browse mode applyData owns it (set it from the fix here);
@@ -11517,6 +11575,54 @@ internal fun speedCamBitmap(): Bitmap {
  *  language as the ALPR badge but round + transit-blue so it reads as a stop, not a POI. */
 /** The badge a stop wears: "train" when a train calls there, else "metro" when a subway, tram or
  *  light rail does, else "bus". */
+/** The stop badges' size by zoom; [sc] scales it for the car screen. A station is drawn larger
+ *  than a bus stop, about the size of a place icon (issue #999: at a quarter larger it was still
+ *  too small to find), and the same size as the basemap's stations below it. */
+private fun transitStopSize(sc: Float): Expression {
+    fun bySize(bus: Float, station: Float) = Expression.match(
+        Expression.get("kind"), Expression.literal(bus * sc),
+        Expression.stop("train", station * sc), Expression.stop("metro", station * sc),
+    )
+    return Expression.interpolate(
+        Expression.linear(), Expression.zoom(),
+        Expression.stop(15f, bySize(0.78f, 1.3f)),
+        Expression.stop(17f, bySize(1.1f, 1.6f)),
+        Expression.stop(19f, bySize(1.4f, 1.8f)),
+    )
+}
+
+/** The basemap stations' size by zoom, meeting the stop layer's stations at z15. */
+private fun osmStationSize(sc: Float): Expression = Expression.interpolate(
+    Expression.linear(), Expression.zoom(),
+    Expression.stop(13f, 1.1f * sc),
+    Expression.stop(15f, 1.3f * sc),
+    Expression.stop(17f, 1.6f * sc),
+)
+
+/** Which basemap stations are drawn: rail and subway stations (not their entrances or tram stops,
+ *  which are as dense as bus stops), by the stop settings; none where [covered] by the stop layer. */
+private fun osmStationsFilter(covered: Boolean): Expression {
+    val subs = (if (app.vela.ui.TransitLayer.stopMetro.value) listOf("subway", "light_rail", "monorail") else emptyList()) +
+        (if (app.vela.ui.TransitLayer.stopTrain.value) listOf("station", "halt") else emptyList())
+    if (covered || !app.vela.ui.MapPoiPrefs.showTransit.value || subs.isEmpty()) return Expression.literal(false)
+    return Expression.all(
+        Expression.eq(Expression.get("class"), Expression.literal("railway")),
+        Expression.any(*subs.map { Expression.eq(Expression.get("subclass"), Expression.literal(it)) }.toTypedArray()),
+    )
+}
+
+/** A basemap station's name from z14, in the label language; the bare badge at z13. A name already
+ *  in the reader's script is kept as it is: OSM's English name for a station is often the
+ *  encyclopedia title ("Baker Street tube station") where the sign says "Baker Street". */
+private fun osmStationTextField(): Expression {
+    val label = placeLabelTextField(line = false)
+    val name = if (!uiWantsLatinLabels()) label else Expression.switchCase(
+        Expression.eq(Expression.get("name"), Expression.get("name:latin")), Expression.get("name"),
+        label,
+    )
+    return Expression.step(Expression.zoom(), Expression.literal(""), Expression.stop(14f, name))
+}
+
 internal fun stopKind(modes: List<String>): String {
     val kinds = modes.mapNotNull { app.vela.core.data.transit.Transitous.kindOf(it) }
     return when {

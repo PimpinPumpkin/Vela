@@ -296,8 +296,19 @@ object Transitous {
      *  the rest as [MapStop.siblingIds] - the two curbs of a directional pair become one stop like
      *  Google's POI, and the merged board's headsigns tell the directions apart. Distinct names
      *  (a "NB Station"/"SB Station" pair) and far-apart same names both stay separate. */
-    fun mergeDirectionalPairs(stops: List<MapStop>, radiusM: Double = PAIR_MERGE_M): List<MapStop> =
-        mergeColocated(stops).groupBy { stopKey(it.name) }.flatMap { (_, group) ->
+    fun mergeDirectionalPairs(stops: List<MapStop>, radiusM: Double = PAIR_MERGE_M): List<MapStop> {
+        val pairs = foldNear(mergeColocated(stops), radiusM) { stopKey(it.name) }
+        // Then one station under two names (issue #999: "Bond Street Underground Station" and a
+        // platform listed as "Bond Street Station"), stations only, so a bus stop called "X Station"
+        // keeps its own icon beside the station.
+        val (stations, rest) = pairs.partition { st -> st.modes.any { kindOf(it).let { k -> k == Kind.METRO || k == Kind.TRAIN } } }
+        return (rest + foldNear(stations, radiusM) { stationKey(it.name) })
+            .map { if (it.name == it.name.uppercase() && it.name.any(Char::isLetter)) it.copy(name = displayName(listOf(it.name))) else it }
+    }
+
+    /** [stops] with those sharing a [key] within [radiusM] of each other folded into one. */
+    private fun foldNear(stops: List<MapStop>, radiusM: Double, key: (MapStop) -> String): List<MapStop> =
+        stops.groupBy(key).flatMap { (_, group) ->
             if (group.size < 2) return@flatMap group
             val clusters = mutableListOf<MutableList<MapStop>>()
             for (st in group) {
@@ -316,7 +327,14 @@ object Transitous {
                     modes = cl.flatMap { it.modes }.distinct(),
                 )
             }
-        }.map { if (it.name == it.name.uppercase() && it.name.any(Char::isLetter)) it.copy(name = displayName(listOf(it.name))) else it }
+        }
+
+    /** [stopKey] without the words that only say it is a station ("Underground Station"). */
+    fun stationKey(name: String): String =
+        stopKey(name).split('|').map { part -> part.split(' ').filter { it !in STATION_WORDS }.joinToString(" ") }
+            .filter { it.isNotEmpty() }.sorted().joinToString("|")
+
+    private val STATION_WORDS = setOf("station", "stn", "underground", "tube", "metro", "subway", "railway", "rail", "train")
 
     /**
      * ONE PHYSICAL STOP, SEVERAL FEEDS (2026-09-22, user: "bus icons right next to each other on the

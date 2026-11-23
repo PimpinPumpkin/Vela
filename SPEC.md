@@ -6066,7 +6066,7 @@ Google plus Transitous (MOTIS over GTFS and GTFS-Realtime, `core/data/transit/Tr
 | Piece | Source |
 | --- | --- |
 | Departure boards | Transitous: every route at a stop, realtime lateness, agency colors. Google's place page, which embeds as little as one route at a hub, is the fallback. A realtime time more than `Transitous.EARLY_DOUBT_S` (180 s) before its timetable time is replaced by the timetable time and loses its realtime mark (`trustLive`), on boards, trip stop lists and planned legs: a vehicle waiting to start its run is predicted as already on its way. |
-| Stop icons | Transitous positions from z15; OSM basemap icons without coverage. A tapped icon opens its board by stop id. |
+| Stop icons | Transitous positions from z15; OSM basemap icons without coverage, and the basemap's rail and subway stations from z13. A tapped icon opens its board by stop id. |
 | Route stop list | The run's own stops (`/trip` by the tapped run); the Google itinerary as fallback. |
 | Directions | Google's page, for traffic-aware times; `Transitous.plan` when Google is off, answers nothing, or answers with walking only. After a walk-only answer the planner's itineraries that ride something are listed first and Google's walk last (`TransitOrder.ridesBeforeWalk`); Google's feed misses lines the open feeds carry (Niš's suburban lines). |
 
@@ -6125,6 +6125,11 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
   midpoint with the other ids as siblings, because US GTFS names both curbs alike and has no
   direction field. The board merges stop times across siblings, fetched in parallel; its
   `(route, headsign)` rows keep the directions apart. Direction-suffixed names never merge.
+  A second pass folds stations (a metro or train mode) whose names agree once the station words
+  are dropped (`Transitous.stationKey`: "station", "underground", "tube", "metro", "subway",
+  "railway", "rail", "train"): London lists a Bond Street platform as "Bond Street Station" beside
+  "Bond Street Underground Station", and the two badges drew on top of each other (issue #999).
+  Bus stops never join that pass.
 - "Same name" is `Transitous.stopKey`: case, ordinals, "&" / "/" / "at", street-type and compass
   abbreviations and cross-street order do not count.
 - Before that pass, stops within `COLOCATED_M` (3 m) fold whatever their names: one corner in
@@ -6133,10 +6138,25 @@ is on screen (`nonTransitRouteUp` in `MapSurface`): orange and red lines read as
 - A merged icon carries the modes of every stop in it.
 - A stop's badge follows its modes (`stopKind`): a train calls there, a rounded square with the
   railway glyph; else a subway, tram or light rail, a rounded square with the subway glyph; else
-  the round bus badge. Station badges are 1.25 times the bus badge and place first
-  (`symbol-sort-key`), so a station's name wins a crowded corner.
+  the round bus badge. A station badge is drawn from z15 and named at once; a bus badge from z16
+  (a zoom step in the layer filter, which MapLibre takes at whole zooms) and named from z17.
+  Station badges are about a place icon's size (1.3 at z15, 1.6 at z17, 1.8 at z19, against the
+  bus badge's 0.78, 1.1 and 1.4) and place first (`symbol-sort-key`), so a station's name wins a
+  crowded corner.
 - Where Transitous stops are drawn, the basemap's OSM bus icons hide by filter (rail and airport
   stay).
+- Stations from the basemap (`OSM_STATIONS_LAYER`, issue #999): the `poi` points of class
+  `railway` with subclass `station` or `halt` (the train badge) or `subway`, `light_rail` or
+  `monorail` (the subway badge), from z13, sized 1.1 to 1.3 to meet the stop layer's stations at
+  z15, named from z14. Liberty's `poi_transit` matches a `rail` class the OpenMapTiles schema does
+  not have (it says `railway`), so before this no station showed below the stop badges' zoom. A
+  name already in the reader's script is kept as it is, since OSM's English name for a station is
+  often the encyclopedia title ("Baker Street tube station"). The layer sits under the stop layer
+  and above the ambient and open places, so a station wins a crowded corner over a shop or a
+  landmark; of two points for one station the lower `rank` places first. It follows the metro and
+  train stop settings and "Transit stops", is filtered out where the stop layer has a station of
+  its own, hides during a drive and a route preview, and a tap on it opens the stop like a tapped
+  basemap station (`transitHint`).
 - A looping run boards at the tapped lap. Some agencies publish a day of laps as one trip (a
   Davis Unitrans line: 589 stops, 6:55 AM to 9 PM). `Transitous.buildTripStep` treats every stop
   within `LAP_SAME_STOP_M` (30 m) of the nearest as a pass, boards at the pass nearest the tapped

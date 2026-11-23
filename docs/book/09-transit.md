@@ -106,12 +106,18 @@ back from the stops on its approaches.
 
 ### Stops on the map
 
-Stops are fetched from zoom 15 (`TRANSIT_STOPS_MIN_ZOOM`), drawn from 16 and named from 17, one
-icon per station with bays collapsed onto their parent. The fetch covers the view padded by half
-on each side and repeats only when the view's center leaves the middle half of that box.
+Stops are fetched from zoom 15 (`TRANSIT_STOPS_MIN_ZOOM`), one icon per station with bays
+collapsed onto their parent. A station is drawn and named from 15, about the size of a place
+icon. A bus stop is drawn from 16, smaller, and named from 17. The fetch covers the view padded
+by half on each side and repeats only when the view's center leaves the middle half of that box.
 
 While the layer has stops, the basemap's own bus icons are filtered out so a stop cannot draw
 twice at slightly different corners. Rail and airport icons stay on the basemap.
+
+Further out, rail and subway stations come from the basemap tiles, from zoom 13 with their names
+from 14. They are drawn above shops and landmarks, so a station wins a crowded corner, and they
+give way to the stop layer's own stations from zoom 15. Before this (issue #999), no station
+showed until zoom 16: the basemap style's transit layer looks for a class the tiles never use.
 
 The icons hide during a drive and a route preview. Settings has a "Transit stops" switch with three under it, for bus
 stops, subway and tram stops, and train stations (`TransitLayer.showsStop`). A tap goes to the
@@ -126,7 +132,9 @@ and no direction, so unmerged they draw as two overlapping badges with half the 
 icon at their midpoint. Names are compared by `stopKey`, which ignores case, ordinals,
 abbreviations and the order of the cross streets. Stops within 3 m (`COLOCATED_M`) fold first
 whatever their names, because one corner can appear in several feeds. Around Bryant Park in New
-York this took 78 icons down to 55.
+York this took 78 icons down to 55. A second pass folds stations whose names agree without the
+station words (`stationKey`), so London's "Bond Street Station" platform and "Bond Street
+Underground Station" are one badge. Bus stops are left out of that pass.
 
 The merged board asks for every id, and the headsigns put the two directions on separate rows.
 Names that differ ("NB Station", "SB Station") never merge. Direction is never guessed from
