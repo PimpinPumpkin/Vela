@@ -33,9 +33,11 @@ data class TollCharge(val name: String, val cents: Int, val feeCents: Int, val m
  * A road is priced by the kilometer. Its rate depends on the direction, the kind of day and the time
  * band, and is held as the cheapest and dearest zone's rate, so the price is a range: the kilometers
  * driven on the road at each, plus the trip toll of each trip, with the per-trip fee for a driver
- * without a transponder beside it. A trip is priced at the time it reaches the road, from the rate
- * period in force on that day. A road with no period in force that day shows no price, never an old
- * one. Saturday and Sunday are the weekend; a weekday holiday is priced as a weekday.
+ * without a transponder beside it. A crossing (`kind` `crossing`, a toll bridge) costs the same
+ * however much of it the route drives: its bands hold cents per crossing, not per kilometer. A trip
+ * is priced at the time it reaches the road, from the rate period in force on that day. A road with
+ * no period in force that day shows no price, never an old one. Saturday and Sunday are the weekend;
+ * a weekday holiday is priced as a weekday.
  */
 object Tolls {
     @Volatile private var roads: List<Road> = emptyList()
@@ -75,7 +77,8 @@ object Tolls {
         /** Keyed by direction ("east", "west" or "any"), then "weekday" or "weekend". */
         val bands: Map<String, Map<String, List<Band>>>,
     ) {
-        /** The cheapest and dearest rate, in cents per kilometer, for a car entering at [t]. */
+        /** The cheapest and dearest rate, in cents per kilometer (per crossing on a crossing road),
+         *  for a car entering at [t]. */
         fun rateRange(eastbound: Boolean, t: ZonedDateTime): Pair<Double, Double>? {
             val byDay = bands[if (eastbound) "east" else "west"] ?: bands["any"] ?: return null
             val weekend = t.dayOfWeek == DayOfWeek.SATURDAY || t.dayOfWeek == DayOfWeek.SUNDAY
@@ -97,6 +100,7 @@ object Tolls {
         private val box: DoubleArray,
         lines: List<List<LatLng>>,
         val periods: List<Period>,
+        private val perCrossing: Boolean = false,
     ) {
         private class Seg(val a: LatLng, val b: LatLng, val heading: Double)
 
@@ -159,9 +163,9 @@ object Tolls {
                 val entry = ZonedDateTime.ofInstant(Instant.ofEpochMilli(nowMs + (r.startM / total * durationS * 1000.0).toLong()), zone)
                 val p = period(entry.toLocalDate()) ?: return null
                 val (min, max) = p.rateRange(r.eastbound, entry) ?: return null
-                val km = r.lengthM / 1000.0
-                low += (km * min).roundToInt() + p.tripCents
-                high += (km * max).roundToInt() + p.tripCents
+                val units = if (perCrossing) 1.0 else r.lengthM / 1000.0
+                low += (units * min).roundToInt() + p.tripCents
+                high += (units * max).roundToInt() + p.tripCents
                 fee += p.feeCents
             }
             return TollCharge(name, low, fee, high)
@@ -169,7 +173,8 @@ object Tolls {
 
         companion object {
             fun parse(o: JsonObject): Road? = runCatching {
-                if (o.str("kind") != "distance" || o.str("currency") != "CAD") return null
+                val kind = o.str("kind")
+                if (kind !in setOf("distance", "crossing") || o.str("currency") != "CAD") return null
                 val box = o.getValue("box").jsonArray.map { it.jsonPrimitive.double }.toDoubleArray()
                 require(box.size == 4)
                 val lines = o.getValue("lines").jsonArray.map { l ->
@@ -192,7 +197,7 @@ object Tolls {
                         },
                     )
                 }.sortedBy { it.effective }
-                Road(o.str("id"), o.str("name"), ZoneId.of(o.str("zone")), box, lines, periods)
+                Road(o.str("id"), o.str("name"), ZoneId.of(o.str("zone")), box, lines, periods, kind == "crossing")
             }.getOrNull()
 
             private fun JsonObject.str(k: String) = getValue(k).jsonPrimitive.content

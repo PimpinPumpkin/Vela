@@ -1500,9 +1500,11 @@ through what the plan avoided. They apply to DRIVE.
 - Toll prices (`Tolls`, `routeTollText`): a route on a road in the toll file shows "Toll about $A
   to $B + $C fee" in place of "May have tolls". Google's reply gives no toll price. The file
   (`tolls.json`, the table in 7.1) holds each road's OpenStreetMap lines in the direction of traffic and
-  its rate periods. Only Highway 407 ETR is in it so far. A road is priced by the kilometer, with
-  the cheapest and dearest of its zones' rates for the direction, the kind of day and the time
-  band, since the 407's zone boundaries are not in OpenStreetMap (its exits carry only numbers).
+  its rate periods: Highway 407 ETR, and the A-25 and A-30 toll bridges in Quebec. A `distance`
+  road is priced by the kilometer, with the cheapest and dearest of its zones' rates for the
+  direction, the kind of day and the time band, since the 407's zone boundaries are not in
+  OpenStreetMap (its exits carry only numbers). A `crossing` road, a toll bridge, costs the same
+  for each run however long it is: its bands hold cents per crossing.
   `Road.runs` samples the route every 50 m and counts a sample on the road when a piece of it
   going the same way (within 60 degrees) is within 25 m; the pieces are filed in a 0.01 degree
   grid. A run holds across a gap of 300 m and counts from 1 km, so an overpass is not a trip, and
@@ -1518,10 +1520,12 @@ through what the plan avoided. They apply to DRIVE.
   The toll is worked out off the main thread once per route, file and picked time
   (`TollFile.generation`).
 - The toll file: `{version, generated, note, roads: [...]}`, a road `{id, name, currency, zone,
-  box: [S,W,N,E], kind, lines_source, lines, periods}` with `kind` `distance` and `currency` `CAD`
-  (a road of another kind or currency is left out), and a period `{effective, valid_until,
-  source, trip_cents, fee_cents, bands}`, bands keyed `east`, `west` or `any`, then `weekday` or
-  `weekend`, as `[start minute, least cents/km, most cents/km]`. `scripts/build-tolls.py` builds
+  box: [S,W,N,E], kind, lines_source, lines, periods}` with `kind` `distance` or `crossing` and
+  `currency` `CAD` (a road of another kind or currency is left out), and a period `{effective,
+  valid_until, source, trip_cents, fee_cents, bands}`, bands keyed `east`, `west` or `any`, then
+  `weekday` or `weekend`, as `[start minute, least cents/km, most cents/km]` (cents per crossing
+  on a `crossing` road). A route is checked against a road only when one of its points is in the
+  road's box, so a bridge's box reaches a few km past it. `scripts/build-tolls.py` builds
   it from `tools/tolls/roads.json`. A road with `fetch` has its rates read from its source page,
   and the run that reads it ends the period it shows `VOUCH_DAYS` (60) days later (or 60 days
   after its effective date when that is later); a period whose end is more than `RENEW_DAYS` (30)
@@ -1533,8 +1537,17 @@ through what the plan avoided. They apply to DRIVE.
   `407etr.com/en/rate-chart-light`: four tables of 12 zones (westbound and eastbound tabs, each
   weekdays then weekends), the effective date, the $1 trip toll and the $5.30 camera charge. Its
   lines are the 477 mainline ways tagged `ref=407 ETR`, `toll=yes`, `oneway=yes` (queried
-  2026-10-31). `TollFile` loads the newer of the bundled copy and the one downloaded from the
-  `tolls` release, and loads a download before keeping it.
+  2026-10-31). The A-25 and A-30 publish their grids as PDFs, so their periods are written in
+  `roads.json` by hand, each with its source and its last day. A car (category B, under 230 cm)
+  pays per crossing, both ways. A-25, Olivier-Charbonneau bridge, grid from 1 June 2026: $4.20 on
+  a working day from 6:01 to 9:00 and from 15:01 to 18:00, $3.36 at other times, plus $6.50 for
+  each crossing by a car with no account; the grids change each 1 June, so the period ends
+  2027-05-31. A-30, St. Lawrence bridge, rates in force from 28 February 2026 to 31 January 2027:
+  $4.40 at all hours, paid at the booth, no fee. Their lines are the ways tagged `toll=yes` and
+  `bridge=yes` (queried 2026-11-23), the bridge only, so a route that joins the motorway past the
+  river pays nothing. The A-25 grid prices a holiday as a weekend day; Vela prices a weekday
+  holiday as a weekday. `TollFile` loads the newer of the bundled copy and the one downloaded
+  from the `tolls` release, and loads a download before keeping it.
 
 #### Walking
 
