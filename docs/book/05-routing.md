@@ -360,6 +360,13 @@ A route that backs up counts as setting off against the car too: one whose first
 more than 12 m behind where it starts, as a U-turn to the street just passed does before it
 turns up that street (`RouteGeometry.startsBehind`).
 
+A reroute's first turn can be too near to make: under 5 seconds away, often a side street or,
+leaving a parking lot, the next aisle. The route still shows at once, as Google's does, with
+that turn left unsaid, and once the car is 10 m past it the route is asked again from there and
+swapped in without a word, up to twice. Waiting for a better answer before showing any left the
+car with no route for 12 s in a lot. A car that takes the turn after all, near the line past it
+and going its way, is not asked about again.
+
 Starting the right way is not enough. A route can set off the car's way, go round a small block
 and come back along the road just driven, to the turn the car missed. The reroute passes the
 car's own track, the last 300 m it drove, and a route that runs back along it in its first

@@ -290,6 +290,11 @@ off the list when it has been.
   real turn to show it never holds back a real one (the linear acceleration sensor's gravity
   estimate can soak up a long, steady turn).
 
+- A reroute whose first turn is too near to make shows at once and is swapped quietly once the
+  car is past that turn (`followLate`; SPEC 4.6, Rerouting): `LateTurnSessionTest`, and a mock
+  drive straight past a turn on a Pixel 4a (the route showed when the first answer landed and
+  was updated twice in 2.5 s). Not yet seen leaving a real parking lot.
+
 - Turns placed on the line's corners (`StepFit`; SPEC 4.2, Steps on the line): unit-tested and
   run over the 46 stored Google lines and over recorded trips offline. Not yet heard on a drive:
   an arrival through a parking lot, and a ramp's bare turn now said onto its road.

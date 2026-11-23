@@ -2211,7 +2211,10 @@ REACH_S                        5.0   a driving reroute's first turn must be this
 REACH_MIN_M                     25   and never closer than this
 LATE_TURN_PAST_M                10   an ask again waits until the car is this far past that turn
 LATE_TURN_ASKS                   2   asks again for one reroute when its first turn is out of reach
-LATE_TURN_MIN_LEFT_MS        1_500   deadline an ask again must leave after its wait
+TOOK_TURN_M                     15   the car took that turn after all within this of the line...
+TOOK_TURN_PAST_M                 5   ...at least this far past it...
+TOOK_TURN_DEG                   45   ...going within this of the line's way
+LATE_TURN_MIN_LEFT_MS        1_500   deadline a turn-round ask again must leave after its wait
 REROUTE_COOLDOWN_UNJOINED_MS 3_000   the gap after a reroute whose route the car never joined
 JOINED_M                        50   meters along an adopted route that count as joining it
 BACK_ASKS                        2   asks again for one reroute whose route turns the car round where it is
@@ -2315,13 +2318,23 @@ START_REPLAN_M                 150   Start this far from the route plans again f
   ramp or a fork needs the car in its lane) under `REACH_S` seconds away at the newest
   trusted fix's speed, and never under `REACH_MIN_M`, is out of reach (`turnOutOfReach`, only at
   `HEADING_MIN_MPS` and up). The first line is said after "Rerouting", a second or more after
-  the route lands. The fetch then waits until the car is `LATE_TURN_PAST_M` past that turn at
-  its speed (`lateTurnWaitMs`, under 7 s) and asks again from the newest trusted fix and its
-  course, up to `LATE_TURN_ASKS` times while `LATE_TURN_MIN_LEFT_MS` of the deadline minus the
-  finish reserve is left after the wait. Asked at once from the same fix, the answer is the same
-  turn. A failed ask keeps the answer in hand. Pinned to the heading, the open router sends a car
-  that has to turn round into the nearest side street, which can be a meter ahead when the route
-  lands.
+  the route lands. Such a route is still adopted at once, as Google shows its new route at once,
+  with that turn's lines taken as said (`lateQuiet`: `chainedStep` and every slot in
+  `chainedBands`), so the banner shows it and the voice does not say it after the car has passed
+  it. Then `followLate`, a job of its own so a reroute the car needs meanwhile is never held up,
+  waits until the car is `LATE_TURN_PAST_M` past that turn at its speed (`lateTurnWaitMs`, under
+  7 s), asks again from the newest trusted fix and its course (`askReroute`, the reroute's own
+  fetch), and swaps the answer in without a word (`adoptRecheck`), up to `LATE_TURN_ASKS` times
+  while each answer's first turn is still out of reach. It stops when another route took over,
+  when no answer comes, or when the car took the turn after all (`tookFirstTurn`: within
+  `TOOK_TURN_M` of the line, `TOOK_TURN_PAST_M` past the turn, and within `TOOK_TURN_DEG` of the
+  line's way; the engine's own step count is no help, since a car that drove past the turn is
+  inside the off-route corridor for a few seconds and the engine has counted it passed). Asked at
+  once from the same fix, the answer is the same turn. Pinned to the heading, the open router
+  sends a car that has to turn round into the nearest side street, which can be a meter ahead
+  when the route lands; leaving a parking lot, every answer's first turn is an aisle, and waiting
+  for a better answer before showing any left the car with no route for 12 s.
+  `LateTurnSessionTest`.
 - A route that still turns a moving car round where it is (at `BACK_ASK_MIN_MPS` or more, by
   `startsAgainst` or `startsBehind` against its newest course) is not shown or said when no
   route that turns round less was offered: the fetch waits `BACK_ASK_WAIT_MS` and asks again

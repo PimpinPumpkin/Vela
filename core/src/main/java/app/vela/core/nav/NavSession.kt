@@ -166,6 +166,8 @@ class NavSession @Inject constructor(
     private var autoResumeArmed = false
 
     private var rerouteJob: Job? = null
+    /** Asks a reroute's route again once the car is past a first turn it could not make ([followLate]). */
+    private var lateJob: Job? = null
     /** When the in-flight reroute started. @Volatile for the same reason as the two below: it is
      *  one of the four values rerouteGate reads, and a stale read there misjudges the age of the
      *  in-flight job. */
@@ -293,6 +295,7 @@ class NavSession @Inject constructor(
         plannedWayName = null
         sessionGen += 1               // orphan any in-flight reroute/recheck from a previous session
         rerouteJob?.cancel()
+        lateJob?.cancel()
         pendingLatchClear.set(false)  // a stale clear from the previous session must not leak in
         // A new drive starts lean: the previous drive's bad patch of coverage says nothing about
         // this one, and inheriting its streak would send the first reroute straight to the ladder.
@@ -454,6 +457,7 @@ class NavSession @Inject constructor(
         sessionGen += 1 // orphan in-flight reroute/recheck — a late completion must not resurrect this session
         recheckJob?.cancel()
         rerouteJob?.cancel()
+        lateJob?.cancel()
         pendingLatchClear.set(false)
         rerouteFailStreak = 0
         rerouteDeadlineMs = REROUTE_FETCH_TIMEOUT_MS
@@ -518,6 +522,7 @@ class NavSession @Inject constructor(
         note(reason)
         val gen = sessionGen
         rerouteJob?.cancel()
+        lateJob?.cancel()
         // This replan is the in-flight job the reroute gate will judge: stamped like a reroute,
         // or an off-route fix during it reads the last reroute's start (0 on a drive with none),
         // calls it stuck and starts over.
@@ -1426,6 +1431,7 @@ class NavSession @Inject constructor(
             }
             RerouteGate.START -> Unit
         }
+        lateJob?.cancel() // this reroute asks from where the car is now
         // Announce sparsely: the first attempt of a burst speaks, silent retries don't re-announce.
         if (!quietStart && now - lastRerouteSpokeMs > REROUTE_SPEAK_MIN_MS) {
             lastRerouteSpokeMs = now
@@ -1484,62 +1490,16 @@ class NavSession @Inject constructor(
             // drive. That is the "Re-routing" spinner that never exits and only a restart clears
             // (reported on a real drive; the same trap the avoid path hit, see
             // AVOID_ONDEVICE_TIMEOUT_MS). The orphan finishes into the void and is discarded.
-            fun ask(from: LatLng, heading: Double?, budgetMs: Long, verdict: app.vela.core.data.TurnRoundVerdict) = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
-                runCatching {
-                    dataSource.directions(
-                        from, dest, mode, remainingStops.map { it.location },
-                        avoidTolls = RoutingPrefs.avoidTolls,
-                        avoidHighways = RoutingPrefs.avoidHighways,
-                        avoidFerries = RoutingPrefs.avoidFerries,
-                        urgent = attempt.urgent,
-                        // Pin the departure to where the car is pointing, so the answer is "given
-                        // that you are going this way, what now" instead of "turn around".
-                        departBearingDeg = heading,
-                        // The fetch's own share of the deadline (issue #557): the open router, Google
-                        // and the downloaded region each get a slice instead of the first eating it all.
-                        budgetMs = budgetMs,
-                        behind = trackTo(from, heading),
-                        turnRound = verdict,
-                    )
+            fun ask(from: LatLng, heading: Double?, budgetMs: Long, verdict: app.vela.core.data.TurnRoundVerdict) =
+                askReroute(from, dest, remainingStops, attempt.urgent, heading, budgetMs, verdict) {
+                    attempt.timeoutMs - (SystemClock.elapsedRealtime() - now) - REROUTE_NAME_SLACK_MS
                 }
-                    .getOrNull()?.let { routes ->
-                        val left = attempt.timeoutMs - (SystemClock.elapsedRealtime() - now) - REROUTE_NAME_SLACK_MS
-                        driveable(routes, from, dest, nameWithinMs = left.coerceAtLeast(0L), departBearingDeg = heading)
-                    }?.takeIf { it.reaches(dest) }
-            }
             var verdict = app.vela.core.data.TurnRoundVerdict()
             val fetch = ask(loc, course, attempt.budgetMs, verdict)
             var landed = kotlinx.coroutines.withTimeoutOrNull(attempt.timeoutMs) { fetch.await() }
             val timedOut = landed == null && !fetch.isCompleted
             if (landed == null) fetch.cancel() // best effort; a wedged blocking read ignores this and is orphaned
-            // A first turn the car can no longer make is asked again once the car is past it. The
-            // open router, pinned to the heading, sends a car that has to turn round into the
-            // nearest side street, often a few meters ahead. Adopted, that turn is spoken after the
-            // car has passed it, the arrow turns down a street the car is not on, and the next
-            // reroute waits out the cooldown. Asked again at once, from the same fix, the answer
-            // is the same turn. A failed second ask keeps the first answer.
             fun trustedNow() = lastTrustedFix?.takeIf { SystemClock.elapsedRealtime() - lastTrustedFixMs <= TRUSTED_FIX_MAX_AGE_MS }
-            var lateAsks = 0
-            while (mode == TravelMode.DRIVE && lateAsks < LATE_TURN_ASKS) {
-                val got = landed ?: break
-                val car = trustedNow() ?: break
-                val speed = lastTrustedSpeedMps
-                val ahead = firstTurnAheadM(got, car) ?: break
-                if (!turnOutOfReach(ahead, speed)) break
-                val waitMs = lateTurnWaitMs(ahead, speed)
-                val left = attempt.timeoutMs - (SystemClock.elapsedRealtime() - now) - REROUTE_FINISH_RESERVE_MS - waitMs
-                if (left < LATE_TURN_MIN_LEFT_MS) break
-                lateAsks++
-                note("reroute: its first turn is ${ahead.toInt()} m ahead at ${speed.toInt()} m/s, asking again past it")
-                kotlinx.coroutines.delay(waitMs)
-                if (gen != sessionGen) return@launch
-                val from = trustedNow() ?: break
-                val v = app.vela.core.data.TurnRoundVerdict()
-                val again = ask(from, lastBearing ?: course, left, v)
-                val next = kotlinx.coroutines.withTimeoutOrNull(left) { again.await() } ?: run { again.cancel(); null }
-                if (next == null) break
-                landed = next; verdict = v
-            }
             // A ROUTE THAT TURNS A MOVING CAR ROUND WHERE IT IS IS ASKED AGAIN A MOMENT LATER
             // (OsmAnd does the same) when nothing that turns round less was offered: no route went
             // on or round a block, and from a few seconds further on one often does. Not shown or
@@ -1687,14 +1647,23 @@ class NavSession @Inject constructor(
             lastRecheckMs = SystemClock.elapsedRealtime()
             lastRerouteAdoptMs = SystemClock.elapsedRealtime()
             etaScale = 1.0 // the fresh route carries fresh traffic
+            // A first turn the car can no longer make (most often a parking lot's aisle a few
+            // meters ahead): the route shows at once, as Google's does, with that turn unsaid, and
+            // is asked again once the car is past it ([followLate]). Waiting for a better answer
+            // first left the car with no route for 12 s in a lot.
+            val lateCar = trustedNow()
+            val lateSpeed = lastTrustedSpeedMps
+            val lateAhead = if (mode == TravelMode.DRIVE && lateCar != null) firstTurnAheadM(r, lateCar) else null
+            val late = turnOutOfReach(lateAhead, lateSpeed)
+            if (late) note("reroute: its first turn is ${lateAhead!!.toInt()} m ahead at ${lateSpeed.toInt()} m/s, shown unsaid, asking again past it")
             _state.update {
                 it.copy(
                     route = r,
-                    nav = NavState(
+                    nav = lateQuiet(NavState(
                         distanceToNextManeuver = r.maneuvers.firstOrNull()?.distanceMeters ?: 0.0,
                         remainingDistance = r.distanceMeters,
                         remainingDuration = r.durationInTrafficSeconds ?: r.durationSeconds,
-                    ),
+                    ), r, late),
                     maneuverText = r.maneuvers.firstOrNull()?.instruction.orEmpty(),
                     remainingDistance = r.distanceMeters,
                     remainingDuration = r.durationInTrafficSeconds ?: r.durationSeconds,
@@ -1703,6 +1672,104 @@ class NavSession @Inject constructor(
                 )
             }
             openQuietStart(r)
+            if (late) followLate(r, lateAhead!!, lateSpeed, gen, dest, remainingStops, course)
+        }
+    }
+
+    /** One reroute fetch from [from] to [dest] through [stops]: the drivable route that reaches
+     *  [dest], or null. Unstructured, so a deadline can abandon a blocking read ([reroute]). */
+    private fun askReroute(
+        from: LatLng, dest: LatLng, stops: List<NavStop>, urgent: Boolean, heading: Double?, budgetMs: Long,
+        verdict: app.vela.core.data.TurnRoundVerdict, nameWithinMs: () -> Long,
+    ) = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
+        runCatching {
+            dataSource.directions(
+                from, dest, mode, stops.map { it.location },
+                avoidTolls = RoutingPrefs.avoidTolls,
+                avoidHighways = RoutingPrefs.avoidHighways,
+                avoidFerries = RoutingPrefs.avoidFerries,
+                urgent = urgent,
+                // Pin the departure to where the car is pointing, so the answer is "given
+                // that you are going this way, what now" instead of "turn around".
+                departBearingDeg = heading,
+                // The fetch's own share of the deadline (issue #557): the open router, Google
+                // and the downloaded region each get a slice instead of the first eating it all.
+                budgetMs = budgetMs,
+                behind = trackTo(from, heading),
+                turnRound = verdict,
+            )
+        }
+            .getOrNull()?.let { routes ->
+                driveable(routes, from, dest, nameWithinMs = nameWithinMs().coerceAtLeast(0L), departBearingDeg = heading)
+            }?.takeIf { it.reaches(dest) }
+    }
+
+    /** Whether [car], going [heading], is on [route] past its step [k], within [TOOK_TURN_M] of
+     *  the line and within [TOOK_TURN_DEG] of its direction there. The engine's own step count is
+     *  no help: a car that drove straight past the turn is inside the off-route corridor for a few
+     *  seconds and the engine has counted the turn passed. */
+    private fun tookFirstTurn(route: Route, k: Int, car: LatLng, heading: Double?): Boolean {
+        val line = route.polyline
+        if (k < 0 || heading == null || line.size < 2) return false
+        val cum = RouteProjection.cumulative(line)
+        val (along, perp) = NavEngine.projectAlong(line, cum, car, 0.0, cum.last())
+        if (perp > TOOK_TURN_M) return false
+        var turnAt = 0.0
+        for (i in 0 until k) turnAt += route.maneuvers[i].distanceMeters
+        if (along < turnAt + TOOK_TURN_PAST_M) return false
+        val a = RouteProjection.pointAt(line, cum, along)
+        val b = RouteProjection.pointAt(line, cum, (along + 10.0).coerceAtMost(cum.last()))
+        return kotlin.math.abs(RouteCorners.signedDelta(RouteCorners.bearing(a, b), heading)) <= TOOK_TURN_DEG
+    }
+
+    /** [nav] for [route] with its first turn ([firstTurnIndex]) taken as said when [late]: the
+     *  car is on it or past it, and a line for it would come after the turn. */
+    private fun lateQuiet(nav: NavState, route: Route, late: Boolean): NavState {
+        if (!late) return nav
+        val k = firstTurnIndex(route).takeIf { it >= 0 } ?: return nav
+        return nav.copy(chainedStep = k, chainedBands = setOf(0, 1, NavEngine.TURN_NOW_SLOT, NavEngine.TURN_NOW_SAID_SLOT))
+    }
+
+    /**
+     * The route [adopted] by a reroute, whose first turn was [aheadM] ahead at [speedMps], too
+     * near to make: once the car is [LATE_TURN_PAST_M] past that turn, asked again from where it
+     * is, at most [LATE_TURN_ASKS] times, and the answer swapped in without a word. Stops when the
+     * car took the turn after all, when another route took over, or when an answer's first turn
+     * is in reach. Its own job, so a reroute the car needs meanwhile is never held up.
+     */
+    private fun followLate(adopted: Route, aheadM: Double, speedMps: Double, gen: Int, dest: LatLng, stops: List<NavStop>, course: Double?) {
+        lateJob?.cancel()
+        lateJob = scope.launch {
+            var cur = adopted; var ahead = aheadM; var speed = speedMps
+            repeat(LATE_TURN_ASKS) {
+                kotlinx.coroutines.delay(lateTurnWaitMs(ahead, speed))
+                if (gen != sessionGen) return@launch
+                if (_state.value.route !== cur) { note("reroute: another route took over before asking again past the first turn"); return@launch }
+                val k = firstTurnIndex(cur)
+                fun tookIt() = lastTrustedFix?.let { tookFirstTurn(cur, k, it, lastBearing) } == true
+                if (tookIt()) { note("reroute: the car made the first turn after all, not asking again"); return@launch }
+                val from = lastTrustedFix?.takeIf { SystemClock.elapsedRealtime() - lastTrustedFixMs <= TRUSTED_FIX_MAX_AGE_MS }
+                    ?: run { note("reroute: no fresh fix to ask again from"); return@launch }
+                val heading = lastBearing ?: course
+                val attempt = rerouteAttempt(0)
+                val started = SystemClock.elapsedRealtime()
+                val job = askReroute(from, dest, stops, attempt.urgent, heading, attempt.budgetMs, app.vela.core.data.TurnRoundVerdict()) {
+                    attempt.timeoutMs - (SystemClock.elapsedRealtime() - started) - REROUTE_NAME_SLACK_MS
+                }
+                val got = kotlinx.coroutines.withTimeoutOrNull(attempt.timeoutMs) { job.await() }
+                    ?: run { job.cancel(); note("reroute: asked again past the first turn, no answer, keeping the route"); return@launch }
+                if (gen != sessionGen || _state.value.route !== cur || tookIt()) return@launch
+                val car = lastTrustedFix ?: return@launch
+                val nextAhead = firstTurnAheadM(got, car)
+                val stillLate = turnOutOfReach(nextAhead, lastTrustedSpeedMps)
+                adoptRecheck(got, got.durationInTrafficSeconds ?: got.durationSeconds, stops)
+                if (stillLate) _state.update { it.copy(nav = lateQuiet(it.nav, got, true)) }
+                lastSwapReason = "reroute"
+                lastRerouteAdoptMs = SystemClock.elapsedRealtime()
+                note("reroute: asked again past its first turn, route swapped (${got.source.name.lowercase()}, first turn ${nextAhead?.toInt()} m ahead)")
+                if (!stillLate || nextAhead == null) return@launch
+                cur = got; ahead = nextAhead; speed = lastTrustedSpeedMps
+            }
         }
     }
 
@@ -1820,6 +1887,13 @@ class NavSession @Inject constructor(
             return null
         }
 
+        /** The index of [route]'s first step of [PLACED_STEPS] after its departure, -1 for none:
+         *  the step [firstTurnAheadM] measures to. */
+        fun firstTurnIndex(route: Route): Int {
+            val ms = route.maneuvers
+            return ms.indices.firstOrNull { it > 0 && ms[it].type in PLACED_STEPS } ?: -1
+        }
+
         /** True when a fresh reroute's first turn is too close for a driving car to make: under
          *  [REACH_S] seconds away at its speed, and never under [REACH_MIN_M]. The first line is
          *  said after "Rerouting", a second or more after the route lands. */
@@ -1832,8 +1906,15 @@ class NavSession @Inject constructor(
         const val REACH_S = 5.0
         const val REACH_MIN_M = 25.0
         const val LATE_TURN_PAST_M = 10.0
-        /** At most this many more asks for one reroute, each leaving this much of its deadline. */
+        /** The car took a reroute's first turn when it is this near the line past it... */
+        const val TOOK_TURN_M = 15.0
+        /** ...at least this far past it... */
+        const val TOOK_TURN_PAST_M = 5.0
+        /** ...and going this near the line's way. */
+        const val TOOK_TURN_DEG = 45.0
+        /** At most this many more asks past a reroute's first turn ([followLate]). */
         const val LATE_TURN_ASKS = 2
+        /** A turn-round ask again leaves at least this much of the reroute's deadline after its wait. */
         const val LATE_TURN_MIN_LEFT_MS = 1_500L
 
         /** Whether [car] is on [line] near its start: a route a recheck brings back has to begin
