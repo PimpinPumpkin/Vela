@@ -4932,6 +4932,9 @@ class MapViewModel @Inject constructor(
      *  keep the place selected (so back peels one layer at a time). */
     fun clearRoute() {
         _state.update { it.copy(openSavedRouteId = null) }
+        // Backing out of a GPX track's trip unloads the track: a later bike trip to the same place
+        // is routed as usual, and the track is no longer drawn.
+        app.vela.core.data.TrackRide.clear()
         // Backing out of a link's trip while its places load stops the lookups too.
         linkTripJob?.cancel()
         clearLinkTrip()
@@ -6671,9 +6674,10 @@ class MapViewModel @Inject constructor(
                 }.getOrNull()
             }
             if (text == null || !app.vela.core.data.GpxTrack.looksLikeGpx(text)) { flashStatus(appContext.getString(R.string.mapvm_gpx_unreadable)); return@launch }
-            val (name, line) = app.vela.core.data.GpxTrack.parse(text)
+            // Parsed off the main thread: a long track is megabytes of XML.
+            val (name, line) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { app.vela.core.data.GpxTrack.parse(text) }
             val label = name ?: appContext.getString(R.string.mapvm_gpx_track)
-            val t = app.vela.core.data.TrackRide.start(label, line)
+            val t = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { app.vela.core.data.TrackRide.start(label, line) }
             if (t == null) { flashStatus(appContext.getString(R.string.mapvm_gpx_unreadable)); return@launch }
             flashStatus(appContext.getString(R.string.mapvm_gpx_matching, label), 6000L)
             // The trip runs from the track's start to its end, and Start begins it on the track

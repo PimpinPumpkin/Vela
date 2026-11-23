@@ -1504,15 +1504,21 @@ LEAVE_FIXES            3   fixes in a row off the line before the route is left 
 REJOIN_FIXES           2   fixes in a row on the line before a left route is followed again
 ```
 
-- A GPX file reaches Vela by a VIEW or SEND intent (`application/gpx+xml`, `application/gpx`,
-  `application/octet-stream`; content and file URIs). `MainActivity.gpxUri` checks the resolved
-  type, so shared text still goes to the link parser. A file over 20 MB (`GPX_MAX_BYTES`) is not
-  read. `GpxTrack.parse` takes the `trkpt` points, or the `rtept` points when there is no track.
+- A GPX file reaches Vela by a VIEW or SEND intent typed `application/gpx+xml` or
+  `application/gpx` (content and file URIs), or a VIEW typed `application/octet-stream` whose
+  content URI path ends in `.gpx`: file managers often label a `.gpx` that way, and the path
+  keeps Vela off the chooser for every other binary file. `MainActivity.gpxUri` checks the
+  resolved type, so shared text still goes to the link parser. A file over 20 MB
+  (`GPX_MAX_BYTES`) is not read. The file is read on the IO thread and parsed off the main
+  thread. `GpxTrack.parse` takes the `trkpt` points, or the `rtept` points when there is no
+  track.
   `MapViewModel.openGpxFile` starts `TrackRide` and opens a bicycle trip from the track's first
   point ("Start of <name>") to its last point ("End of <name>"). Start begins the drive on the
   track from wherever the phone is: `startNav` skips its plan-from-here step (`START_FROM_ME_M`)
   for a track route.
-- `TrackRide` lives in the process and is not saved. It holds one track at a time.
+- `TrackRide` lives in the process and is not saved. It holds one track at a time, until the
+  drive ends (`NavController.stopNav`) or the trip is closed without one (`clearRoute`):
+  `TrackRide.clear` then unloads it, so a later bike trip to the same place is routed as usual.
 - On the first route request the track is matched piece by piece. Each piece goes to
   `ValhallaRouter.match` with `costing: bicycle` and `ignore_oneways` (the rider's own line rides
   a one-way street either way; obeying it, the matcher loops around the block and the match is
@@ -1593,7 +1599,7 @@ REJOIN_FIXES           2   fixes in a row on the line before a left route is fol
 - `VelaMapView.applyData` draws a route that ends at the loaded track with the solid line, not
   the walk and bike dots, and draws the whole track under it (`applyGpxTrack`: purple on a white
   casing) with a green pin at its first point (`PoiIcons.START_PIN`; the end has the destination
-  pin) while a track is loaded, after arrival too.
+  pin) while a track is loaded, after arrival too, until the drive is ended.
 
 ### 4.4 Multi-stop
 

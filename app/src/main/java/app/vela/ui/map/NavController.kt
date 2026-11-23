@@ -652,6 +652,7 @@ internal class NavController(
         if (_state.value.replaying && replayOwnsNav) { stopReplay(); return }
         NavigationService.stop(appContext)
         navSession.stop()
+        app.vela.core.data.TrackRide.clear() // a GPX track's ride is over (see clearRoute)
         val recorded = tripStore.finishTrip() // close + persist the recorded trip (drops too-short ones)
         // Offer to name it while the drive is still in mind - a trip auto-named after the
         // host.destination is fine for one drive and useless once there are twenty of the same one.

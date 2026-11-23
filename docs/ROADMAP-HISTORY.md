@@ -30,7 +30,7 @@ says so.
   spliced in only where the bike match leaves it, and out-and-backs, crossing jogs and turns the
   road does not make dropped. The voice says "Go to the start of the route", "Route started",
   "Left the route" and "Following the route", and the prompts come at a cyclist's distances.
-  The 17 non-English phrasings have not been read by a native speaker.
+  The 18 non-English phrasings have not been read by a native speaker.
 
 ### October 2026
 

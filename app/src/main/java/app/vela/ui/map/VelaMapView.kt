@@ -10394,8 +10394,8 @@ private fun routeGradient(
 
 // The loaded GPX track (TrackRide), drawn whole under the route: purple on a white casing, which
 // reads in sunlight where the walk/bike dots do not, with a green start pin at its first point (the
-// trip's end has the destination pin). Shown while a track is loaded (until another track replaces
-// it or the app closes), so the ride can be looked over before, during and after.
+// trip's end has the destination pin). Shown while a track is loaded (until the ride is ended or the
+// trip is closed), so the ride can be looked over before, during and after.
 private const val GPX_TRACK_SRC = "vela-gpx-track-src"
 private const val GPX_TRACK_CASING = "vela-gpx-track-casing"
 private const val GPX_TRACK_LAYER = "vela-gpx-track"

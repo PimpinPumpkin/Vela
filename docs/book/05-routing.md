@@ -418,7 +418,7 @@ than 15 m are one movement: a sidewalk jog across a road is dropped, and anythin
 as one turn. Turns are spoken like on any other route, in the directions language. A turn the road does not make, where a short way such as a bridge is drawn at an angle, is dropped.
 
 The route is drawn with the solid line, and the whole track stays drawn in purple, with a green pin at
-its start, while it is loaded, after arrival too, so it can be looked over at any time. Away from the track Vela does
+its start, from opening the file until the ride is ended or the trip is closed, after arrival too. Away from the track Vela does
 not reroute and does not look for a faster route: there is no chime and no "Rerouting". The
 voice says where you stand. Start on the track and it says "Route started" with the first
 step; start away from it and it says "Go to the start of the route", then "Route started" with the
