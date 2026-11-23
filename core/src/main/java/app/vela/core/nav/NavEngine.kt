@@ -77,6 +77,10 @@ object NavEngine {
     const val HEADING_MIN_MPS = 5.0
     /** How far ahead or behind a turn the route makes still counts as the way to go for the heading term. */
     private const val HEADING_NEAR_M = 25.0
+    /** Within this of the road behind the car counts as still going its way ([update], straight on
+     *  where the route turns). A turn from a stop with the fix lagging had swung 17 degrees one fix
+     *  past the corner; a car going straight holds its course within a few. */
+    private const val STRAIGHT_ON_DEG = 12.0
     /** A fix the phone rates worse than this says nothing about the course (NavSession). */
     const val HEADING_MAX_ACC_M = 30.0
 
@@ -392,8 +396,17 @@ object NavEngine {
         val headingOff = moving && (speedMps ?: 99.0) >= headingMinMps && bearingDeg != null &&
             against(traveled) == true && against(minOf(total, traveled + HEADING_NEAR_M)) != false &&
             against(maxOf(0.0, traveled - HEADING_NEAR_M)) != false
+        // STRAIGHT ON WHERE THE ROUTE TURNS: past the corner the fix projects onto the corner
+        // itself, the road behind it still runs the car's way, so [headingOff] never fires and the
+        // car had to get 40 m off and three fixes on (7 s at 11 m/s on a mock drive past a Davis
+        // corner) before anything changed. Going the way of the road behind and against the road
+        // ahead, a quarter of the corridor off, is that case.
+        val straightPast = moving && (speedMps ?: 99.0) >= headingMinMps && bearingDeg != null &&
+            routeBearingAt(route.polyline, cum, maxOf(0.0, traveled - HEADING_NEAR_M))?.let { rb ->
+                kotlin.math.abs(((bearingDeg!! - rb + 540.0) % 360.0) - 180.0) <= STRAIGHT_ON_DEG
+            } == true && against(minOf(total, traveled + HEADING_NEAR_M)) == true
         val offHits = when {
-            offDist <= offRouteM && !headingOff -> 0
+            offDist <= offRouteM && !headingOff && !(straightPast && offDist > offRouteM * 0.25) -> 0
             !moving && offDist <= farOffM -> state.offRouteHits
             // Moving AND unambiguously far: no jitter reaches the far distance at speed, so escalate -
             // the reroute fires after ~2 fixes instead of a full debounce (user 2026-07-15,
@@ -406,6 +419,7 @@ object NavEngine {
             // back-on-course check in NavSession discards the rare false one (real drive
             // 2026-09-07: "kept going on the correct route for too long").
             moving && headingOff && offDist > offRouteM * 0.25 -> state.offRouteHits + 2
+            moving && straightPast && offDist > offRouteM * 0.25 -> state.offRouteHits + 2
             else -> state.offRouteHits + 1
         }
         val offRoute = offHits >= OFF_ROUTE_HITS

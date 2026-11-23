@@ -1996,7 +1996,15 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   light between tall buildings was read crawling backward along its own route at 2.7 to
   3.9 m/s for three fixes, on the line, and was rerouted three times in 50 s.
   A course within 60 degrees of the route's bearing `HEADING_NEAR_M` (25 m) ahead or behind is
-  not against it. Mid-turn the course has swung while the fix still projects before the corner,
+  not against it.
+- Straight on where the route turns: a moving fix (from `HEADING_MIN_MPS`) a quarter-corridor or
+  more off the line, whose course is within `STRAIGHT_ON_DEG` (12) of the route's bearing
+  `HEADING_NEAR_M` behind and against its bearing `HEADING_NEAR_M` ahead, is two hits. Past the
+  corner the fix projects onto the corner, where the road behind still runs the car's way, so
+  the heading rule above never fired and the car had to get 40 m off over three fixes (7 s at
+  11 m/s past a Davis corner on a mock drive) first; now the reroute comes about two fixes after
+  the corner. A right turn from a stop with the fix lagging had swung 17 degrees one fix past the
+  corner, outside the 12. `NavEngineWrongTurnTest`, `NavEngineTurnFromStopTest`. Mid-turn the course has swung while the fix still projects before the corner,
   or not swung enough once it projects past it, and a right turn from a stop, taken as told,
   rerouted 3 s later (real drive 2026-11-17). A wrong turn points away from the road on both
   sides of the corner and still counts.
@@ -2450,8 +2458,12 @@ a recorded trip keeps each synthesized fix as an `N` line of kind `d`, never as 
 
 While `NavSession.paused` is set, `onLocation` records the fix and returns before the engine.
 Nothing downstream runs: no off-route detection, reroute, arrival, stop cue, voice, recheck or
-offer. The arrival clock slides on a 30-second tick. The map draws a paused drive the way it
-draws a drive with no route (`navMode` is off while `navPaused`): the free-drive follow moves the
+offer. Pausing cancels the reroute, the late-turn follow-up and the recheck in flight, and a
+reroute that lands while paused is dropped: one asked just before the tap landed a route planned
+from where the car was, the car was at once "back on" it, and the drive resumed itself and
+spoke. The arrival clock slides on a 30-second tick. The map draws a paused drive the way it
+draws a drive with no route (`navMode` is off while `navPaused`, and while the engine has the
+drive off its route until a new route lands, `navFreeDrawn`): the free-drive follow moves the
 dot and the camera (4.7), heading-up from the first frame at the drive's last speed, since a
 paused drive is usually off its route and the route-held arrow would be wrong. The drive's
 bearing, tilt and padding stay through the pause, which keeps the map from turning north-up and
@@ -2461,8 +2473,10 @@ turned the camera 3 degrees off the course for under 2 s; paused frames ran at 4
 59 navigating. Resume reroutes once when the fix is outside the corridor, otherwise speaks
 the step ahead with its distance in its spoken wording (`resumeLine`: "In half a mile, make a
 U-turn"), bare inside `RESUME_BARE_M` (60 m); auto-resume says the same. Auto-resume is armed by the stop: a stationary or off-route fix sets
-`autoResumeArmed`, and then `AUTO_RESUME_HITS` (3) consecutive moving, on-route fixes resume.
-Without the arming step a pause taken at speed would resume itself three fixes later.
+`autoResumeArmed`, and then `AUTO_RESUME_HITS` (3) consecutive moving, on-route fixes going
+within `AUTO_RESUME_DEG` (45) of the route's own way there (`routeWayAt`) resume, so driving across
+the route does not. Without the arming step a pause taken at speed would resume itself three
+fixes later. `PauseSessionTest`.
 
 ### 4.7 The puck and the camera
 

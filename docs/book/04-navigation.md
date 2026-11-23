@@ -248,6 +248,14 @@ Each fix changes a hit count:
   A course that matches the road up to 25 m ahead or behind is not against the route, so a turn
   the route makes does not count while the car is halfway round it. A wrong turn points away
   from the road on both sides of the corner and still counts.
+- Going straight on where the route turns: two hits once the car is a quarter of the corridor
+  off, still running within 12 degrees of the road behind it and against the road ahead. Past the
+  corner the fix projects onto the corner, where the road behind runs the car's way, so the rule
+  above never saw it and the car had to get 40 m off over three fixes first (7 s at city speed).
+  A turn taken late from a stop has already swung more than 12 degrees and does not count.
+- Off the route, until a new route lands, the map draws the car where it is, the way it does with
+  no route, and the camera keeps its angle; the arrow held to the route stayed at the corner while
+  the car drove on.
 - Stationary: the count holds, unless the fix is past the far distance. A red light cannot cause
   a reroute. Creeping out of a parking lot still can.
 
@@ -428,11 +436,14 @@ worse than never pausing:
 
 ```
 autoResumeArmed        // set by a fix that is stationary or off the route
-AUTO_RESUME_HITS = 3   // then this many fixes in a row that are moving and on the route
+AUTO_RESUME_HITS = 3   // then this many fixes in a row that are moving, on the route and going its way
 ```
 
 Without the arming step, a pause taken while still rolling along the route would resume three
-fixes later.
+fixes later. Going its way (within 45 degrees) keeps a drive across the route from counting.
+Pausing also cancels whatever route work is in flight, and nothing lands a new route while the
+drive is paused: a reroute asked just before the tap used to land a route planned from where the
+car was, which the car was at once "on", and the drive resumed itself and spoke.
 
 Pause is in the bottom bar, on the notification beside End, and on the Android Auto action
 strip. The phone is usually in a cradle when the driver decides to pull in.

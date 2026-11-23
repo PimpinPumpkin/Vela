@@ -290,6 +290,11 @@ off the list when it has been.
   real turn to show it never holds back a real one (the linear acceleration sensor's gravity
   estimate can soak up a long, steady turn).
 
+- A paused drive that stays paused (route work in flight canceled, auto-resume only going the
+  route's way), a drive off its route drawn where the car is, and straight-on-where-the-route-turns
+  counted as off route two fixes past the corner (SPEC 4.6, Pause, Progress and off route): session
+  and engine tests, and a mock drive past a corner on a Pixel 4a. Not yet seen on a drive.
+
 - A reroute whose first turn is too near to make shows at once and is swapped quietly once the
   car is past that turn (`followLate`; SPEC 4.6, Rerouting): `LateTurnSessionTest`, and a mock
   drive straight past a turn on a Pixel 4a (the route showed when the first answer landed and

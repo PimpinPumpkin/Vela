@@ -883,9 +883,9 @@ fun VelaMapView(
     // the heading beam is smoothed per frame, the way the puck is during nav. The caller drops it
     // to false on a user pan and raises it again on the locate tap.
     driveFollowing: Boolean = false,
-    /** A drive is on but paused: [navMode] is off and the bare map's follow draws it, from the
-     *  drive's camera as it was (SPEC 4.6, Pause). */
-    navPaused: Boolean = false,
+    /** A drive is on but paused, or off its route until a new one lands: [navMode] is off and the
+     *  bare map's follow draws it, from the drive's camera as it was (SPEC 4.6, Pause). */
+    navFreeDrawn: Boolean = false,
     onNavPanned: () -> Unit = {},
     ambientCoversView: Boolean = false, // viewport inside the ambient-Google fetch area → OSM POIs yield
     onUserPan: () -> Unit = {},
@@ -1169,7 +1169,7 @@ fun VelaMapView(
     val snapQueryMs = remember { doubleArrayOf(0.0) } // the last snap's query and pick, for the dotLog line
     val compassHeadingHolder = rememberUpdatedState(compassHeading) // device facing, for the beam
     val driveFollowingHolder = rememberUpdatedState(driveFollowing)
-    val navPausedHolder = rememberUpdatedState(navPaused)
+    val navFreeHolder = rememberUpdatedState(navFreeDrawn)
     val browseCam = remember { doubleArrayOf(Double.NaN, Double.NaN) } // eased free-drive camera [lat,lng]; NaN = re-seed
     // Where the follow ticker last drew the dot [lat,lng] (NaN = not yet), the offset it carries
     // across a hand-over between the fix and the eased camera [dlat,dlng], and which it was on.
@@ -2790,9 +2790,9 @@ fun VelaMapView(
             browseFlying[0] = false // whatever canceled the follow also canceled the flight (onCancel), but never leak
             return@LaunchedEffect
         }
-        // A paused drive hands over heading-up at the drive's speed. Started north-up, the map
+        // A drive drawn free (paused, or off its route) hands over heading-up at the drive's speed. Started north-up, the map
         // turned to north and back while the slow speed average caught up (SPEC 4.6, Pause).
-        if (navPausedHolder.value) {
+        if (navFreeHolder.value) {
             browseDrive[1] = 1.0
             browseDrive[0] = navPuck.speed; browseDrive[4] = navPuck.speed
             browseDrive[2] = mapRef?.cameraPosition?.bearing ?: Double.NaN
@@ -2962,8 +2962,8 @@ fun VelaMapView(
                     browseAtt[0] = (cp.bearing + db * kBrg + 360.0) % 360.0
                     browseAtt[1] = cp.tilt + (tiltGoal - cp.tilt) * k
                     val kLook = (1f - kotlin.math.exp(-dt / FREE_LOOKAHEAD_TAU_S)).toDouble()
-                    // Paused, the drive's camera padding still frames the road ahead.
-                    val lookGoal = if (navPausedHolder.value) 0.0 else (browseDrive[0] * 5.0).coerceAtMost(250.0)
+                    // Drawn free, the drive's camera padding still frames the road ahead.
+                    val lookGoal = if (navFreeHolder.value) 0.0 else (browseDrive[0] * 5.0).coerceAtMost(250.0)
                     browseDrive[3] += (lookGoal - browseDrive[3]) * kLook
                     val lr = Math.toRadians(crs)
                     lookLat = camLat + browseDrive[3] * kotlin.math.cos(lr) / 111_320.0
@@ -3267,7 +3267,7 @@ fun VelaMapView(
         }
     }
 
-    LaunchedEffect(navMode, routePolyline, navPaused) {
+    LaunchedEffect(navMode, routePolyline, navFreeDrawn) {
         if (!navMode) {
             // AUDIT FIX 7 (2026-07-15): only tear the camera down on an ACTUAL nav exit. This
             // effect is keyed on routePolyline too (so reroutes relaunch the puck ticker), which
@@ -3281,9 +3281,9 @@ fun VelaMapView(
             dropPuckOverlay()
             turnDeclutter.restore(styleRef) { applyOpenPlacesHidden(it) }
             if (!wasNavRef[0]) return@LaunchedEffect
-            // Paused, the drive's bearing, tilt and padding stay: snapping them flat spun the map
+            // Drawn free, the drive's bearing, tilt and padding stay: snapping them flat spun the map
             // to north-up and back. This runs when the drive ends (paused is cleared then).
-            if (navPaused) return@LaunchedEffect
+            if (navFreeDrawn) return@LaunchedEffect
             wasNavRef[0] = false
             navPuck.kalman.reset() // nav ended — don't carry a stale speed into the next trip
             navUserTilt[0] = Double.NaN // shove-set tilt is a per-drive override

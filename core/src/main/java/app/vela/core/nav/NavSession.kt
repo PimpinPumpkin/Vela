@@ -602,7 +602,7 @@ class NavSession @Inject constructor(
         if (s.paused) {
             // Whatever is driven during the hold was driven: the first fix after it is not a jump.
             synchronized(stopLock) { progressRoute = null }
-            maybeAutoResume(loc, route, speedMps, accuracyM)
+            maybeAutoResume(loc, route, speedMps, accuracyM, bearingDeg)
             return
         }
 
@@ -929,6 +929,15 @@ class NavSession @Inject constructor(
         if (!s.navigating || s.paused == on) return
         backOnRouteHits = 0
         autoResumeArmed = false
+        if (on) {
+            // Nothing in flight may change the route under a paused drive: a reroute asked just
+            // before the tap landed a route planned from where the car was, which the car was then
+            // "back on" at once, and the drive resumed itself and spoke.
+            if (rerouteJob?.isActive == true || lateJob?.isActive == true || recheckJob?.isActive == true) note("pause: dropped the route work in flight")
+            rerouteJob?.cancel()
+            lateJob?.cancel()
+            recheckJob?.cancel()
+        }
         _state.update { it.copy(paused = on) }
         note(if (on) "paused" else "resumed")
         if (on) return
@@ -946,10 +955,11 @@ class NavSession @Inject constructor(
     /**
      * Rolling away from the stop resumes by itself, because forgetting to un-pause is the obvious
      * way this feature bites: driving on with a frozen banner is worse than never having paused.
-     * It takes [AUTO_RESUME_HITS] consecutive fixes that are both moving and inside the route
-     * corridor, so creeping across a forecourt that happens to touch the route does not count.
+     * It takes [AUTO_RESUME_HITS] consecutive fixes that are moving, inside the route corridor and
+     * going the route's way (within [AUTO_RESUME_DEG]), so creeping across a forecourt that happens
+     * to touch the route, or driving across it, does not count.
      */
-    private fun maybeAutoResume(loc: LatLng, route: Route, speedMps: Double?, accuracyM: Double?) {
+    private fun maybeAutoResume(loc: LatLng, route: Route, speedMps: Double?, accuracyM: Double?, bearingDeg: Double?) {
         val movingFloor = when (mode) {
             TravelMode.WALK -> 0.6
             TravelMode.BICYCLE -> 1.0
@@ -961,7 +971,10 @@ class NavSession @Inject constructor(
         // happens, a pause holds no matter how long you keep driving down the same road.
         if (!moving || !onRoute) autoResumeArmed = true
         if (!autoResumeArmed) return
-        backOnRouteHits = if (moving && onRoute) backOnRouteHits + 1 else 0
+        val alongIt = onRoute && bearingDeg != null && routeWayAt(route, loc)?.let { way ->
+            kotlin.math.abs(RouteCorners.signedDelta(way, bearingDeg)) <= AUTO_RESUME_DEG
+        } == true
+        backOnRouteHits = if (moving && alongIt) backOnRouteHits + 1 else 0
         if (backOnRouteHits >= AUTO_RESUME_HITS) {
             backOnRouteHits = 0
             note("auto-resumed: moving and back on the route")
@@ -980,6 +993,18 @@ class NavSession @Inject constructor(
         val d = st.nav.distanceToNextManeuver
         val nav = app.vela.core.i18n.NavStringsRegistry.current()
         return if (d > RESUME_BARE_M) nav.inThen(nav.spokenDistance(d, lastImperial), line) else line
+    }
+
+    /** The route's direction where [loc] projects onto it (near the current progress), degrees. */
+    private fun routeWayAt(route: Route, loc: LatLng): Double? {
+        val path = route.polyline
+        if (path.size < 2) return null
+        val cum = RouteProjection.cumulative(path)
+        val along = NavEngine.projectNearAnchor(path, cum, loc, _state.value.nav.traveledM).first
+        val a = RouteProjection.pointAt(path, cum, along)
+        val b = RouteProjection.pointAt(path, cum, (along + 15.0).coerceAtMost(cum.last()))
+        if (a.distanceTo(b) < 1.0) return null
+        return RouteCorners.bearing(a, b)
     }
 
     /** How far [loc] sits off the route line, in meters, measured the way the engine measures it
@@ -1594,6 +1619,10 @@ class NavSession @Inject constructor(
                 openQuietStart(fromRoute)
                 return@launch
             }
+            if (_state.value.paused) {
+                note("reroute dropped: the drive is paused")
+                return@launch
+            }
             if (r == null) {
                 // FAILED (dead spot / OSRM 5xx / truncated result). The old code returned silently
                 // and rerouting was DEAD for the rest of the excursion: RerouteNeeded is
@@ -1758,7 +1787,7 @@ class NavSession @Inject constructor(
                 }
                 val got = kotlinx.coroutines.withTimeoutOrNull(attempt.timeoutMs) { job.await() }
                     ?: run { job.cancel(); note("reroute: asked again past the first turn, no answer, keeping the route"); return@launch }
-                if (gen != sessionGen || _state.value.route !== cur || tookIt()) return@launch
+                if (gen != sessionGen || _state.value.route !== cur || tookIt() || _state.value.paused) return@launch
                 val car = lastTrustedFix ?: return@launch
                 val nextAhead = firstTurnAheadM(got, car)
                 val stillLate = turnOutOfReach(nextAhead, lastTrustedSpeedMps)
@@ -1834,6 +1863,8 @@ class NavSession @Inject constructor(
         /** Consecutive moving, on-route fixes before a paused drive resumes itself. Three fixes is
          *  a few seconds of actually driving, not a crawl across a forecourt that clips the route. */
         const val AUTO_RESUME_HITS = 3
+        /** A paused drive resumes itself only going within this of the route's own way. */
+        const val AUTO_RESUME_DEG = 45.0
         const val RECHECK_INTERVAL_MS = 120_000L   // re-check traffic every ~2 min
         const val DEGRADED_RECHECK_INTERVAL_MS = 20_000L // fast heal cadence while the route is degraded
         const val NETWORK_BACK_MIN_GAP_MS = 10_000L // [onNetworkBack] at most this often
