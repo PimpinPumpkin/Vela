@@ -147,6 +147,36 @@ class GyroHeadingTest {
         assertEquals(90.0, g.heading, 2.0)
     }
 
+    /** The most the arrow trails a 90 degree right turn at 22.5 deg/s and 6 m/s whose line
+     *  bends [refLagS] after the car, with the push the turn makes known through a 0.2 s low-pass. */
+    private fun cornerLag(refLagS: Double): Pair<Double, Double> {
+        val g = GyroHeading()
+        val v = 6.0
+        var t = 0.0
+        var worst = 0.0
+        var push = 0.0
+        while (t < 9.0) {
+            val car = ((t - 2.0) * 22.5).coerceIn(0.0, 90.0)
+            val rate = if (t >= 2.0 && car < 90.0) 22.5 else 0.0
+            push += (v * Math.toRadians(rate) - push) * (1 - kotlin.math.exp(-dt / 0.2))
+            val ref = ((t - 2.0 - refLagS) * 22.5).coerceIn(0.0, 90.0)
+            // The corner enters the envelope 1.5 s before the line bends and leaves it 1 s after.
+            val hi = if (t < 2.0 + refLagS - 1.5) 0.0 else 90.0 - ref
+            val lo = if (t > 2.0 + refLagS + 5.0) 0.0 else -ref
+            val h = g.update(dt, rate, ref, v, lo, hi, GyroHeading.accelCapDps(push, v))
+            worst = maxOf(worst, car - h)
+            t += dt
+        }
+        return worst to g.heading
+    }
+
+    @Test fun `a line that bends a second after the car does not leave the arrow behind`() {
+        val (worst, end) = cornerLag(1.0)
+        // The rate's low-pass (RATE_TAU_S) costs about 3 of it at this rate.
+        assertTrue("the arrow trailed the car by $worst", worst < 6.0)
+        assertEquals(90.0, end, 2.0)
+    }
+
     @Test fun `it never strays far from the road`() {
         val g = GyroHeading()
         repeat(600) { g.update(dt, 120.0, 0.0, 10.0) }

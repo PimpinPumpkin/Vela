@@ -2552,7 +2552,13 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
   - The pull's time constant is `TAU_TURNING_S` (3 s) while the rate or the reference turns at
     `TURNING_DPS` (6 degrees a second) or more, `TAU_STRAIGHT_S` (1 s) otherwise, and
     `TAU_STOPPED_S` (0.4 s) under `MIN_SPEED_MPS` (1.5 m/s) or with no reading, when the
-    gyroscope is ignored (a phone picked up at a light turns too).
+    gyroscope is ignored (a phone picked up at a light turns too). There is no pull while the
+    rate is `TURNING_DPS` or more toward a side the envelope opens `OPEN_DEG` (15) or more, with
+    the acceleration cap live: the line's direction at the puck turns about a second after the
+    car at a corner, and the pull left the arrow trailing the car by 15 to 25 degrees through
+    the turn and swinging the rest past the corner. Unit test, a 90 degree turn at 22.5 degrees
+    a second and 6 m/s with the line bending a second late: 16.6 degrees behind with the pull,
+    under 6 without.
   - Route envelope (`gyroEnvelope`): the heading stays between the least and greatest direction
     the route takes from `GYRO_ENV_BACK_S` (1 s, at least 10 m) behind the puck to
     `GYRO_ENV_AHEAD_S` (1.5 s, at least 20 m) ahead, in 8 m chords every 4 m, plus

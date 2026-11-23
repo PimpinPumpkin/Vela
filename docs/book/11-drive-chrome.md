@@ -240,8 +240,10 @@ By default the arrow is turned by the rate the phone's gyroscope measures (Setti
 > "Turn the arrow with the gyroscope"; off goes back to the line ahead). The line ahead turns
 where its corner is drawn, which can be a second before or after the car turns; the gyroscope
 turns when the car does. The road's direction at the arrow pulls the heading back, slowly in a
-turn and quickly on a straight, which also cancels the gyroscope's drift. Stopped, the gyroscope
-is ignored, since a phone picked up at a light turns too.
+turn and quickly on a straight, which also cancels the gyroscope's drift. Turning into a corner
+there is no pull: the road's direction at the arrow turns about a second after the car, and
+pulling toward it left the arrow behind the car through the turn. Stopped, the gyroscope is
+ignored, since a phone picked up at a light turns too.
 
 A phone in a wobbly mount twists without the car turning, so two things hold the arrow to the
 road. It can only point where the route goes from a second behind it to a second and a half

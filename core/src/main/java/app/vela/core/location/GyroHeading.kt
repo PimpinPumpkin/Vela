@@ -14,7 +14,8 @@ import kotlin.math.exp
  * A complementary filter: the gyroscope carries the heading over short spans and the reference
  * pulls it back over longer ones, which also cancels the gyroscope's slow drift. While the car is
  * turning ([TURNING_DPS]) the reference's pull is weak ([TAU_TURNING_S]), since the road ahead
- * bends where the line's corner is, not where the car turns; on a straight it is quick
+ * bends where the line's corner is, not where the car turns, and turning toward a corner the
+ * envelope opens to ([OPEN_DEG]) with the acceleration known there is none; on a straight it is quick
  * ([TAU_STRAIGHT_S]). Stopped, a phone picked up at a light turns too, so the gyroscope is ignored
  * and the heading follows the reference. It never strays more than [MAX_OFF_DEG] from it.
  *
@@ -66,13 +67,20 @@ class GyroHeading {
         val refRate = if (lastReference.isNaN()) 0.0 else delta(lastReference, referenceDeg) / dt
         lastReference = referenceDeg
         var h = heading + rate * dt
+        // Turning toward the side the envelope opens, with the acceleration known (so a wobble is
+        // already clipped), the gyroscope alone carries the heading. The road's bearing at the
+        // arrow turns about a second after the car does, and pulling toward it left the arrow 15
+        // to 25 degrees behind the car, to swing the rest once past the corner.
+        val intoCorner = moving && capDps != null &&
+            ((rate >= TURNING_DPS && envHiDeg >= OPEN_DEG) || (rate <= -TURNING_DPS && envLoDeg <= -OPEN_DEG))
         val tau = when {
             !moving || yawRateDps == null -> TAU_STOPPED_S
+            intoCorner -> Double.POSITIVE_INFINITY
             abs(rate) >= TURNING_DPS || abs(refRate) >= TURNING_DPS -> TAU_TURNING_S
             else -> TAU_STRAIGHT_S
         }
         val off = delta(h, referenceDeg)
-        h += off * (1.0 - exp(-dt / tau))
+        if (tau.isFinite()) h += off * (1.0 - exp(-dt / tau))
         val rel = delta(referenceDeg, h)
         val clamped = rel.coerceIn(lowEdge(envLoDeg), highEdge(envHiDeg))
         if (clamped != rel) h = referenceDeg + clamped
@@ -96,6 +104,8 @@ class GyroHeading {
         const val TAU_STRAIGHT_S = 1.0
         const val TAU_STOPPED_S = 0.4
         const val MAX_OFF_DEG = 75.0
+        /** An envelope edge this far from the reference is a corner, not a straight's wiggle. */
+        const val OPEN_DEG = 15.0
         /** Room past the route's envelope, for a road's own wiggle between samples. */
         const val ENV_SLACK_DEG = 2.5
         /** The yaw rate's low-pass: a car's turn builds over a second or more, a mount's wobble

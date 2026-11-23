@@ -285,10 +285,12 @@ off the list when it has been.
 
 - The gyroscope-turned arrow (`GyroHeading`, on by default; SPEC 4.7): turn direction, return to
   the road, and holding against an injected shake and a fake turn were checked on the API 26
-  emulator. Not yet on a drive: flip it partway through a drive with the nav trace on and compare
-  corners both ways (`gyro_dps` says which mode drew each frame). The acceleration cap needs a
-  real turn to show it never holds back a real one (the linear acceleration sensor's gravity
-  estimate can soak up a long, steady turn).
+  emulator. A drive's nav trace showed the arrow trailing the gyroscope by 15 to 25 degrees
+  through four corners and swinging the rest past them; the reference pull is now off while
+  turning into a corner, and the same trace replayed through the filter without it trails by 3
+  to 11. Not yet on a drive with the change. The acceleration cap needs a real turn to show it
+  never holds back a real one (the linear acceleration sensor's gravity estimate can soak up a
+  long, steady turn).
 
 - A paused drive that stays paused (route work in flight canceled, auto-resume only going the
   route's way), the "Continue on" opener for a start while already rolling, a drive off its route
