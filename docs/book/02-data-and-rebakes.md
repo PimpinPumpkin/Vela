@@ -131,7 +131,8 @@ and a last job publishes the manifest. The rules that keep a bake from failing:
 - A rebake overwrites the same asset names. A new generation is forked only when a file format
   changes.
 - Every OSM extract comes through `scripts/fetch-pbf.sh`, which survives a mirror that
-  redirects in a circle and cuts a region out of a bigger extract (below).
+  redirects in a circle or to a path that is not there, reads the region's dated files from the
+  mirror's listings when it must, and cuts a region out of a bigger extract (below).
 - Tools are pinned: planetiler 0.10.2 for the basemap; tippecanoe 2.79.0, go-pmtiles 1.31.2 and
   DuckDB 1.5.4 for places.
 - The basemap bake does not transliterate names: a street with no English name keeps its local

@@ -75,7 +75,10 @@ seen=" "
 for _ in 1 2 3 4 5 6 7 8; do
   case "$seen" in *" $u "*) break ;; esac
   seen="$seen$u "
-  read -r code loc < <(curl -s -o /dev/null -r 0-0 --max-redirs 0 -w '%{http_code} %{redirect_url}\n' "$u" || echo "000 ")
+  # curl prints "000 " through -w when it cannot connect, and exits non-zero; || true keeps set -e
+  # from ending the walk there (an `|| echo` after it wrote into a closed pipe: "Broken pipe").
+  out=$(curl -s -o /dev/null -r 0-0 --max-redirs 0 -w '%{http_code} %{redirect_url}' "$u" || true)
+  code="${out%% *}"; loc="${out#* }"; [ "$loc" = "$out" ] && loc=""; [ -n "$code" ] || code=000
   case "$code" in
     200|206)
       echo "fetch-pbf: downloading $u" >&2
@@ -88,20 +91,27 @@ for _ in 1 2 3 4 5 6 7 8; do
     *) break ;;
   esac
 done
-# The redirects can also run in a circle (seen from GitHub's runners: -latest -> -latest/ -> -latest).
-# Geofabrik keeps the dated files beside the -latest name, so read the folder listing and take the
-# newest one for this region (names are <region>-YYMMDD.osm.pbf, so the largest sorts last).
+# The redirects can also run in a circle (seen from GitHub's runners: -latest -> -latest/ -> -latest),
+# or point at a path that is not there (2026-11-20 to 23, while Geofabrik moved its files). So read
+# the region's dated files from the listings and take the newest, then the one before it (a file
+# just announced can 404 for a while). Since 2026-11-19 they sit in a folder of their own,
+# <parent>/<region>/<region>-YYMMDD.osm.pbf, linked by full URLs; before, they sat beside the
+# -latest name, linked by name. Both listings are read. YYMMDD sorts by date.
 case "$URL" in
   *-latest.osm.pbf)
     dir="${URL%/*}"
     base="${URL##*/}"; base="${base%-latest.osm.pbf}"
-    dated=$(curl -fsSL --retry 3 --max-redirs 3 "$dir/" 2>/dev/null \
-      | grep -oE "href=\"${base}-[0-9]{6}\.osm\.pbf\"" | grep -oE "${base}-[0-9]{6}\.osm\.pbf" | sort -u | tail -1 || true)
-    if [ -n "$dated" ]; then
-      echo "fetch-pbf: downloading the newest dated extract $dir/$dated" >&2
-      curl -fsS --retry 3 --retry-delay 5 --max-redirs 0 -o "$OUT" "$dir/$dated"
-      exit 0
-    fi ;;
+    host="${URL%%://*}://$(printf '%s' "${URL#*://}" | cut -d/ -f1)"
+    for folder in "$dir/$base" "$dir"; do
+      hrefs=$(curl -fsSL --retry 2 --max-redirs 3 "$folder/" 2>/dev/null \
+        | grep -oE "href=\"[^\"]*${base}-[0-9]{6}\.osm\.pbf\"" | sed -E 's/^href="//; s/"$//' || true)
+      [ -n "$hrefs" ] || continue
+      for h in $(printf '%s\n' $hrefs | awk -F/ '{print $NF" "$0}' | sort -u -r | head -2 | cut -d' ' -f2); do
+        case "$h" in http*) f="$h" ;; /*) f="$host$h" ;; *) f="$folder/$h" ;; esac
+        echo "fetch-pbf: downloading the dated extract $f" >&2
+        if curl -fsS --retry 3 --retry-delay 5 --max-redirs 0 -o "$OUT" "$f"; then exit 0; fi
+      done
+    done ;;
 esac
 echo "fetch-pbf: could not download $URL (last try $u, HTTP ${code:-none})" >&2
 exit 1

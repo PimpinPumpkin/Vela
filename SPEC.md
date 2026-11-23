@@ -3610,7 +3610,9 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles (
   point on a tile edge decodes once per tile it touches.
 - OSM business nodes: the Geofabrik extract through `osmium tags-filter` and geojsonseq (strip
   the 0x1e separator before jq), same macros. Confidence 0.8; the id is the node id. Ways and
-  relations stay out: a building centroid is the same guess as a parcel point.
+  relations stay out: a building centroid is the same guess as a parcel point. An extract that
+  will not download fails the region, which keeps its last archive and is retried by the
+  conductor, rather than publishing it without the OSM businesses.
 - A row is added only where no row of the same brand or the same two leading name words sits
   within about 150 m. A dropped duplicate still gives its hours, phone and website.
 
@@ -5788,8 +5790,13 @@ The record keeps the lost regions as `lost`.
 
 Every bake gets its extract through `scripts/fetch-pbf.sh`: a plain download, then the
 redirects walked one hop at a time with a trailing slash dropped from a file name, then the
-newest `<region>-YYMMDD.osm.pbf` in the folder listing. This survives a mirror that redirects
-`-latest.osm.pbf` in a circle. A `cut:` row's parent is downloaded the same way and the region
+region's dated files from the listings, newest first and then the one before it. Geofabrik keeps
+them in a folder of their own, `<parent>/<region>/<region>-YYMMDD.osm.pbf`, linked by full URLs
+(since 2026-11-19), and before that beside the `-latest` name, linked by name; both listings are
+read. This survives a mirror that redirects `-latest.osm.pbf` in a circle or to a path that is not
+there. A runner the mirror refuses outright (some GitHub runners on AWS addresses) fails the job,
+and the conductor's retry usually lands elsewhere; the script does not retry a refused connection
+from the same address. A `cut:` row's parent is downloaded the same way and the region
 cut out of it (7.2).
 
 ### 7.4 Download discipline

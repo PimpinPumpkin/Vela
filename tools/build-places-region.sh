@@ -86,7 +86,11 @@ if [ -n "${OSM_PBF:-}" ] && command -v osmium >/dev/null 2>&1 && command -v jq >
   OSM_SRC="$OSM_PBF"
   if [ "${OSM_PBF#http}" != "$OSM_PBF" ] || [ "${OSM_PBF#cut:}" != "$OSM_PBF" ]; then
     echo "osm: fetching $OSM_PBF"
-    if bash "$ROOT/scripts/fetch-pbf.sh" "$OSM_PBF" "$WORK/region.osm.pbf"; then OSM_SRC="$WORK/region.osm.pbf"; else OSM_SRC=""; echo "osm: download failed, baking without it"; fi
+    # A failed download fails the region rather than baking it without OSM's businesses: the
+    # release keeps the region's last archive, and the conductor retries it (on 2026-11-20, 34 of 64
+    # regions were published without them while Geofabrik moved its files).
+    if bash "$ROOT/scripts/fetch-pbf.sh" "$OSM_PBF" "$WORK/region.osm.pbf"; then OSM_SRC="$WORK/region.osm.pbf"
+    else echo "::error::osm: could not download $OSM_PBF; the region keeps its last archive and is retried" >&2; exit 1; fi
   fi
   if [ -n "$OSM_SRC" ]; then
     # Named NODES that are businesses. Ways/relations are the building, whose centroid is the same
