@@ -4055,7 +4055,10 @@ when the feature ids match. Two requests at most.
 - Search along a route (`MapViewModel.searchAlongWindows`): a route up to
   `RouteCorridor.ONE_WINDOW_MAX_M` (25 km) is one `search` at its middle vertex. A longer route gets
   `searchCenters`: a window every `WINDOW_SPACING_M` (20 km) from the start, at most `MAX_WINDOWS`
-  (6), the last never past the end. Each window is one `searchOnce`, run in parallel and merged by
+  (10), the last never past the end: about 200 km ahead. The `alongWindows` dial (adb, then
+  calibration, 1 to 10) lowers the count without a release. The windows go `WINDOWS_AT_ONCE` (3)
+  at a time, since ten in one burst does not look like a browser. Google already has the route
+  from the directions request, so the windows add no place it did not have. Each window is one `searchOnce`, run in parallel and merged by
   place id. One failing window thins the list. All failing is a failed search.
 - A search along a route keeps a typed name to its own places (`QueryNameFilter`): the places whose
   name holds every naming word of the query, where a word may be the start of a name word. A
@@ -4087,7 +4090,9 @@ when the feature ids match. Two requests at most.
   becomes the road distance from the car. Rank: detour in whole minutes, then rating (higher
   first), then distance. A place the router cannot reach, and any place past the first 30, follow
   the priced ones in their old order and keep their old distance. The search waits
-  `DETOUR_WAIT_MS` (3 s); no answer keeps the travel-order list. The row shows "On the way" under
+  `DETOUR_WAIT_MS` (3 s) for an unstructured fetch, so the wait ends on time: the request is a
+  blocking read that a timeout cannot interrupt, with one retry. No answer keeps the travel-order
+  list. The row shows "On the way" under
   30 s and `+N min` above. Free-flow times, no traffic.
 - One quick-category list (`ui/QuickCategories`) serves the map chips, search along route,
   in-nav search and the car's lists. Every query must be one the offline store expands.

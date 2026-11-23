@@ -69,18 +69,22 @@ object RouteCorridor {
      *  25 km, so neighbors overlap and a place on the seam is not lost. */
     const val WINDOW_SPACING_M = 20_000.0
 
-    /** At most this many windows, so a search ahead reaches about 120 km. */
-    const val MAX_WINDOWS = 6
+    /** At most this many windows, so a search ahead reaches about 200 km. The `alongWindows` dial
+     *  lowers it without a release if Google starts turning the searches away. */
+    const val MAX_WINDOWS = 10
+
+    /** Windows asked at once: ten in one burst does not look like a browser. */
+    const val WINDOWS_AT_ONCE = 3
 
     /** Where to search for something along [route]. One point (the middle vertex) for a short
      *  route. A long route gets a window every [WINDOW_SPACING_M] from the start, since one
      *  search at the middle never saw the places near either end. */
-    fun searchCenters(route: List<LatLng>): List<LatLng> {
+    fun searchCenters(route: List<LatLng>, maxWindows: Int = MAX_WINDOWS): List<LatLng> {
         if (route.size < 2) return route
         val cum = RouteProjection.cumulative(route)
         val total = cum.last()
         if (total <= ONE_WINDOW_MAX_M) return listOf(route[route.size / 2])
-        val windows = minOf(MAX_WINDOWS, kotlin.math.ceil(total / WINDOW_SPACING_M).toInt())
+        val windows = minOf(maxWindows.coerceAtLeast(1), kotlin.math.ceil(total / WINDOW_SPACING_M).toInt())
         return (0 until windows).map { k -> RouteProjection.pointAt(route, cum, minOf((k + 0.5) * WINDOW_SPACING_M, total)) }
     }
 

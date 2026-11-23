@@ -39,7 +39,14 @@ class RouteCorridorCentersTest {
     fun aVeryLongRouteStopsAtTheWindowLimit() {
         val centers = RouteCorridor.searchCenters(north(4.0)) // about 445 km
         assertEquals(RouteCorridor.MAX_WINDOWS, centers.size)
-        assertEquals(110_000.0, LatLng(38.0, -121.0).distanceTo(centers.last()), 200.0)
+        assertEquals(190_000.0, LatLng(38.0, -121.0).distanceTo(centers.last()), 300.0)
+    }
+
+    @Test
+    fun theDialCanLowerTheWindowCount() {
+        val centers = RouteCorridor.searchCenters(north(4.0), maxWindows = 3)
+        assertEquals(3, centers.size)
+        assertEquals(50_000.0, LatLng(38.0, -121.0).distanceTo(centers.last()), 200.0)
     }
 
     @Test

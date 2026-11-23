@@ -456,7 +456,8 @@ search field call `searchAlongRoute`:
 
 - A route up to 25 km is one search centered on the route's middle point, with the template's
   own window (about 25 km) and no ranking point. A longer route gets a window every 20 km from
-  the start, at most 6, so the search reaches about 120 km ahead. The windows run at the same
+  the start, at most 10, so the search reaches about 200 km ahead. They go three at a time, and a
+  remote dial lowers the count if Google starts turning them away. The windows run at the same
   time and their results merge by place id. There is no nearby pass, ambient merge, address
   geocoding or intent parsing.
 - `QueryNameFilter` narrows a typed brand or chain ("Shell", "mcdo") to the places whose name
@@ -480,7 +481,8 @@ search field call `searchAlongRoute`:
   the destination may not be the road the route takes. The distance becomes the road distance
   from the car. The list goes least detour first, in whole minutes, then better rated, then
   nearer. A row says "On the way" under 30 seconds and "+N min" above. The search waits 3 seconds
-  for the router. With no answer the list stays in travel order, without the detour.
+  for the router, and that wait ends on time even when the router is slow to answer. With no
+  answer the list stays in travel order, without the detour.
 - During a drive it searches only the route ahead of the car (`RouteCorridor.ahead`, cut at
   `NavState.traveledM`), so places already passed drop out and distances count from the car.
 - A pick becomes a stop. While planning, the destination is kept, the pick is added as a stop
@@ -545,7 +547,7 @@ corridor filter. [Chapter 10](10-android-auto.md) covers the rest.
   rows read as bare names until opened.
 - The on-device search that runs after a failed online search is thinner than the offline path.
   It has no address fill and no "businesses at this address" step.
-- Search along a route reaches about 120 km ahead. Farther places come when you search again
+- Search along a route reaches about 200 km ahead. Farther places come when you search again
   from closer. It has no offline path and reports that the search failed.
 - With Google off and no download, a category search reads about 2 km of places around the
   search point. Farther places come only from an installed place pack.

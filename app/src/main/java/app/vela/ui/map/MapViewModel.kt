@@ -3209,7 +3209,12 @@ class MapViewModel @Inject constructor(
                 // The corridor can only measure a straight-line gap to the road. The open router
                 // prices each place with the drive time it really adds, and the list goes least
                 // detour first. No answer in time leaves the list in travel order.
-                val priced = if (along.isEmpty()) null else withTimeoutOrNull(DETOUR_WAIT_MS) { dataSource.detourAlongRoute(route, along) }
+                // Unstructured, so the wait really ends at DETOUR_WAIT_MS: the pricing is a blocking
+                // read, which a timeout cannot interrupt, and it retries once.
+                val priced = if (along.isEmpty()) null else {
+                    val d = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).async { dataSource.detourAlongRoute(route, along) }
+                    withTimeoutOrNull(DETOUR_WAIT_MS) { d.await() } ?: run { d.cancel(); null }
+                }
                 val shown = priced ?: along
                 _state.update {
                     it.copy(
@@ -3232,12 +3237,15 @@ class MapViewModel @Inject constructor(
      *  middle never saw the places near either end. The windows run together and merge by place
      *  id. One failing only thins the list; all failing is a failed search. */
     private suspend fun searchAlongWindows(query: String, route: List<LatLng>): app.vela.core.model.SearchResult {
-        val centers = RouteCorridor.searchCenters(route)
+        val windows = app.vela.ui.AppTune.value("alongWindows", RouteCorridor.MAX_WINDOWS.toDouble()).toInt()
+            .coerceIn(1, RouteCorridor.MAX_WINDOWS)
+        val centers = RouteCorridor.searchCenters(route, windows)
         if (centers.size == 1) return dataSource.search(query, centers[0])
+        val gate = kotlinx.coroutines.sync.Semaphore(RouteCorridor.WINDOWS_AT_ONCE)
         val pages = kotlinx.coroutines.coroutineScope {
             centers.map { c ->
                 async {
-                    try { Result.success(dataSource.searchOnce(query, c)) }
+                    try { Result.success(gate.withPermit { dataSource.searchOnce(query, c) }) }
                     catch (e: kotlinx.coroutines.CancellationException) { throw e }
                     catch (e: Exception) { Result.failure(e) }
                 }

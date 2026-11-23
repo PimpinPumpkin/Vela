@@ -102,7 +102,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - A spoken street name that was misheard is searched as the nearby street that sounds like it.
 - "Search your contacts" suggests a contact's saved addresses. Off by default.
 - With a route planned or a drive running, search looks along the route.
-- On a long route that search covers the road ahead, about 120 km of it.
+- On a long route that search covers the road ahead, about 200 km of it.
 - A brand or chain typed by name in that search ("Shell") shows only places with that name.
 - Each result of that search shows its road distance and the minutes it adds to the trip ("On the
   way" under half a minute), least detour first.
