@@ -4052,6 +4052,11 @@ when the feature ids match. Two requests at most.
   was made around (`moreSearch`), not the map's center, which moved when the results were framed;
   a view moved by hand is searched with "Search this area" first. A saved or imported list, an offline search and
   Google off keep the local filter only.
+- Search along a route (`MapViewModel.searchAlongWindows`): a route up to
+  `RouteCorridor.ONE_WINDOW_MAX_M` (25 km) is one `search` at its middle vertex. A longer route gets
+  `searchCenters`: a window every `WINDOW_SPACING_M` (20 km) from the start, at most `MAX_WINDOWS`
+  (6), the last never past the end. Each window is one `searchOnce`, run in parallel and merged by
+  place id. One failing window thins the list. All failing is a failed search.
 - A search along a route keeps a typed name to its own places (`QueryNameFilter`): the places whose
   name holds every naming word of the query, where a word may be the start of a name word. A
   naming word is one outside `PlaceNames.GENERIC`, in the singular or the plural; a describing word
