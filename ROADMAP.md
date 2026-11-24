@@ -958,6 +958,13 @@ Found reading everything since 0.4.1912 and not fixed yet.
   through sparse country can be compared before one is taken. The places come from the
   downloaded place pack or the open places tiles, so it works offline; the gap is measured
   along the line. Not started.
+- Cross streets and landmarks in directions, after the light and stop-sign cues: "Go past
+  University Avenue and turn right onto B Street" where the street just before the turn is an
+  easy wrong turn, and "Take your next right" when the turn is the next one on that side. Both
+  need the side streets between the car and the turn, which a route's steps do not carry; they
+  would be counted from the region's roads on the phone. Landmarks ("after the McDonald's") from
+  the place packs need to know a place stands at the corner and is seen from the road, and a
+  wrong one is worse than none. Not started.
 
 ## Big bets
 
