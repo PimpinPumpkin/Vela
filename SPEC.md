@@ -2190,20 +2190,30 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   when the roundabout was only said as another turn's "then". `upcomingPrompts` leaves it out
   too.
 - Maneuvers more than `PASSED_SLACK_M` (75 m) behind are caught up silently.
-- Traffic-light guidance (Settings > Navigation, pref `nav_traffic_lights`, off by default,
-  English only). With it on, `NavController.lightCues` looks up the signals along each route
-  the drive takes up and `RouteGeometry.enrichWithLights` marks them on the plain left and
-  right turns they come before (`Maneuver.lightsBeforeM`, meters before the turn): signals
-  within `LIGHT_APPROACH_M` (400 m) of the turn and `LIGHT_SNAP_M` (25 m) of the line, one per
-  junction (`LIGHT_CLUSTER_M`, 30 m), never the turn's own. The marked copy goes to the session
+- Traffic-light guidance (Settings > Navigation, pref `nav_traffic_lights`, on by default; the
+  phrases are in English, Hungarian, Romanian and Persian, and "at the light" in English only).
+  With it on, `NavController.lightCues` looks up the signals along each route the drive takes
+  up and `RouteGeometry.enrichWithLights` marks them on the plain left and right turns they
+  come before (`Maneuver.lightsBeforeM`, meters before the turn): signals within
+  `LIGHT_APPROACH_M` (400 m) of the turn and `LIGHT_SNAP_M` (25 m) of the line, one per junction
+  (`LIGHT_CLUSTER_M`, 30 m). A signal within `LIGHT_CLUSTER_M` of the turn is the turn's own
+  and marks it `Maneuver.lightAtTurn` instead. The marked copy goes to the session
   through `applyEnrichedRoute`; it has the same line, so the route observer writes no trip
   block and fetches nothing again. Instruction text is not changed. When an approach prompt
   is spoken, `NavEngine.lightLead` counts the lights still at least `LIGHT_AHEAD_MIN_M` (20 m)
   ahead of the car and puts "Pass the traffic light, then" (or "Pass 2 traffic lights, then")
-  in front for one or two. A lane prompt, the turn-now line and the arrival cue never take
-  it. The signals come from the downloaded road features. Where no region is downloaded the
-  public Overpass server is asked for the first route of a drive only. With the switch off
-  nothing is looked up. Logcat `VelaDirections` prints how many steps got a light, how many
+  in front for one or two, on every approach line while they are ahead. Three or more ahead
+  say nothing. A lane prompt, a line that names a stop after it, a line that names the next
+  turn ("then") and the turn-now line never take "Pass". With none ahead, a turn at a light of
+  its own says "At the light, turn left onto ..." (`NavStrings.atLight`) once (`AT_LIGHT_SLOT`
+  in `NavState.spoken`): on the first approach line that can carry it, on a line that names the
+  next turn, where it adds no second "then", or on the turn-now line when no earlier line did,
+  which is a turn too close to the one before for an approach line of its own. Never on a lane
+  prompt or the arrival cue. The signals come from the region's road
+  features file, which downloads by itself. Where the catalog has no region, the public
+  Overpass server is asked for the first route of a drive only, and only when the user turned
+  the switch on by hand (the key is set): the default sends Overpass nothing. With the switch
+  off nothing is looked up. Logcat `VelaDirections` prints how many steps got a light, how many
   stops have been passed each time one is counted, and every route the drive adopts (at the
   start and each swap) with its typical and live time, the sum of its steps' times, and its leg
   times when it has them: the figures the bar shows come from these.

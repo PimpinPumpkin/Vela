@@ -822,9 +822,11 @@ object RouteGeometry {
      * surface-street left and right turns (not ramps, merges, roundabouts or continues), only
      * signals within [LIGHT_APPROACH_M] before the turn and within [LIGHT_SNAP_M] of the driven
      * line (a light on a parallel street does not count), and never the turn's own junction.
-     * Signals at one junction count once. The instruction text is left alone: the engine adds
-     * the clause when it speaks, for the lights still ahead of the car (`NavEngine.lightLead`).
-     * The route itself comes back when no turn gains a light.
+     * Signals at one junction count once. A signal within [LIGHT_CLUSTER_M] of the turn marks the
+     * turn itself as at a light (`Maneuver.lightAtTurn`), for "At the light, turn left onto ...".
+     * The instruction text is left alone: the engine adds the clause when it speaks, for the
+     * lights still ahead of the car (`NavEngine.lightLead`). The route itself comes back when no
+     * turn gains a light.
      */
     fun enrichWithLights(route: Route, signals: List<LatLng>): Route {
         val poly = route.polyline
@@ -856,13 +858,17 @@ object RouteGeometry {
                 // Cluster the matched nodes: OSM maps one traffic_signals node per approach/carriageway at a
                 // junction, so counting raw nodes would say "pass 2 lights" for one physical intersection.
                 val clusters = ArrayList<Pair<LatLng, Double>>()
+                var atTurn = false
                 for (s in signals) {
-                    if (turnPt.distanceTo(s) < LIGHT_CLUSTER_M) continue
+                    if (turnPt.distanceTo(s) < LIGHT_CLUSTER_M) { atTurn = true; continue }
                     val (at, before) = approach.minByOrNull { it.first.distanceTo(s) } ?: continue
                     if (at.distanceTo(s) >= LIGHT_SNAP_M) continue
                     if (clusters.none { it.first.distanceTo(s) < LIGHT_CLUSTER_M }) clusters.add(s to before)
                 }
-                if (clusters.isEmpty()) m else { marked = true; m.copy(lightsBeforeM = clusters.map { it.second }.sortedDescending()) }
+                if (clusters.isEmpty() && !atTurn) m else {
+                    marked = true
+                    m.copy(lightsBeforeM = clusters.map { it.second }.sortedDescending(), lightAtTurn = atTurn)
+                }
             }
             leg.copy(maneuvers = newMans)
         }

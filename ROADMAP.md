@@ -263,6 +263,13 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- Traffic-light guidance on by default, with "At the light, turn left onto ..." for a turn at a
+  light of its own (SPEC 4.6, Guidance): on a Davis fixture mock drive on a 4a the road features marked the
+  left onto Mace Boulevard and the voice said "At the light, turn left onto Mace Boulevard" at
+  the turn. The left at the end of the exit 75 ramp, at a light too, was not marked. Not yet
+  heard on a real drive: whether the lights it names are there, and whether a light 30 m from a
+  turn is ever another junction's.
+
 - Toll prices from the toll file (#954, from #965; SPEC 4.3): on the API 26 emulator a Vaughan to
   Markham drive showed "Toll about $8.94 + $5.30 fee" and "$10.00 + $5.30 fee" on its two 407
   routes (the overnight band, so one price each). Not yet seen: a range at rush hour, the

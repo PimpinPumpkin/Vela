@@ -54,6 +54,10 @@ interface NavStrings {
      *  with a [passLights] phrase joins it in its own words. */
     fun lightThen(lead: String, instruction: String): String = "$lead, then " + instruction.replaceFirstChar { it.lowercaseChar() }
 
+    /** A turn at a traffic light of its own: EN "At the light, turn left onto 5th Ave". Null = the
+     *  language has no such phrase and the turn is said alone. */
+    fun atLight(instruction: String): String? = null
+
     /** The SPOKEN form of a sign instruction: the secondary sign destinations after a colon are
      *  dropped ("Take the ramp toward I 5 North: Vancouver British Columbia" -> "... toward I 5
      *  North"). The full sign stays on the banner; speaking it all took so long the next prompt
@@ -252,6 +256,8 @@ object EnNavStrings : NavStrings {
     override fun inThen(distancePhrase: String, instruction: String): String = "In $distancePhrase, $instruction"
 
     override fun passLights(count: Int): String = if (count <= 1) "Pass the traffic light" else "Pass $count traffic lights"
+
+    override fun atLight(instruction: String): String = "At the light, " + instruction.replaceFirstChar { it.lowercaseChar() }
 
     // Trailing SEMICOLON on purpose (spoken-only string — NavEngine Speak, never displayed): bare text
     // gives the Piper voice no final prosody contour and the callout ended oddly; the user A/B'd

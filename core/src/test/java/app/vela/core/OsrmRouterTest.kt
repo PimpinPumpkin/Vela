@@ -138,12 +138,30 @@ class OsrmRouterTest {
         assertTrue(RouteGeometry.enrichWithLights(route, listOf(LatLng(38.51, -121.7))) === route)
     }
 
-    @Test fun lightAtTheTurnVertexItselfIsNotCounted() {
-        // A signal exactly at the turn intersection is the one you turn AT, not one to "pass" first
-        // (the approach walk starts at poly[toIdx], the turn vertex) — exclude it (audit 2026-07-06).
+    @Test fun lightAtTheTurnVertexIsTheTurnsOwnNotOneToPass() {
+        // A signal at the turn intersection is the one you turn AT, not one to "pass" first (the
+        // approach walk starts at poly[toIdx], the turn vertex): it marks the turn instead.
         val route = straightRoute()
         val atTurn = LatLng(38.5, -121.7 + 0.002) // poly[4], the TURN_LEFT vertex
-        assertTrue(RouteGeometry.enrichWithLights(route, listOf(atTurn)) === route)
+        val turn = RouteGeometry.enrichWithLights(route, listOf(atTurn)).legs[0].maneuvers.last()
+        assertTrue(turn.lightsBeforeM.isEmpty())
+        assertTrue(turn.lightAtTurn)
+        val stopLine = LatLng(38.5, -121.7 + 0.0018) // about 17 m before the junction, on the line
+        val t2 = RouteGeometry.enrichWithLights(route, listOf(stopLine)).legs[0].maneuvers.last()
+        assertTrue("a light at the stop line is the turn's own", t2.lightAtTurn && t2.lightsBeforeM.isEmpty())
+    }
+
+    @Test fun aTurnAtALightSaysAtTheLightOnceNoOtherLightIsAhead() {
+        val turn = app.vela.core.model.Maneuver(ManeuverType.TURN_LEFT, "Turn left onto Main Street", LatLng(0.0, 0.0), 0.0, 0.0,
+            lightsBeforeM = listOf(150.0), lightAtTurn = true)
+        val lead = { dtn: Double -> app.vela.core.nav.NavEngine.lightLead(turn, dtn, turn.instruction) }
+        assertEquals("Pass the traffic light, then turn left onto Main Street", lead(300.0))
+        assertEquals("At the light, turn left onto Main Street", lead(120.0))
+        val alone = turn.copy(lightsBeforeM = emptyList())
+        assertEquals("At the light, turn left onto Main Street", app.vela.core.nav.NavEngine.lightLead(alone, 400.0, alone.instruction))
+        // Three lights ahead first: nothing is said about any of them.
+        val busy = turn.copy(lightsBeforeM = listOf(350.0, 250.0, 150.0))
+        assertEquals("Turn left onto Main Street", app.vela.core.nav.NavEngine.lightLead(busy, 400.0, busy.instruction))
     }
 
     @Test fun lightsAtOneJunctionClusterToASingleIntersection() {

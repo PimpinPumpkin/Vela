@@ -332,7 +332,7 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             }
         }
 
-        var trafficLights by remember { mutableStateOf(prefs.getBoolean("nav_traffic_lights", false)) }
+        var trafficLights by remember { mutableStateOf(prefs.getBoolean("nav_traffic_lights", true)) }
         GroupDivider()
         ToggleRow(
             label = stringResource(R.string.settings_nav_tap_places),
