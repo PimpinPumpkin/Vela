@@ -2155,7 +2155,7 @@ internal fun DepartTimeChooser(
     var showDatePicker by remember { mutableStateOf(false) }
     val nowDur = route?.let { it.durationInTrafficSeconds ?: it.durationSeconds } ?: 0.0
     val range = route?.typicalRangeSeconds
-    val fmt = java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
+    val fmt = app.vela.ui.clockTimeFormatter()
     val dateFmt = java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d")
 
     fun epoch(): Long = date.atTime(time).atZone(java.time.ZoneId.systemDefault()).toEpochSecond()

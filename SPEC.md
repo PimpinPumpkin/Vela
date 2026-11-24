@@ -6591,8 +6591,9 @@ planned keeps the instructions it was built with.
   `fitness_centre`, the MOTIS wire field `cancelled`), marked where they appear.
 
 - Clock: Settings > Appearance > Clock (`clock_mode`) is the device's 12/24-hour setting, or
-  either for Vela alone. `Clock24.on` and `ClockFormat.use24h` carry it; the transit Depart at
-  time picker dials by it too (it was a fixed 12-hour dial, issues #357 and #762). Transit directions
+  either for Vela alone. `Clock24.on` and `ClockFormat.use24h` carry it. The route time picker,
+  selected time, departure and arrival windows, and navigation arrival clock all follow it,
+  independently of the locale's default hour cycle. Transit directions
   times come from the payload's epoch and time zone (`ClockFormat.at`); `ClockFormat.show`
   converts the text of the one page still fetched in English, Google's stop-board fallback.
 - Calendar: the Depart at and Arrive by date picker is drawn in `AppLocale.calendarLocale()`.

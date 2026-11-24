@@ -2,6 +2,7 @@ package app.vela.ui
 
 import android.content.Context
 import androidx.compose.runtime.mutableStateOf
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -134,12 +135,17 @@ object Clock24 {
     }
 }
 
+/** The clock preference selects the hour cycle; the locale supplies the day-period text. */
+internal fun clockTimeFormatter(
+    use24h: Boolean = Clock24.on.value,
+    locale: Locale = Locale.getDefault(),
+): DateTimeFormatter = DateTimeFormatter.ofPattern(if (use24h) "HH:mm" else "h:mm a", locale)
+
 /** Wall-clock arrival time for a trip [remainingSeconds] from now, e.g. "7:42 PM" or "19:42",
  *  following the device's 12/24-hour setting, the way Google shows ETA during navigation. */
 fun formatArrivalClock(remainingSeconds: Double): String {
     val arrival = (DemoClock.now()?.toLocalTime() ?: java.time.LocalTime.now()).plusSeconds(remainingSeconds.toLong())
-    val fmt = if (Clock24.on.value) java.time.format.DateTimeFormatter.ofPattern("HH:mm")
-        else java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
+    val fmt = clockTimeFormatter()
     return arrival.format(fmt)
 }
 
@@ -147,8 +153,7 @@ fun formatArrivalClock(remainingSeconds: Double): String {
  *  setting, like [formatArrivalClock]. */
 fun formatClock(epochMs: Long): String {
     val t = java.time.Instant.ofEpochMilli(epochMs).atZone(java.time.ZoneId.systemDefault()).toLocalTime()
-    val fmt = if (Clock24.on.value) java.time.format.DateTimeFormatter.ofPattern("HH:mm")
-        else java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
+    val fmt = clockTimeFormatter()
     return t.format(fmt)
 }
 
