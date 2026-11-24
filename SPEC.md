@@ -2159,8 +2159,8 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   twice in two seconds. Not on a line with lane guidance, a stop or a traffic-light lead, and
   never onto the arrival.
   `thenNext` exists in 13 languages; Dutch, Swedish and Japanese have none yet and say the two
-  turns apart, as before. The chained line is not among `upcomingPrompts`, so the voice renders
-  it when it is spoken.
+  turns apart, as before. `upcomingPrompts` prepares the chained lines with the same wording
+  (`joinNext`, `joinAtTurn`), and the chained step's lines as said.
 - A next step past `CHAIN_M` but within `THEN_SOON_M` (500 m), whose first approach line would
   fire as the first turn is made (the far band plus `BAND_MERGE_S` of travel, `dueNext`), rides
   on the first turn's line at the turn only: "Take the ramp, then keep slight left". Its bands
@@ -2174,7 +2174,9 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   will not fit, the first turn drops its street ("Turn right, then turn left onto Oak Avenue"),
   then the second does ("Turn right, then turn left"); that last form is said even when it will
   not quite fit. A first turn with no form without its street, or a lot line, is said alone. At
-  14 m/s a pair 60 m apart loses the first street, at 16 m/s both (`NavEngineChainTest`).
+  14 m/s a pair 60 m apart loses the first street, at 16 m/s both (`NavEngineChainTest`). Which
+  form is said depends on where the fix lands inside the turn-now point, so `upcomingPrompts`
+  prepares the form at that point and the form one fix (1 s) inside it when the two differ.
 - CONTINUE and STRAIGHT are silent unless their lanes show a real fork
   (`continueHasGenuineFork`). The DEPART maneuver is spoken once by `NavSession.start` and
   skipped by the engine.
@@ -6433,7 +6435,7 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
 - A voice install or a delete-fallback never speaks. Only an explicit library pick auditions.
 
 - The voice prepares the lines `NavEngine.upcomingPrompts` predicts for the current and next
-  spoken turn (the approach bands above and turn-now), up to
+  spoken turn (the approach bands above and turn-now, a "then" included), up to
   `MAX_PREPARED` (8), at background priority.
 - A line asked to be spoken drops every prepare still queued and ends the one being rendered at
   its next phrase. A phrase is one engine call and cannot be cut, so the line waits for the

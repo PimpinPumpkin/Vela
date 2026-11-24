@@ -70,4 +70,50 @@ class StartPromptsTest {
             assertTrue("spoke nothing", spokenN >= 4)
         }
     }
+
+    /** East 1000 m, right onto Elm Street at a light, south [gap] m, left onto Oak Avenue at a
+     *  stop sign, east 600 m. */
+    private fun closeTurns(gap: Double): Route {
+        val p = (0..100).map { at(it * 10.0, 0.0) } + (1..(gap / 10).toInt()).map { at(1000.0, it * 10.0) } + (1..60).map { at(1000.0 + it * 10.0, gap) }
+        val ms = listOf(
+            Maneuver(ManeuverType.DEPART, "Head east", p.first(), 1000.0, 100.0),
+            Maneuver(ManeuverType.TURN_RIGHT, "Turn right onto Elm Street", at(1000.0, 0.0), gap, gap / 10, road = "Elm Street", instructionNoRoad = "Turn right", lightAtTurn = true),
+            Maneuver(ManeuverType.TURN_LEFT, "Turn left onto Oak Avenue", at(1000.0, gap), 600.0, 60.0, road = "Oak Avenue", instructionNoRoad = "Turn left", stopAtTurn = true),
+            Maneuver(ManeuverType.ARRIVE, "Arrive", p.last(), 0.0, 0.0),
+        )
+        return Route(p, listOf(RouteLeg(1600.0 + gap, 160.0, null, ms)), 1600.0 + gap, 160.0, null)
+    }
+
+    /** Two turns said on one line ("then"), within a block or due at once, are prepared too, in
+     *  the full voice and the shorter one. */
+    @Test
+    fun aTurnSaidInTheThenOfTheOneBeforeIsPrepared() {
+        try {
+            for (mode in listOf(SpokenDetail.Mode.FULL, SpokenDetail.Mode.BRIEF)) {
+                SpokenDetail.mode = mode
+                thenLinesPrepared(mustJoin = mode == SpokenDetail.Mode.FULL)
+            }
+        } finally {
+            SpokenDetail.mode = SpokenDetail.Mode.FULL
+        }
+    }
+
+    private fun thenLinesPrepared(mustJoin: Boolean) {
+        for (gap in listOf(60.0, 80.0, 120.0, 250.0)) for (speed in listOf(5.0, 10.0, 14.0)) {
+            val r = closeTurns(gap)
+            var st = NavState()
+            var predicted = NavEngine.upcomingPrompts(r, 1, emptySet(), speed, imperial = true)
+            val joined = ArrayList<String>()
+            for (p in r.polyline.dropLast(20)) {
+                val (s2, ev) = NavEngine.update(r, st, p, imperial = true, speedMps = speed)
+                for (line in ev.filterIsInstance<NavEvent.Speak>().map { it.text }) {
+                    if (", then " in line) joined += line
+                    assertTrue("${SpokenDetail.mode} gap $gap at $speed m/s not predicted: \"$line\" (had: $predicted)", line in predicted)
+                }
+                st = s2
+                predicted = NavEngine.upcomingPrompts(r, st.stepIndex, st.spoken, speed, imperial = true)
+            }
+            if (mustJoin) assertTrue("gap $gap at $speed m/s said no joined line", joined.isNotEmpty())
+        }
+    }
 }

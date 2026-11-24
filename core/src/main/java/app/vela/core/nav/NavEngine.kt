@@ -606,55 +606,18 @@ object NavEngine {
         var thenAtTurn = false
         fun withNext(line: String, idx: Int = nextIdx): String {
             if (idx < 0) return line
-            // In the shorter settings the second turn loses its street name too, as its own line would.
-            val next = maneuvers[idx]
-            val nextText = if (detail == SpokenDetail.Mode.FULL || SpokenDetail.exitLike(next.type)) next.spokenInstruction()
-            else next.instructionNoRoad ?: next.spokenInstruction()
-            // thenSaid keeps the words without the lanes: chainRepeatsSoon compares them with the
-            // step's own line at its turn.
-            val plain = thenShort(target, next, nextText)
-            // "then at the light, turn left": the full voice only, and not with lanes to say.
-            val cued = if (detail == SpokenDetail.Mode.FULL && app.vela.core.model.laneGuidance(next.lanes) == null)
-                withLight(lightCue(next, dtn + manAlong[idx] - manAlong[idxCur], CueLine.THEN), plain) else plain
-            val both = nav().thenNext(line, withLanes(next, cued))
+            val (both, plain) = joinNext(target, maneuvers[idx], line, dtn + manAlong[idx] - manAlong[idxCur], detail)
             if (both != line) { chainedNow = true; chainedIdx = idx; thenSaid = plain; thenAtTurn = false }
             return both
         }
-        // The line at the turn, with the next turn on it when the two are chained. That next turn
-        // says its own line at ITS turn-now point, interrupting, so the pair has to be over by the
-        // time the car gets there. Nothing checked that, and taken briskly a pair 60 m apart has
-        // about 4 s for a line that needs 5 (a drive on 2026-10-17 had a line cut at two close
-        // turns; whether by this or by the second turn's queued approach line is unconfirmed).
-        // When the whole pair will not fit, the first turn drops its street name, then the second does;
-        // the shortest form is said even when it will not quite fit, since it still says what
-        // comes next. A first turn with no form without its street is said alone.
+        // The line at the turn, with the next turn on it when the two are chained ([joinAtTurn]).
         fun turnNowLine(plain: String): String {
             val idx = if (nextIdx >= 0) nextIdx else laterIdx
-            val full = withNext(plain, idx)
-            if (full == plain) return full
-            val pace = v.coerceAtLeast(MIN_PACE_MPS)
-            val toNextNow = dtn + (manAlong[idx] - manAlong[idxCur]) - turnNowM
-            fun fits(line: String) = toNextNow / pace >= line.length / SPEECH_CPS + SPEECH_LEAD_S
-            if (fits(full)) { thenAtTurn = true; return full }
-            val bare = target.instructionNoRoad?.takeIf { lotLine == null && !thenStopHere } ?: return plain
-            val next = maneuvers[idx]
-            val nextNamed = thenShort(target, next, next.spokenInstruction())
-            // An exit keeps its sign: "take exit 12" without it says too little.
-            val nextBare = if (SpokenDetail.exitLike(next.type)) nextNamed else nav().repeatShort(next.instructionNoRoad ?: next.spokenInstruction())
-            val named = nav().thenNext(bare, withLanes(next, nextNamed))
-            thenAtTurn = true
-            // The second turn's light or stop sign stays in the shorter line while it fits:
-            // "Turn right, then at the light, turn left onto West Covell Boulevard".
-            if (detail == SpokenDetail.Mode.FULL && app.vela.core.model.laneGuidance(next.lanes) == null) {
-                val cued = withLight(lightCue(next, dtn + manAlong[idx] - manAlong[idxCur], CueLine.THEN), nextNamed)
-                if (cued != nextNamed) {
-                    val withCue = nav().thenNext(bare, cued)
-                    if (fits(withCue)) { thenSaid = nextNamed; return withCue }
-                }
-            }
-            if (fits(named)) { thenSaid = nextNamed; return named }
-            thenSaid = nextBare
-            return nav().thenNext(bare, withLanes(next, nextBare))
+            if (idx < 0) return plain
+            val gap = manAlong[idx] - manAlong[idxCur]
+            val j = joinAtTurn(target, maneuvers[idx], plain, dtn + gap, dtn + gap - turnNowM, v, detail, lotLine == null && !thenStopHere)
+            if (j.chained) { chainedNow = true; chainedIdx = idx; thenSaid = j.thenSaid; thenAtTurn = j.atTurn }
+            return j.line
         }
         if (!voiceSilent && detail != SpokenDetail.Mode.FULL) {
             // One short line a maneuver (see SpokenDetail): exits from far out, turns from near.
@@ -1099,31 +1062,51 @@ object NavEngine {
      * prompts at [speedMps]'s band distances and their turn-now lines, in [update]'s own wording.
      * The CURRENT turn's lines lead, its turn-now line first: that is the one with no time to
      * spare, and it names no distance, so it always matches. Bands in [spoken] (already said for
-     * the current turn) are left out. A line this misses (a real distance on a short step, a
-     * speed that has moved a band) is synthesized when spoken, as before.
+     * the current turn) are left out. A turn said on the line before it ("then") has that line
+     * prepared, and its own lines are the ones update still says. A line this misses (a real
+     * distance on a short step, a speed that has moved a band) is synthesized when spoken.
      */
     fun upcomingPrompts(route: Route, fromStep: Int, spoken: Set<Int>, speedMps: Double, imperial: Boolean, count: Int = 2, nearestFirst: Boolean = true, trackRide: Boolean = false): List<String> {
         val ms = route.maneuvers
+        val manAlong = geomFor(route).manAlong
         val out = LinkedHashSet<String>()
         var taken = 0
         val far = farBand(speedMps, trackRide)
         val near = nearBand(speedMps, trackRide)
+        val pace = speedMps.coerceAtLeast(MIN_PACE_MPS)
+        val turnNowM = (speedMps * 2.5).coerceIn(ARRIVE_RADIUS_M, 90.0)
+        val detail = SpokenDetail.mode
+        fun bandsOf(k: Int): List<Double> =
+            if (detail == SpokenDetail.Mode.FULL && oneApproach(ms, k, speedMps)) maxOf(near, round50(speedMps * FAST_APPROACH_S)).let { listOf(it, it) }
+            else listOf(far, near)
+        // A turn said as the "then" of the one before: the bands that line counts as said for it.
+        var chainedInto = -1
+        var chainedBands = emptySet<Int>()
         for (i in fromStep.coerceAtLeast(1) until ms.size) {
             if (taken >= count) break
             val m = ms[i]
             if (m.type == ManeuverType.ARRIVE) break
             if (quiet(ms, i)) continue
             taken++
-            val said = if (i == fromStep) spoken else emptySet()
+            val said = when {
+                i == fromStep -> spoken
+                i == chainedInto -> chainedBands
+                else -> emptySet()
+            }
             val leg = ms[i - 1].distanceMeters
-            val detail = SpokenDetail.mode
+            // The turns update says on this one's lines (see update: TWO TURNS TOO CLOSE, FURTHER ON).
+            val nextIdx = if (m.type == ManeuverType.DEPART) -1 else chainedNext(ms, manAlong, i, if (trackRide) TRACK_CHAIN_M else CHAIN_M)
+            val laterIdx = if (nextIdx >= 0 || trackRide || m.type == ManeuverType.DEPART) -1 else dueNext(ms, manAlong, i, far + pace * BAND_MERGE_S)
+            fun gapTo(k: Int) = manAlong[k] - manAlong[i]
             if (detail != SpokenDetail.Mode.FULL) {
                 // The one line the shorter modes say (see update); nothing else is worth preparing.
                 if (said.isEmpty() && SpokenDetail.speaks(detail, m.type, speedMps)) {
                     val band = if (SpokenDetail.exitLike(m.type) || speedMps >= SpokenDetail.FAST_MPS) far else near
                     val line = if (SpokenDetail.exitLike(m.type)) nav().repeatShort(m.spokenInstruction())
                         else nav().repeatShort(m.instructionNoRoad ?: m.spokenInstruction())
-                    if (leg >= band * 0.85) out += nav().inThen(spokenDistance(band, imperial), line)
+                    val joined = if (nextIdx >= 0) joinNext(m, ms[nextIdx], line, band + gapTo(nextIdx), detail).first else line
+                    if (leg >= band * 0.85) out += nav().inThen(spokenDistance(band, imperial), joined)
+                    if (joined != line) { chainedInto = nextIdx; chainedBands = setOf(0, 1) }
                 }
                 continue
             }
@@ -1137,21 +1120,57 @@ object NavEngine {
             val farSpoken = !one && leg >= far * 0.85 && m.type != ManeuverType.MERGE
             val anyApproach = leg >= approach * 0.85 || said.isNotEmpty()
             val nowPlain = if (anyApproach) short(m, m.spokenInstruction()) else nav().spokenSign(m.spokenInstruction())
-            val lines = ArrayList<String>()
-            fun lit(dtn: Double, line: CueLine, text: String) = withLight(lightCue(m, dtn, line), text)
-            if (farSpoken && 0 !in said) lines += when {
-                lane != null -> nav().inThen(spokenDistance(far, imperial), full)
-                lightCue(m, far, CueLine.FAR) == LightCue.NEXT_STOP -> withLight(LightCue.NEXT_STOP, full)
-                else -> nav().inThen(spokenDistance(far, imperial), full)
+            // An approach line [dist] out, as update's say() builds it: the step's first line takes
+            // its lanes or the turn after it, and is cut to its short form when it would still be
+            // playing at the line at the turn.
+            var joinedFirst = false
+            fun say(dist: Double, cueLine: CueLine, first: Boolean, instr: String): String {
+                val cue = lightCue(m, dist, cueLine)
+                val wrapped = when {
+                    first && lane != null -> instr
+                    first && nextIdx >= 0 -> {
+                        val own = withLight(cue.takeIf { it == LightCue.AT_LIGHT || it == LightCue.AT_STOP }, instr)
+                        joinNext(m, ms[nextIdx], own, dist + gapTo(nextIdx), detail).first.also { if (it != own) joinedFirst = true }
+                    }
+                    else -> withLight(cue.takeIf { it != LightCue.NEXT_STOP }, instr)
+                }
+                val nextStop = cue == LightCue.NEXT_STOP && !(first && (lane != null || nextIdx >= 0))
+                return if (nextStop) withLight(LightCue.NEXT_STOP, instr) else nav().inThen(spokenDistance(dist, imperial), wrapped)
             }
-            if (leg >= approach * 0.85 && 1 !in said) lines += nav().inThen(
-                spokenDistance(approach, imperial),
-                if (farSpoken || said.isNotEmpty()) lit(approach, CueLine.NEAR, brief) else if (lane != null) full else lit(approach, CueLine.NEAR, full),
-            )
-            val now = lit(0.0, CueLine.NOW, nowPlain)
-            val ringSaid = m.type == ManeuverType.ROUNDABOUT && (leg >= near * 0.85 || 1 in said)
-            val mergeSaid = m.type == ManeuverType.MERGE && anyApproach
-            if (TURN_NOW_SLOT !in said && TURN_NOW_SAID_SLOT !in said && !ringSaid && !mergeSaid) lines += now
+            fun sayFirst(dist: Double, cueLine: CueLine): String {
+                val line = say(dist, cueLine, true, full)
+                if ((dist - turnNowM) / pace >= line.length / SPEECH_CPS + SPEECH_LEAD_S) return line
+                return say(dist, cueLine, true, if (lane != null) nav().useLanesToDo(lane.side, lane.count, brief) else brief)
+            }
+            val lines = ArrayList<String>()
+            if (farSpoken && 0 !in said) lines += if (said.isEmpty()) sayFirst(far, CueLine.FAR) else say(far, CueLine.FAR, false, brief)
+            if (leg >= approach * 0.85 && 1 !in said) {
+                lines += if (said.isEmpty() && !farSpoken) sayFirst(approach, CueLine.NEAR) else say(approach, CueLine.NEAR, false, brief)
+            }
+            if (joinedFirst) { chainedInto = nextIdx; chainedBands = setOf(0, 1) }
+            val now = withLight(lightCue(m, 0.0, CueLine.NOW), nowPlain)
+            val idx = if (nextIdx >= 0) nextIdx else laterIdx
+            val ringSaid = m.type == ManeuverType.ROUNDABOUT && (leg >= near * 0.85 || 1 in said) && idx < 0
+            val mergeSaid = m.type == ManeuverType.MERGE && anyApproach && idx < 0
+            if (TURN_NOW_SLOT !in said && TURN_NOW_SAID_SLOT !in said && !ringSaid && !mergeSaid) {
+                if (idx < 0) lines += now else {
+                    // Whether the pair fits depends on where the fix lands, up to a fix's travel
+                    // inside the turn-now point: both ends are prepared when they differ.
+                    val gap = gapTo(idx)
+                    val joins = listOf(turnNowM, (turnNowM - pace).coerceAtLeast(0.0)).map { dtn ->
+                        dtn to joinAtTurn(m, ms[idx], now, dtn + gap, dtn + gap - turnNowM, speedMps, detail, true)
+                    }
+                    joins.forEach { (_, j) -> lines += j.line }
+                    if (joins.any { it.second.chained }) {
+                        chainedInto = idx
+                        val repeats = joins.all { (dtn, j) -> j.atTurn && chainRepeatsSoon(ms, manAlong, i, idx, dtn, turnNowM, speedMps, j.thenSaid) }
+                        chainedBands = (
+                            if (idx != laterIdx || ms[idx].type == ManeuverType.MERGE) setOf(0, 1)
+                            else bandsOf(idx).withIndex().filter { (_, d) -> (gap - d) / pace < BAND_MERGE_S }.map { it.index }.toSet()
+                        ) + (if (repeats) setOf(TURN_NOW_SAID_SLOT) else emptySet())
+                    }
+                }
+            }
             // The turn in hand: nearest line first. A later turn: in the order it will be spoken.
             out += if (i == fromStep && nearestFirst) lines.reversed() else lines
         }
@@ -1243,6 +1262,61 @@ object NavEngine {
         fun route(m: Maneuver) = nav().signParts(m.spokenInstruction()).firstNotNullOfOrNull { routeKey(it) }
         val r = route(next)
         return if (r != null && r == route(cur)) nav().repeatShort(text) else short(next, text)
+    }
+
+    /**
+     * [line], turn [cur]'s words, with turn [next] after it as a "then", [nextDtn] meters short of
+     * [next], and the words the "then" gave [next] without its lanes or cue, which
+     * [chainRepeatsSoon] compares with [next]'s own line at its turn. In the shorter settings
+     * [next] loses its street name too, as its own line would. "then at the light, turn left" is
+     * the full voice's only, and not with lanes to say. The joined line is [line] unchanged when
+     * the language has no "then".
+     */
+    private fun joinNext(cur: Maneuver, next: Maneuver, line: String, nextDtn: Double, detail: SpokenDetail.Mode): Pair<String, String> {
+        val nextText = if (detail == SpokenDetail.Mode.FULL || SpokenDetail.exitLike(next.type)) next.spokenInstruction()
+        else next.instructionNoRoad ?: next.spokenInstruction()
+        val plain = thenShort(cur, next, nextText)
+        val cued = if (detail == SpokenDetail.Mode.FULL && app.vela.core.model.laneGuidance(next.lanes) == null)
+            withLight(lightCue(next, nextDtn, CueLine.THEN), plain) else plain
+        return nav().thenNext(line, withLanes(next, cued)) to plain
+    }
+
+    /** What [joinAtTurn] said: the [line], whether it named the next turn ([chained]), the words it
+     *  gave that turn ([thenSaid]), and whether they were said in full at the turn ([atTurn]). */
+    private class TurnJoin(val line: String, val chained: Boolean, val thenSaid: String?, val atTurn: Boolean)
+
+    /**
+     * Turn [cur]'s line at the turn ([plain]) with turn [next] on it, [nextDtn] meters short of
+     * [next] and [toNextNow] meters before [next]'s own line at its turn, at [v] m/s. [next] says
+     * that line interrupting, so the pair has to be over by then: when the whole pair will not fit,
+     * [cur] drops its street name ([bareOk] when it may), then [next] does, keeping its light or
+     * stop sign while that fits ("Turn right, then at the light, turn left onto West Covell
+     * Boulevard"). The shortest form is said even when it will not quite fit, since it still says
+     * what comes next. A [cur] with no form without its street is said alone.
+     */
+    private fun joinAtTurn(
+        cur: Maneuver, next: Maneuver, plain: String, nextDtn: Double, toNextNow: Double, v: Double,
+        detail: SpokenDetail.Mode, bareOk: Boolean,
+    ): TurnJoin {
+        val (full, fullThen) = joinNext(cur, next, plain, nextDtn, detail)
+        if (full == plain) return TurnJoin(plain, false, null, false)
+        val pace = v.coerceAtLeast(MIN_PACE_MPS)
+        fun fits(line: String) = toNextNow / pace >= line.length / SPEECH_CPS + SPEECH_LEAD_S
+        if (fits(full)) return TurnJoin(full, true, fullThen, true)
+        val bare = cur.instructionNoRoad?.takeIf { bareOk } ?: return TurnJoin(plain, true, fullThen, false)
+        val nextNamed = thenShort(cur, next, next.spokenInstruction())
+        // An exit keeps its sign: "take exit 12" without it says too little.
+        val nextBare = if (SpokenDetail.exitLike(next.type)) nextNamed else nav().repeatShort(next.instructionNoRoad ?: next.spokenInstruction())
+        if (detail == SpokenDetail.Mode.FULL && app.vela.core.model.laneGuidance(next.lanes) == null) {
+            val cued = withLight(lightCue(next, nextDtn, CueLine.THEN), nextNamed)
+            if (cued != nextNamed) {
+                val withCue = nav().thenNext(bare, cued)
+                if (fits(withCue)) return TurnJoin(withCue, true, nextNamed, true)
+            }
+        }
+        val named = nav().thenNext(bare, withLanes(next, nextNamed))
+        if (fits(named)) return TurnJoin(named, true, nextNamed, true)
+        return TurnJoin(nav().thenNext(bare, withLanes(next, nextBare)), true, nextBare, true)
     }
 
     /** A distance phrased for SPEECH, honoring the imperial/metric preference — now localized via the
