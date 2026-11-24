@@ -417,13 +417,9 @@ internal class NavController(
         app.vela.car.CarBridge.toast(msg)
     }
 
-    /** A minute-of-day in the user's clock format (locale + the system 12/24-hour setting). */
-    private fun formatMinuteOfDay(min: Int): String {
-        val cal = java.util.Calendar.getInstance()
-        cal.set(java.util.Calendar.HOUR_OF_DAY, min / 60)
-        cal.set(java.util.Calendar.MINUTE, min % 60)
-        return android.text.format.DateFormat.getTimeFormat(appContext).format(cal.time)
-    }
+    /** A minute-of-day on the clock chosen in Settings, in the app's language. */
+    private fun formatMinuteOfDay(min: Int): String =
+        java.time.LocalTime.of(min / 60, min % 60).format(app.vela.ui.clockTimeFormatter())
 
     /** Drive [route] as a synthetic GPS trace ([DemoTrace] → the recorded-trip [LocationProvider.replay]
      *  path), so navigation runs with NO real fix - for demos, screenshots and testing nav anywhere.

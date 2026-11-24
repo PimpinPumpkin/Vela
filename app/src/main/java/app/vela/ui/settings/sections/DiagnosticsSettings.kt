@@ -623,14 +623,12 @@ private fun TrimRadiusPicker(radius: Double, onPick: (Double) -> Unit) {
 }
 
 /** "Sep 7, 7:42 PM": when a drive started, short enough for one list line. The year shows only
- *  when it is not this year, and the clock follows the device's 12/24-hour setting. */
-private fun tripWhen(context: android.content.Context, epochMs: Long): String =
-    android.text.format.DateUtils.formatDateTime(
-        context, epochMs,
-        android.text.format.DateUtils.FORMAT_SHOW_DATE or
-            android.text.format.DateUtils.FORMAT_SHOW_TIME or
-            android.text.format.DateUtils.FORMAT_ABBREV_MONTH,
-    )
+ *  when it is not this year, and the clock is the one chosen in Settings. */
+private fun tripWhen(context: android.content.Context, epochMs: Long): String {
+    val zone = java.time.ZoneId.systemDefault()
+    val thisYear = java.time.Instant.ofEpochMilli(epochMs).atZone(zone).year == java.time.LocalDate.now(zone).year
+    return app.vela.ui.formatDateTime(context, epochMs, withYear = !thisYear)
+}
 
 /** "12.3 mi · 24 min · Trip name": the row's second line. Figures a trip does not have (an old or
  *  very short recording) are left out rather than shown as zero. */

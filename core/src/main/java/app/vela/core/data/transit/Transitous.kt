@@ -17,10 +17,7 @@ import java.net.URLEncoder
 import app.vela.core.model.TransitItinerary
 import app.vela.core.model.LatLng
 import org.json.JSONObject
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
-import java.util.TimeZone
 
 /**
  * **Transitous** (transitous.org) - the community-run, keyless public-transit API over the world's
@@ -795,14 +792,10 @@ object Transitous {
     /** ISO-8601 UTC ("2026-07-13T20:26:00Z") to epoch seconds. */
     internal fun parseIso(iso: String): Long? = runCatching { java.time.Instant.parse(iso).epochSecond }.getOrNull()
 
-    /** Clock text in the STOP's timezone (falls back to the device zone): 12-hour like the
-     *  Google boards, or 24-hour when the device's clock setting says so ([ClockFormat],
-     *  issue #357). */
-    internal fun clockText(epochSec: Long, tz: String?): String {
-        val fmt = SimpleDateFormat(if (app.vela.core.data.ClockFormat.use24h) "HH:mm" else "h:mm a", Locale.US)
-        fmt.timeZone = tz?.let { runCatching { TimeZone.getTimeZone(it) }.getOrNull() } ?: TimeZone.getDefault()
-        return fmt.format(Date(epochSec * 1000))
-    }
+    /** Clock text in the STOP's timezone (falls back to the device zone), on the clock and in the
+     *  language the app uses ([ClockFormat], issue #357). */
+    internal fun clockText(epochSec: Long, tz: String?): String =
+        app.vela.core.data.ClockFormat.at(epochSec, tz?.let { runCatching { java.time.ZoneId.of(it) }.getOrNull() } ?: java.time.ZoneId.systemDefault())
 
     private fun modeOf(mode: String?): TransitMode = when (mode?.uppercase()) {
         "BUS", "COACH" -> TransitMode.BUS

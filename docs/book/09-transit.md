@@ -74,7 +74,7 @@ direction, sorted by next departure.
 
 - Canceled calls and runs are left off.
 - The time is the realtime departure when the feed has one, else the timetable time, in the
-  stop's time zone and the app's 12 or 24 hour clock.
+  stop's time zone and the app's 12 or 24 hour clock, written the app language's way.
 - A realtime time more than 3 minutes before the timetable is not shown (`trustLive`): a
   vehicle waiting to start its run already reports its position, and the feed predicts it as on
   its way, so a stop two minutes from the start read "2 min" for a bus leaving in twelve. The

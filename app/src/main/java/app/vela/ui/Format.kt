@@ -127,6 +127,8 @@ object Clock24 {
         }
         on.value = v
         app.vela.core.data.ClockFormat.use24h = v
+        // The in-app language once AppLocale.wrap has run; refreshed on every resume.
+        app.vela.core.data.ClockFormat.locale = Locale.getDefault()
     }
 
     fun set(context: Context, value: String) {
@@ -135,43 +137,13 @@ object Clock24 {
     }
 }
 
-/** The 12 or 24 hour clock chosen ([Clock24]) in [locale]'s own hour-and-minute pattern
- *  ([clockPattern]), so the day period sits where the language puts it: "7:30 PM", "下午7:30". */
+/** The 12 or 24 hour clock chosen ([Clock24]) in [locale]'s own pattern
+ *  ([app.vela.core.data.ClockFormat.pattern]), so the day period sits where the language puts it:
+ *  "7:30 PM", "下午7:30". */
 internal fun clockTimeFormatter(
     use24h: Boolean = Clock24.on.value,
     locale: Locale = Locale.getDefault(),
-): DateTimeFormatter = DateTimeFormatter.ofPattern(clockPattern(use24h, locale), locale)
-
-/**
- * [locale]'s hour-and-minute pattern for the chosen clock, whatever clock the locale prefers.
- * Android picks it (`getBestDateTimePattern`). Where it cannot (a unit test), the locale's short
- * time stands when it already has the chosen clock, else "HH:mm" or "h:mm a". java.time before
- * Android 14 has no flexible day period ("B", "in the evening"), so the plain AM/PM stands in.
- */
-internal fun clockPattern(use24h: Boolean, locale: Locale): String {
-    val best = runCatching { android.text.format.DateFormat.getBestDateTimePattern(locale, if (use24h) "Hm" else "hm") }.getOrNull()
-    val p = best ?: runCatching {
-        java.time.format.DateTimeFormatterBuilder.getLocalizedDateTimePattern(
-            null, java.time.format.FormatStyle.SHORT, java.time.chrono.IsoChronology.INSTANCE, locale,
-        )
-    }.getOrNull()?.takeIf { lp -> lp.any { it in (if (use24h) "Hk" else "hK") } }
-    return p?.let(::plainDayPeriod) ?: if (use24h) "HH:mm" else "h:mm a"
-}
-
-/** [pattern] with each day period outside quotes made one plain AM/PM ("a"): a flexible one ("B",
- *  "b") or a long one ("aaaa"), which java.time before Android 14 rejects. */
-internal fun plainDayPeriod(pattern: String): String {
-    val sb = StringBuilder(pattern.length)
-    var quoted = false
-    var prev = ' '
-    for (c in pattern) {
-        if (c == '\'') quoted = !quoted
-        val period = !quoted && (c == 'a' || c == 'B' || c == 'b')
-        if (!(period && prev == 'a')) sb.append(if (period) 'a' else c)
-        prev = if (period) 'a' else c
-    }
-    return sb.toString()
-}
+): DateTimeFormatter = app.vela.core.data.ClockFormat.formatter(use24h, locale)
 
 /** Wall-clock arrival time for a trip [remainingSeconds] from now, e.g. "7:42 PM" or "19:42",
  *  following the device's 12/24-hour setting, the way Google shows ETA during navigation. */
@@ -189,10 +161,9 @@ fun formatClock(epochMs: Long): String {
     return t.format(fmt)
 }
 
-/** "Sep 7, 7:42 PM" / "7 Sep, 19:42": a saved trip's or log's timestamp in the device's own date
- *  and time formats. */
-fun formatDateTime(context: Context, epochMs: Long): String {
-    val d = java.util.Date(epochMs)
-    return android.text.format.DateFormat.getMediumDateFormat(context).format(d) + ", " +
-        android.text.format.DateFormat.getTimeFormat(context).format(d)
-}
+/** "Sep 7, 2026, 7:42 PM" / "7 Sep 2026, 19:42": a saved trip's or log's timestamp in the
+ *  language's own date and time pattern, on the clock chosen ([Clock24]). [withYear] false drops
+ *  the year. */
+fun formatDateTime(@Suppress("UNUSED_PARAMETER") context: Context, epochMs: Long, withYear: Boolean = true): String =
+    java.time.Instant.ofEpochMilli(epochMs).atZone(java.time.ZoneId.systemDefault())
+        .format(app.vela.core.data.ClockFormat.formatter(Clock24.on.value, Locale.getDefault(), if (withYear) "yMMMd" else "MMMd"))

@@ -33,11 +33,4 @@ class ClockTimeFormatterTest {
         assertEquals("오후 7:30", t.format(clockTimeFormatter(false, Locale.KOREA)))
         assertEquals("19:30", t.format(clockTimeFormatter(true, Locale.forLanguageTag("zh-TW"))))
     }
-
-    @Test fun `a flexible or long day period becomes the plain one`() {
-        assertEquals("ah:mm", plainDayPeriod("Bh:mm"))
-        assertEquals("h:mm a", plainDayPeriod("h:mm b"))
-        assertEquals("h:mm a", plainDayPeriod("h:mm aaaa"))
-        assertEquals("H 'ba' mm", plainDayPeriod("H 'ba' mm"))
-    }
 }

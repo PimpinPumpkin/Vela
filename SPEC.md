@@ -6591,12 +6591,16 @@ planned keeps the instructions it was built with.
   `fitness_centre`, the MOTIS wire field `cancelled`), marked where they appear.
 
 - Clock: Settings > Appearance > Clock (`clock_mode`) is the device's 12/24-hour setting, or
-  either for Vela alone. `Clock24.on` and `ClockFormat.use24h` carry it. The route time picker,
-  selected time, departure and arrival windows, and navigation arrival clock all follow it,
-  whatever clock the language prefers, in the language's own hour-and-minute pattern
-  (`clockPattern`: "7:30 PM", "下午7:30"). Transit directions
-  times come from the payload's epoch and time zone (`ClockFormat.at`); `ClockFormat.show`
-  converts the text of the one page still fetched in English, Google's stop-board fallback.
+  either for Vela alone. `Clock24.on` and `ClockFormat.use24h` carry it, and `ClockFormat.locale`
+  the app language, refreshed on every resume. Every time Vela shows follows it, whatever clock
+  the language prefers, in the language's own pattern from `ClockFormat.pattern`
+  (`getBestDateTimePattern`, "hm" or "Hm"): "7:30 PM", "下午7:30", "午後7:30", Finnish "19.30".
+  That is the route time picker, the chosen time, the departure and arrival windows, the drive's
+  arrival clock, transit times, the opening-hours warning and trip timestamps (with the date,
+  "yMMMd" plus the time). A flexible day period ("B") becomes the plain AM/PM, which java.time
+  before Android 14 cannot read. Transit directions times come from the payload's epoch and time
+  zone (`ClockFormat.at`); `ClockFormat.show` rewrites the text of the one page still fetched in
+  English, Google's stop-board fallback.
 - Calendar: the Depart at and Arrive by date picker is drawn in `AppLocale.calendarLocale()`.
   Month and day names follow the app language; the first day of the week follows the device's
   region, read from `Resources.getSystem()`. A picked language has no region, and alone it takes
