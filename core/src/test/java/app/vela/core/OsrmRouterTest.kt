@@ -155,7 +155,7 @@ class OsrmRouterTest {
         val turn = app.vela.core.model.Maneuver(ManeuverType.TURN_LEFT, "Turn left onto Main Street", LatLng(0.0, 0.0), 0.0, 0.0,
             lightsBeforeM = listOf(150.0), lightAtTurn = true)
         val lead = { dtn: Double -> app.vela.core.nav.NavEngine.lightLead(turn, dtn, turn.instruction) }
-        assertEquals("Pass the traffic light, then turn left onto Main Street", lead(300.0))
+        assertEquals("Go past this light, then turn left onto Main Street", lead(300.0))
         assertEquals("At the light, turn left onto Main Street", lead(120.0))
         val alone = turn.copy(lightsBeforeM = emptyList())
         assertEquals("At the light, turn left onto Main Street", app.vela.core.nav.NavEngine.lightLead(alone, 400.0, alone.instruction))
@@ -173,17 +173,31 @@ class OsrmRouterTest {
         assertEquals("clustered to one light", 1, turn.lightsBeforeM.size)
     }
 
-    @Test fun theCueCountsOnlyTheLightsStillAhead() {
+    @Test fun theCueNamesOneLightStillAheadAndNeverCountsTwo() {
         val turn = app.vela.core.model.Maneuver(ManeuverType.TURN_LEFT, "Turn left onto Main Street", LatLng(0.0, 0.0), 0.0, 0.0, lightsBeforeM = listOf(300.0, 90.0))
         val lead = { dtn: Double -> app.vela.core.nav.NavEngine.lightLead(turn, dtn, turn.instruction) }
-        assertEquals("Pass 2 traffic lights, then turn left onto Main Street", lead(400.0))
-        assertEquals("the first is behind the car", "Pass the traffic light, then turn left onto Main Street", lead(250.0))
+        assertEquals("two to go past: nothing about lights", "Turn left onto Main Street", lead(400.0))
+        assertEquals("the first is behind the car", "Go past this light, then turn left onto Main Street", lead(250.0))
         assertEquals("15 m short of a light is at it, not before it", "Turn left onto Main Street", lead(105.0))
         assertEquals("both behind", "Turn left onto Main Street", lead(60.0))
-        // Three or more ahead: nobody narrates "pass 3 lights".
         val busy = turn.copy(lightsBeforeM = listOf(350.0, 250.0, 150.0))
         assertEquals("Turn left onto Main Street", app.vela.core.nav.NavEngine.lightLead(busy, 400.0, busy.instruction))
-        assertEquals("Pass 2 traffic lights, then turn left onto Main Street", app.vela.core.nav.NavEngine.lightLead(busy, 300.0, busy.instruction))
+        assertEquals("Turn left onto Main Street", app.vela.core.nav.NavEngine.lightLead(busy, 300.0, busy.instruction))
+        assertEquals("Go past this light, then turn left onto Main Street", app.vela.core.nav.NavEngine.lightLead(busy, 200.0, busy.instruction))
+        // One light, but 300 m before the turn: side streets in between, so it says nothing.
+        val far = turn.copy(lightsBeforeM = listOf(300.0))
+        assertEquals("Turn left onto Main Street", app.vela.core.nav.NavEngine.lightLead(far, 400.0, far.instruction))
+        // Further out than lights are marked: nothing, whatever the marks say.
+        val atTurn = turn.copy(lightsBeforeM = emptyList(), lightAtTurn = true)
+        assertEquals("Turn left onto Main Street", app.vela.core.nav.NavEngine.lightLead(atTurn, 900.0, atTurn.instruction))
+    }
+
+    @Test fun sharpTurnsGetLightsAndRampsDoNot() {
+        val r = straightRoute()
+        val onApproach = LatLng(38.5, -121.7 + 0.001)
+        fun withType(t: ManeuverType) = r.copy(legs = listOf(r.legs[0].copy(maneuvers = listOf(r.legs[0].maneuvers[0], r.legs[0].maneuvers[1].copy(type = t)))))
+        assertEquals(1, RouteGeometry.enrichWithLights(withType(ManeuverType.SHARP_RIGHT), listOf(onApproach)).legs[0].maneuvers.last().lightsBeforeM.size)
+        assertTrue(RouteGeometry.enrichWithLights(withType(ManeuverType.RAMP_RIGHT), listOf(onApproach)).legs[0].maneuvers.last().lightsBeforeM.isEmpty())
     }
 
     @Test fun pureRenameContinueIsFoldedIntoThePreviousStep() {

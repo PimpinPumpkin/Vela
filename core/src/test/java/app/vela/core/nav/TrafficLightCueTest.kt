@@ -12,7 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Locale
 
-/** "At the light, turn right" said once per turn, on the first line that can carry it. */
+/** A traffic light named once per turn, on the first line that can carry it. */
 class TrafficLightCueTest {
     private val lat = 38.5449
     private val lng0 = -121.7405
@@ -70,11 +70,18 @@ class TrafficLightCueTest {
         assertEquals("$said", "At the light, turn left onto Oak Avenue", said.last { "Oak Avenue" in it })
     }
 
-    @Test fun `a light before the turn is passed first, then the turn's own is named`() {
+    @Test fun `one light before the turn is gone past, and no other line names a light`() {
         val said = drive(route(400.0, elm = { copy(lightsBeforeM = listOf(150.0), lightAtTurn = true) }), 400.0)
-        val elm = said.filter { "Elm Street" in it || it.startsWith("At the light, turn right") }
-        assertTrue("$said", elm.first().contains("Pass the traffic light, then turn right onto Elm Street"))
-        assertEquals("$said", 1, elm.count { "At the light" in it })
+        val elm = said.filter { "Elm Street" in it || it.startsWith("Turn right") || it.startsWith("At the light") }
+        assertTrue("$said", elm.first().contains("Go past this light, then turn right onto Elm Street"))
+        assertEquals("$said", 1, elm.count { "light" in it })
+    }
+
+    @Test fun `two lights to go past say nothing until one is left`() {
+        val said = drive(route(400.0, elm = { copy(lightsBeforeM = listOf(350.0, 120.0)) }), 400.0)
+        val elm = said.filter { "Elm Street" in it }
+        assertTrue("$said", elm.none { "2 lights" in it })
+        assertTrue("$said", elm.count { "light" in it } <= 1)
     }
 
     @Test fun `no light, no cue`() {

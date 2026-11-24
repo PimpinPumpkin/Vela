@@ -262,7 +262,7 @@ class NavStringsTest {
     }
 
     @Test fun `the lights lead-in joins the turn in the language's own words`() {
-        assertEquals("Pass the traffic light, then turn left", EnNavStrings.lightThen(EnNavStrings.passLights(1), "Turn left"))
+        assertEquals("Go past this light, then turn left", EnNavStrings.lightThen(EnNavStrings.passLights(1), "Turn left"))
         assertEquals("At the light, turn right onto Main Street", EnNavStrings.atLight("Turn right onto Main Street"))
         assertEquals("a language without the phrase says the turn alone", null, RoNavStrings.atLight("Virați la dreapta"))
         assertEquals("Treceți de semafor, apoi virați la stânga", RoNavStrings.lightThen(RoNavStrings.passLights(1), "Virați la stânga"))

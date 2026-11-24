@@ -9,7 +9,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** "Pass the traffic light, then ..." is said for a light still ahead, and dropped once it is behind. */
+/** "Go past this light, then ..." for one light just before the turn, said once, never for one far before it. */
 class NavEngineLightCueTest {
     private val lat = 38.5449
     private val lng0 = -121.7405
@@ -43,24 +43,24 @@ class NavEngineLightCueTest {
         return said
     }
 
-    @Test fun `a light between the far prompt and the near one is named once`() {
+    @Test fun `a light more than 200 m before the turn is not named`() {
+        // Side streets lie between it and the turn: "go past this light, then turn left" would
+        // send a driver into the first of them.
         val said = spokenOnApproach(route(lightBeforeM = 250.0))
         assertEquals("far, near, turn-now: $said", 3, said.size)
-        assertTrue("400 m out the light is ahead: ${said[0]}", said[0].contains("Pass the traffic light, then turn left onto North Road"))
-        assertTrue("150 m out it is behind: ${said[1]}", !said[1].contains("traffic light") && said[1].contains("Turn left onto North Road"))
-        assertEquals("the turn itself is said bare", "Turn left onto North Road", said[2])
+        assertTrue("$said", said.none { it.contains("light") })
     }
 
-    @Test fun `a light close to the turn is named on both approach prompts`() {
+    @Test fun `a light just before the turn is named once, on the first line`() {
         val said = spokenOnApproach(route(lightBeforeM = 80.0))
-        assertTrue(said[0].contains("Pass the traffic light, then"))
-        assertTrue(said[1].contains("Pass the traffic light, then"))
-        assertTrue(!said[2].contains("traffic light"))
+        assertTrue(said[0], said[0].contains("Go past this light, then turn left onto North Road"))
+        assertTrue(said[1], !said[1].contains("light"))
+        assertTrue(said[2], !said[2].contains("light"))
     }
 
     @Test fun `a route with no marked light speaks as before`() {
         val said = spokenOnApproach(route(lightBeforeM = null))
-        assertTrue(said.none { it.contains("traffic light") })
+        assertTrue(said.none { it.contains("light") })
         assertEquals(3, said.size)
     }
 

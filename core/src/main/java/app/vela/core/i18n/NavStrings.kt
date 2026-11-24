@@ -45,9 +45,9 @@ interface NavStrings {
     /** Said on getting back on it: EN "Following the route." */
     fun trackFollowing(): String
 
-    /** Landmark lead-in "Pass the traffic light" / "Pass N traffic lights" for Google-style guidance, prepended
-     *  to a turn ("Pass the light, then turn left onto 5th Ave"). Default "" = feature omitted for that language
-     *  (English-first); only added when it makes sense (1–2 signals right before a surface-street turn). */
+    /** Landmark lead-in EN "Go past this light", prepended to a turn ("Go past this light, then turn left onto
+     *  5th Ave"). Default "" = feature omitted for that language. Spoken for one light only
+     *  (`NavEngine.lightCue`); [count] is kept for the languages that word it by number. */
     fun passLights(count: Int): String = ""
 
     /** The lights lead-in joined to the turn: "Pass the traffic light, then turn left". A language
@@ -255,7 +255,7 @@ object EnNavStrings : NavStrings {
 
     override fun inThen(distancePhrase: String, instruction: String): String = "In $distancePhrase, $instruction"
 
-    override fun passLights(count: Int): String = if (count <= 1) "Pass the traffic light" else "Pass $count traffic lights"
+    override fun passLights(count: Int): String = if (count <= 1) "Go past this light" else "Go past $count lights"
 
     override fun atLight(instruction: String): String = "At the light, " + instruction.replaceFirstChar { it.lowercaseChar() }
 

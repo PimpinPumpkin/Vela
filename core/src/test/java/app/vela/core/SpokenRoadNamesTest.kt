@@ -123,10 +123,10 @@ class SpokenRoadNamesTest {
 
         // The cue is added to whichever form is spoken, 120 m short of the turn here.
         val named = app.vela.core.nav.NavEngine.lightLead(turn, 120.0, turn.spokenInstruction())
-        assertTrue("named form keeps the clause", named.startsWith("Pass the traffic light, then") && named.contains("Main Street"))
+        assertTrue("named form keeps the clause", named.startsWith("Go past this light, then") && named.contains("Main Street"))
         SpokenRoadNames.enabled = false
         val bare = app.vela.core.nav.NavEngine.lightLead(turn, 120.0, turn.spokenInstruction())
-        assertTrue("the clause went missing once street names were off: '$bare'", bare.startsWith("Pass the traffic light, then"))
+        assertTrue("the clause went missing once street names were off: '$bare'", bare.startsWith("Go past this light, then"))
         assertFalse(bare.contains("Main Street"))
     }
 }

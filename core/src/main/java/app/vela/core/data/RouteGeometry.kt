@@ -51,9 +51,10 @@ object RouteGeometry {
     // Max gap (m) between an exit ramp and a following fork/merge for them to count as ONE exit complex
     // (consolidateExits). Generous enough for a long ramp, short enough that a genuine km-away fork isn't folded.
     private const val EXIT_COMPLEX_GAP_M = 500.0
-    // Traffic-light landmark guidance (enrichWithLights): a light must be within this far BEFORE the turn (a
-    // block or two — "pass the light, then turn"), and within this far of the driven line to count as on-route.
-    private const val LIGHT_APPROACH_M = 400.0
+    // Traffic-light landmark guidance (enrichWithLights): lights are marked this far back from the turn, the
+    // furthest out a cue is spoken (NavEngine.LIGHT_SPEAK_MAX_M), and must be within LIGHT_SNAP_M of the driven
+    // line to count as on-route.
+    internal const val LIGHT_APPROACH_M = 800.0
     private const val LIGHT_SNAP_M = 25.0
     // One physical junction is often several OSM nodes (one traffic_signals node per approach/carriageway,
     // ~15-30 m apart) — cluster matched signals within this radius so we count INTERSECTIONS, not nodes.
@@ -818,9 +819,9 @@ object RouteGeometry {
 
     /**
      * Mark the traffic lights on the approach to each plain turn (`Maneuver.lightsBeforeM`), for
-     * the spoken landmark cue "Pass the traffic light, then turn left onto 5th Avenue". Only
-     * surface-street left and right turns (not ramps, merges, roundabouts or continues), only
-     * signals within [LIGHT_APPROACH_M] before the turn and within [LIGHT_SNAP_M] of the driven
+     * the spoken landmark cue "Go past this light, then turn left onto 5th Avenue". Only
+     * surface-street left and right turns, sharp ones too (not ramps, forks, merges, roundabouts
+     * or continues), only signals within [LIGHT_APPROACH_M] before the turn and within [LIGHT_SNAP_M] of the driven
      * line (a light on a parallel street does not count), and never the turn's own junction.
      * Signals at one junction count once. A signal within [LIGHT_CLUSTER_M] of the turn marks the
      * turn itself as at a light (`Maneuver.lightAtTurn`), for "At the light, turn left onto ...".
@@ -828,6 +829,9 @@ object RouteGeometry {
      * lights still ahead of the car (`NavEngine.lightLead`). The route itself comes back when no
      * turn gains a light.
      */
+    /** The turns a traffic-light cue is for: plain and sharp lefts and rights. */
+    private val LIGHT_TURNS = setOf(ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.SHARP_LEFT, ManeuverType.SHARP_RIGHT)
+
     fun enrichWithLights(route: Route, signals: List<LatLng>): Route {
         val poly = route.polyline
         if (signals.isEmpty() || poly.size < 2) return route
@@ -840,7 +844,7 @@ object RouteGeometry {
         val legs = route.legs.map { leg ->
             val idx = leg.maneuvers.map { nearestIdx(it.location) }
             val newMans = leg.maneuvers.mapIndexed { i, m ->
-                if (i == 0 || (m.type != ManeuverType.TURN_LEFT && m.type != ManeuverType.TURN_RIGHT)) return@mapIndexed m
+                if (i == 0 || m.type !in LIGHT_TURNS) return@mapIndexed m
                 val toIdx = idx[i]; val fromIdx = idx[i - 1]
                 if (toIdx <= fromIdx) return@mapIndexed m
                 // Walk BACK from the turn along the line up to LIGHT_APPROACH_M: each approach
