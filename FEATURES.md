@@ -232,7 +232,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - During a drive the only places on the map are gas stations. "Simplify the map in turns" hides more
   while turning.
 - "Traffic-light guidance" adds spoken cues like "pass the traffic light, then turn left" for
-  lights still ahead of you, and "at the light, turn right" for a turn at a light. On by
+  lights still ahead of you, and "at the light, turn right" for a turn at a light. Off by
   default, in English and a few other languages.
 
 ## Transit

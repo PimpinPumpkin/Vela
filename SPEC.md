@@ -2190,7 +2190,7 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   when the roundabout was only said as another turn's "then". `upcomingPrompts` leaves it out
   too.
 - Maneuvers more than `PASSED_SLACK_M` (75 m) behind are caught up silently.
-- Traffic-light guidance (Settings > Navigation, pref `nav_traffic_lights`, on by default; the
+- Traffic-light guidance (Settings > Navigation, pref `nav_traffic_lights`, off by default; the
   phrases are in English, Hungarian, Romanian and Persian, and "at the light" in English only).
   With it on, `NavController.lightCues` looks up the signals along each route the drive takes
   up and `RouteGeometry.enrichWithLights` marks them on the plain left and right turns they
@@ -2211,9 +2211,8 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   which is a turn too close to the one before for an approach line of its own. Never on a lane
   prompt or the arrival cue. The signals come from the region's road
   features file, which downloads by itself. Where the catalog has no region, the public
-  Overpass server is asked for the first route of a drive only, and only when the user turned
-  the switch on by hand (the key is set): the default sends Overpass nothing. With the switch
-  off nothing is looked up. Logcat `VelaDirections` prints how many steps got a light, how many
+  Overpass server is asked for the first route of a drive only. With the switch off nothing is
+  looked up. Logcat `VelaDirections` prints how many steps got a light, how many
   stops have been passed each time one is counted, and every route the drive adopts (at the
   start and each swap) with its typical and live time, the sum of its steps' times, and its leg
   times when it has them: the figures the bar shows come from these.
