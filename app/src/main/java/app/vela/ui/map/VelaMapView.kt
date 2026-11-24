@@ -1401,6 +1401,7 @@ fun VelaMapView(
     }
     var styleRef by remember { mutableStateOf<Style?>(null) }
     val navPuck = remember { NavPuck() }
+    val turnArrowCut = remember { TurnArrowCut() }
     val turnDeclutter = remember { TurnDeclutter() }
     // The cross-street bubbles this map hid because the camera left the car (ids, to put back).
     val detachedBubblesHidden = remember { ArrayList<String>() }
@@ -2543,16 +2544,22 @@ fun VelaMapView(
     }
     // Turn arrows on the route at the turns ahead (issue #804), during a drive alone. Cut from the
     // line drawn here (routePolyline), not the guidance line, which can run meters to one side of
-    // it; off the main thread, since the drawn line is the long, smoothed one.
+    // it; off the main thread, since the drawn line is the long, smoothed one. The step before the
+    // one in hand keeps its arrow: the car is still driving through the part past the corner, and
+    // the drive ticker cuts it away as the car goes (TurnArrowCut).
     val turnArrowsFor = app.vela.ui.TurnArrows.input.value
     LaunchedEffect(turnArrowsFor, routePolyline, navMode, styleRef) {
         val style = styleRef ?: return@LaunchedEffect
         val f = turnArrowsFor
         val arrows = if (!navMode || f == null) emptyList() else kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-            runCatching { app.vela.core.nav.TurnArrowGeometry.arrows(f.route, f.step, routePolyline.takeIf { it.size >= 2 } ?: f.route.polyline) }
+            runCatching { app.vela.core.nav.TurnArrowGeometry.arrows(f.route, f.step - 1, routePolyline.takeIf { it.size >= 2 } ?: f.route.polyline) }
                 .getOrDefault(emptyList())
         }
-        runCatching { ensureTurnArrows(style, arrows) }.onFailure { android.util.Log.w("VelaTurnArrows", "arrows: ${it.message}") }
+        runCatching { ensureTurnArrows(style, arrows, turnArrowCut) }.onFailure { android.util.Log.w("VelaTurnArrows", "arrows: ${it.message}") }
+        if (turnArrowCut.anyPending()) {
+            kotlinx.coroutines.delay(TURN_ARROW_SHOW_MS)
+            runCatching { turnArrowCut.showPending(style) }
+        }
     }
     LaunchedEffect(shapeDraft, drawDots, styleRef) {
         val style = styleRef ?: return@LaunchedEffect
@@ -3947,6 +3954,8 @@ fun VelaMapView(
                         .getOrDefault(ROUTE_FREEFLOW)
                     val total = routeCum.last()
                     val prog = navPuck.progressM.coerceIn(0.0, total)
+                    // The turn arrows the car is on lose the part it has driven over.
+                    turnArrowCut.frame(style, prog)
                     val spans = routeSpansHolder.value
                     fun remap(lo: Double, hi: Double): List<Triple<Float, Float, Int>> {
                         val g0 = (lo / total).toFloat()
@@ -8052,10 +8061,110 @@ private fun turnArrowHeadSize(): Expression {
     return Expression.interpolate(Expression.linear(), Expression.zoom(), *stops)
 }
 
-private fun ensureTurnArrows(style: Style, arrows: List<app.vela.core.nav.TurnArrowGeometry.Arrow>) {
+// The arrows the car can be on, the one it is driving through and the next, each come from a
+// source of their own with line metrics, so the drive ticker cuts the shaft at the car with a
+// paint change (SPEC 4.7, Turn arrows). The rest share TURN_ARROW_SRC.
+private const val TURN_ARROW_NEAR = 2
+private fun turnArrowNearSrc(i: Int) = "vela-turn-arrows-near$i-src"
+private fun turnArrowNearIds(i: Int) = listOf(TURN_ARROW_CASING_LAYER, TURN_ARROW_HEAD_CASING_LAYER, TURN_ARROW_LAYER, TURN_ARROW_HEAD_LAYER).map { "$it-near$i" }
+// A slot given a new arrow stays hidden this long, while the shared source still draws that
+// arrow, so the slot never shows the arrow it held before its new one is tiled.
+private const val TURN_ARROW_SHOW_MS = 250L
+// Gradient texels along a shaft: the cut moves in steps of a 60 m arrow / 256, about 0.25 m.
+private const val TURN_ARROW_TEXELS = 256
+
+/** A near arrow's shaft: clear before [f], the part the car has driven over, [color] after. */
+private fun turnArrowCutGradient(f: Float, color: Int): Expression =
+    Expression.step(Expression.lineProgress(), Expression.color(if (f <= 0f) color else android.graphics.Color.TRANSPARENT),
+        Expression.stop(f.coerceIn(0.0001f, 0.9999f), Expression.color(color)))
+
+/**
+ * The near arrow slots: which arrow each holds, whether it is still waiting to be shown
+ * ([TURN_ARROW_SHOW_MS]), and the texel it was last cut at. An arrow keeps its slot from one
+ * rebuild to the next, so the arrow the car is driving through is never moved between sources.
+ */
+private class TurnArrowCut {
+    val arrows = arrayOfNulls<app.vela.core.nav.TurnArrowGeometry.Arrow>(TURN_ARROW_NEAR)
+    val pending = BooleanArray(TURN_ARROW_NEAR)
+    // -2 not painted since shown or seated, -1 whole, 0 until TURN_ARROW_TEXELS cut, TURN_ARROW_TEXELS gone.
+    val painted = IntArray(TURN_ARROW_NEAR) { -2 }
+    var rest: List<app.vela.core.nav.TurnArrowGeometry.Arrow> = emptyList()
+    var style: Style? = null
+    // The car's last meters along the drawn line, for painting a slot outside the ticker.
+    var lastM = Double.NaN
+
+    fun anyPending(): Boolean = pending.any { it }
+
+    fun reset(s: Style?) {
+        arrows.fill(null); pending.fill(false); painted.fill(-2); rest = emptyList(); style = s; lastM = Double.NaN
+    }
+
+    /** Per drive frame: cut each shown slot at [alongM], only when its texel changed. */
+    fun frame(style: Style, alongM: Double) {
+        lastM = alongM
+        if (style !== this.style) return
+        for (i in 0 until TURN_ARROW_NEAR) {
+            val a = arrows[i] ?: continue
+            if (pending[i]) continue
+            val f = a.fraction(alongM)
+            val texel = when { f <= 0.0 -> -1; f >= 1.0 -> TURN_ARROW_TEXELS; else -> (f * TURN_ARROW_TEXELS).toInt() }
+            if (texel == painted[i]) continue
+            paint(style, i, texel, f.toFloat())
+        }
+    }
+
+    /** Paints slot [i] at the car's last position whatever it last showed. */
+    fun repaint(style: Style, i: Int) {
+        val a = arrows[i] ?: return
+        val f = if (lastM.isNaN()) 0.0 else a.fraction(lastM)
+        val texel = when { f <= 0.0 -> -1; f >= 1.0 -> TURN_ARROW_TEXELS; else -> (f * TURN_ARROW_TEXELS).toInt() }
+        painted[i] = -2
+        paint(style, i, texel, f.toFloat())
+    }
+
+    private fun paint(style: Style, i: Int, texel: Int, f: Float) {
+        val ids = turnArrowNearIds(i)
+        if (texel >= TURN_ARROW_TEXELS) {
+            for (id in ids) style.getLayer(id)?.setProperties(PropertyFactory.visibility(Property.NONE))
+        } else {
+            if (painted[i] == -2 || painted[i] >= TURN_ARROW_TEXELS) {
+                for (id in ids) style.getLayer(id)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
+            }
+            val cut = if (texel < 0) 0f else f
+            style.getLayer(ids[0])?.setProperties(PropertyFactory.lineGradient(turnArrowCutGradient(cut, android.graphics.Color.parseColor(TURN_ARROW_EDGE))))
+            style.getLayer(ids[2])?.setProperties(PropertyFactory.lineGradient(turnArrowCutGradient(cut, android.graphics.Color.WHITE)))
+        }
+        painted[i] = texel
+    }
+
+    /** Shows the slots given an arrow at the last rebuild and drops those arrows from the shared source. */
+    fun showPending(style: Style) {
+        if (style !== this.style) return
+        for (i in 0 until TURN_ARROW_NEAR) if (pending[i]) { pending[i] = false; repaint(style, i) }
+        (style.getSource(TURN_ARROW_SRC) as? GeoJsonSource)?.setGeoJson(turnArrowFeatures(rest))
+    }
+}
+
+private fun turnArrowFeatures(arrows: List<app.vela.core.nav.TurnArrowGeometry.Arrow>): FeatureCollection =
+    FeatureCollection.fromFeatures(arrows.flatMap { a ->
+        val line = Feature.fromGeometry(LineString.fromLngLats(a.points.map { Point.fromLngLat(it.lng, it.lat) }))
+        val end = a.points.last()
+        val head = Feature.fromGeometry(Point.fromLngLat(end.lng, end.lat)).apply {
+            addBooleanProperty("head", true); addNumberProperty("bearing", a.endBearingDeg)
+        }
+        listOf(line, head)
+    })
+
+private fun sameArrow(a: app.vela.core.nav.TurnArrowGeometry.Arrow, b: app.vela.core.nav.TurnArrowGeometry.Arrow) =
+    kotlin.math.abs(a.fromM - b.fromM) < 0.01 && kotlin.math.abs(a.toM - b.toM) < 0.01 && a.points.size == b.points.size &&
+        a.points.last() == b.points.last()
+
+private fun ensureTurnArrows(style: Style, arrows: List<app.vela.core.nav.TurnArrowGeometry.Arrow>, cut: TurnArrowCut) {
+    if (cut.style !== style) cut.reset(style)
     if (style.getSource(TURN_ARROW_SRC) == null) {
         if (arrows.isEmpty()) return
         style.addSource(GeoJsonSource(TURN_ARROW_SRC))
+        for (i in 0 until TURN_ARROW_NEAR) style.addSource(GeoJsonSource(turnArrowNearSrc(i), GeoJsonOptions().withLineMetrics(true)))
         if (style.getImage(TURN_ARROW_HEAD_IMG) == null) style.addImage(TURN_ARROW_HEAD_IMG, turnArrowHeadBitmap(edge = false))
         if (style.getImage(TURN_ARROW_HEAD_CASING_IMG) == null) style.addImage(TURN_ARROW_HEAD_CASING_IMG, turnArrowHeadBitmap(edge = true))
     }
@@ -8068,19 +8177,21 @@ private fun ensureTurnArrows(style: Style, arrows: List<app.vela.core.nav.TurnAr
     val routeTop = layers.indexOfLast { it.id.startsWith("vela-route") && it !is SymbolLayer }
     val mine = layers.indexOfFirst { it.id == TURN_ARROW_CASING_LAYER }
     if (mine < 0 || (routeTop >= 0 && mine < routeTop)) {
-        for (id in listOf(TURN_ARROW_HEAD_LAYER, TURN_ARROW_LAYER, TURN_ARROW_HEAD_CASING_LAYER, TURN_ARROW_CASING_LAYER)) runCatching { style.removeLayer(id) }
+        val nearIds = (0 until TURN_ARROW_NEAR).map { turnArrowNearIds(it) }
+        for (id in listOf(TURN_ARROW_HEAD_LAYER, TURN_ARROW_LAYER, TURN_ARROW_HEAD_CASING_LAYER, TURN_ARROW_CASING_LAYER) + nearIds.flatten()) {
+            runCatching { style.removeLayer(id) }
+        }
         // Round caps: a soft tail, and the shaft's end tucks under the head. Opaque edge: the
-        // shaft's and the head's edges overlap at the joint and must not darken there.
-        val casing = LineLayer(TURN_ARROW_CASING_LAYER, TURN_ARROW_SRC).withProperties(
-            PropertyFactory.lineColor(TURN_ARROW_EDGE), PropertyFactory.lineWidth(turnArrowCasingWidth()),
+        // shaft's and the head's edges overlap at the joint and must not darken there. A near
+        // slot's shaft is colored by its cut gradient and starts hidden.
+        fun shaft(id: String, src: String, color: String, width: Expression, near: Boolean) = LineLayer(id, src).withProperties(
+            if (near) PropertyFactory.lineGradient(turnArrowCutGradient(0f, android.graphics.Color.parseColor(color))) else PropertyFactory.lineColor(color),
+            PropertyFactory.lineWidth(width),
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND), PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
-        ).apply { minZoom = 14f }
-        val body = LineLayer(TURN_ARROW_LAYER, TURN_ARROW_SRC).withProperties(
-            PropertyFactory.lineColor("#FFFFFF"), PropertyFactory.lineWidth(turnArrowBodyWidth()),
-            PropertyFactory.lineCap(Property.LINE_CAP_ROUND), PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+            PropertyFactory.visibility(if (near) Property.NONE else Property.VISIBLE),
         ).apply { minZoom = 14f }
         val padDp = TURN_ARROW_HEAD_PAD_DP + turnArrowHeadEdgeDp()
-        fun head(id: String, img: String) = SymbolLayer(id, TURN_ARROW_SRC)
+        fun head(id: String, img: String, src: String = TURN_ARROW_SRC, near: Boolean = false) = SymbolLayer(id, src)
             .withFilter(Expression.eq(Expression.get("head"), Expression.literal(true)))
             .withProperties(
                 PropertyFactory.iconImage(img),
@@ -8092,26 +8203,48 @@ private fun ensureTurnArrows(style: Style, arrows: List<app.vela.core.nav.TurnAr
                 PropertyFactory.iconOffset(arrayOf(0f, padDp + TURN_ARROW_HEAD_TUCK_DP)),
                 PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true),
                 PropertyFactory.iconSize(turnArrowHeadSize()),
+                PropertyFactory.visibility(if (near) Property.NONE else Property.VISIBLE),
             ).apply { minZoom = 14f }
-        val headCasing = head(TURN_ARROW_HEAD_CASING_LAYER, TURN_ARROW_HEAD_CASING_IMG)
-        val headFill = head(TURN_ARROW_HEAD_LAYER, TURN_ARROW_HEAD_IMG)
-        // Edge, head edge, white shaft, white head: the head's edge lies under the white shaft, so
-        // no dark line crosses the joint.
-        val above = layers.getOrNull(routeTop)?.id
-        if (above != null) {
-            style.addLayerAbove(casing, above); style.addLayerAbove(headCasing, casing.id)
-            style.addLayerAbove(body, headCasing.id); style.addLayerAbove(headFill, body.id)
-        } else { style.addLayer(casing); style.addLayer(headCasing); style.addLayer(body); style.addLayer(headFill) }
+        // Every edge, then every head edge, every white shaft, every white head, the near slots'
+        // with the shared source's: the head's edge lies under the white shaft, so no dark line
+        // crosses the joint, and no arrow's edge draws over another's white where two overlap.
+        val ordered = ArrayList<org.maplibre.android.style.layers.Layer>()
+        ordered += shaft(TURN_ARROW_CASING_LAYER, TURN_ARROW_SRC, TURN_ARROW_EDGE, turnArrowCasingWidth(), near = false)
+        for (i in 0 until TURN_ARROW_NEAR) ordered += shaft(nearIds[i][0], turnArrowNearSrc(i), TURN_ARROW_EDGE, turnArrowCasingWidth(), near = true)
+        ordered += head(TURN_ARROW_HEAD_CASING_LAYER, TURN_ARROW_HEAD_CASING_IMG)
+        for (i in 0 until TURN_ARROW_NEAR) ordered += head(nearIds[i][1], TURN_ARROW_HEAD_CASING_IMG, turnArrowNearSrc(i), near = true)
+        ordered += shaft(TURN_ARROW_LAYER, TURN_ARROW_SRC, "#FFFFFF", turnArrowBodyWidth(), near = false)
+        for (i in 0 until TURN_ARROW_NEAR) ordered += shaft(nearIds[i][2], turnArrowNearSrc(i), "#FFFFFF", turnArrowBodyWidth(), near = true)
+        ordered += head(TURN_ARROW_HEAD_LAYER, TURN_ARROW_HEAD_IMG)
+        for (i in 0 until TURN_ARROW_NEAR) ordered += head(nearIds[i][3], TURN_ARROW_HEAD_IMG, turnArrowNearSrc(i), near = true)
+        var prev = layers.getOrNull(routeTop)?.id
+        for (l in ordered) { if (prev != null) style.addLayerAbove(l, prev) else style.addLayer(l); prev = l.id }
+        // Seated again, the shown slots start hidden: paint them now, the car may be parked.
+        for (i in 0 until TURN_ARROW_NEAR) if (!cut.pending[i] && cut.arrows[i] != null) cut.repaint(style, i)
     }
-    val features = arrows.flatMap { a ->
-        val line = Feature.fromGeometry(LineString.fromLngLats(a.points.map { Point.fromLngLat(it.lng, it.lat) }))
-        val end = a.points.last()
-        val head = Feature.fromGeometry(Point.fromLngLat(end.lng, end.lat)).apply {
-            addBooleanProperty("head", true); addNumberProperty("bearing", a.endBearingDeg)
-        }
-        listOf(line, head)
+    // The first TURN_ARROW_NEAR arrows go to the near slots, an arrow already in one keeping it.
+    val near = arrows.take(TURN_ARROW_NEAR)
+    val next = arrayOfNulls<app.vela.core.nav.TurnArrowGeometry.Arrow>(TURN_ARROW_NEAR)
+    for (i in 0 until TURN_ARROW_NEAR) cut.arrows[i]?.let { held -> next[i] = near.firstOrNull { sameArrow(it, held) } }
+    for (a in near) if (next.none { it != null && sameArrow(it, a) }) {
+        val free = (0 until TURN_ARROW_NEAR).firstOrNull { next[it] == null } ?: break
+        next[free] = a
     }
-    (style.getSource(TURN_ARROW_SRC) as? GeoJsonSource)?.setGeoJson(FeatureCollection.fromFeatures(features))
+    for (i in 0 until TURN_ARROW_NEAR) {
+        val held = cut.arrows[i]
+        val a = next[i]
+        if (held != null && a != null && sameArrow(held, a)) { cut.arrows[i] = a; continue }
+        // A new arrow, or none: hidden until it is tiled (showPending), its old one gone at once.
+        for (id in turnArrowNearIds(i)) style.getLayer(id)?.setProperties(PropertyFactory.visibility(Property.NONE))
+        (style.getSource(turnArrowNearSrc(i)) as? GeoJsonSource)?.setGeoJson(turnArrowFeatures(listOfNotNull(a)))
+        cut.arrows[i] = a
+        cut.pending[i] = a != null
+        cut.painted[i] = -2
+    }
+    cut.rest = arrows.drop(TURN_ARROW_NEAR)
+    // Until a slot shows its arrow, the shared source draws it as well.
+    val shared = cut.rest + (0 until TURN_ARROW_NEAR).filter { cut.pending[it] }.mapNotNull { cut.arrows[it] }
+    (style.getSource(TURN_ARROW_SRC) as? GeoJsonSource)?.setGeoJson(turnArrowFeatures(shared))
     android.util.Log.i("VelaTurnArrows", "set ${arrows.size} arrow(s), seated ${if (mine < 0 || (routeTop >= 0 && mine < routeTop)) "now" else "before"}")
 }
 

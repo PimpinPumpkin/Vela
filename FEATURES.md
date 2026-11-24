@@ -196,7 +196,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - "Road ahead bar" is a strip with the traffic, lights, stop signs, crossings and cameras still
   ahead.
 - Arrows on the route through the turns ahead while you drive, the way Google draws them, on the
-  phone and the car screen; off under Navigation.
+  phone and the car screen; off under Navigation. They curve through a corner, and on the phone
+  the part you have driven over disappears under the car.
 - "Current road name" goes above the bottom bar, under the arrow, inside the bar, or off. A
   freeway shows its number, with the compass direction when the signs give one ("I 80 E").
 - "Road numbers first" puts the number on every road that has one, on the road name, the car

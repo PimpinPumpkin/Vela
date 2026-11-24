@@ -16,8 +16,13 @@ import kotlin.math.hypot
  *
  * The corner is found on the line rather than taken from the maneuver point: a fork's or a
  * ramp's split sits past the point the route puts the maneuver at, and an arrow cut at a fixed
- * distance there ran straight on. Each arm is simplified within [SIMPLIFY_M], so a wobble in the
- * line is not a kink in the arrow while the arrow stays on a curve.
+ * distance there ran straight on. Each arm is simplified within [SIMPLIFY_M], so the shaft follows
+ * a wavy road, and every bend is rounded into an arc of up to [ROUND_M] radius ([round]), so the
+ * shaft curves through a corner the way the car does instead of folding at a point.
+ *
+ * Each arrow knows where it lies along the line ([Arrow.fromM], [Arrow.toM]) and which share of
+ * its own length a point along the line is ([Arrow.fraction]): the map cuts the shaft at the
+ * car every frame, so the part already driven over is never drawn.
  *
  * The arrows are cut from the line the map draws, passed as `line`: a Google route is guided on
  * Google's own line, which runs in a lane, while the map draws a line moved onto the road's
@@ -25,7 +30,35 @@ import kotlin.math.hypot
  * the blue line in places.
  */
 object TurnArrowGeometry {
-    data class Arrow(val points: List<LatLng>, val endBearingDeg: Double)
+    class Arrow(
+        val points: List<LatLng>,
+        val endBearingDeg: Double,
+        /** Where the shaft starts and ends, in meters along the line it was cut from. */
+        val fromM: Double,
+        val toM: Double,
+        /** For each of [points], its meters along that line and along the shaft itself. */
+        private val alongM: DoubleArray,
+        private val shaftM: DoubleArray,
+    ) {
+        /** The shaft's length as drawn, which a rounded corner makes a little shorter than [toM] - [fromM]. */
+        val lengthM: Double get() = shaftM.last()
+
+        /** The share of the shaft, 0 to 1, that lies before [m] meters along the line. */
+        fun fraction(m: Double): Double {
+            if (m <= alongM.first()) return 0.0
+            if (m >= alongM.last()) return 1.0
+            var lo = 0
+            var hi = alongM.size - 1
+            while (hi - lo > 1) {
+                val mid = (lo + hi) ushr 1
+                if (alongM[mid] <= m) lo = mid else hi = mid
+            }
+            val span = alongM[hi] - alongM[lo]
+            val t = if (span <= 0.0) 0.0 else (m - alongM[lo]) / span
+            val len = shaftM.last()
+            return if (len <= 0.0) 1.0 else (shaftM[lo] + t * (shaftM[hi] - shaftM[lo])) / len
+        }
+    }
 
     const val BEFORE_M = 30.0
     const val AFTER_M = 30.0
@@ -51,10 +84,18 @@ object TurnArrowGeometry {
     /** The arrowhead aims along the arrow's own last this many meters, as drawn. */
     const val HEAD_CHORD_M = 6.0
 
-    /** A vertex nearer than this to the chord between its arm's ends is dropped: well inside the
-     *  blue line's half width, so a shaft on a curve stays on the line (5 m cut a curve's chord
-     *  up to 4.5 m inside it). */
-    const val SIMPLIFY_M = 1.5
+    /** A vertex nearer than this to the chord between its arm's ends is dropped. Small, so the
+     *  shaft follows a wavy road: at 1.5 m it ran straight over a line weaving under it. */
+    const val SIMPLIFY_M = 0.5
+
+    /** A bend is rounded into an arc of at most this radius, less where the segments beside it are
+     *  short. At 5 m the arc stays inside the 8.5 m blue line at any corner up to a U-turn: the
+     *  shaft's dark edge (72% of the line's width) reaches no further in than the line's own edge. */
+    const val ROUND_M = 5.0
+
+    /** A bend under this is left as it is; an arc is cut into steps of at most [ARC_STEP_DEG]. */
+    const val ROUND_MIN_DEG = 2.0
+    const val ARC_STEP_DEG = 10.0
 
     /** On a drawn line, a maneuver is looked for within this of where the guidance line puts it,
      *  scaled by the two lines' lengths: the other carriageway of a U-turn is never taken for it. */
@@ -92,12 +133,13 @@ object TurnArrowGeometry {
             val cornerM = if (corner >= 0) cum[corner] else at
             val s1 = minOf(total, cornerM + AFTER_M)
             if (s1 - s0 < MIN_LENGTH_M) continue
-            val pts = if (corner >= 0 && cornerM > s0 && cornerM < s1)
+            val raw = if (corner >= 0 && cornerM > s0 && cornerM < s1)
                 simplify(stretch(poly, cum, s0, cornerM)) + simplify(stretch(poly, cum, cornerM, s1)).drop(1)
             else simplify(stretch(poly, cum, s0, s1))
+            val (pts, along) = round(raw.map { it.first }, DoubleArray(raw.size) { raw[it].second })
             // The head lines up with the shaft's end as drawn, not with the line under it.
             val pc = RouteProjection.cumulative(pts)
-            out += Arrow(pts, chord(pts, pc, maxOf(0.0, pc.last() - HEAD_CHORD_M), pc.last()))
+            out += Arrow(pts, chord(pts, pc, maxOf(0.0, pc.last() - HEAD_CHORD_M), pc.last()), s0, s1, along, pc)
         }
         return out
     }
@@ -138,23 +180,71 @@ object TurnArrowGeometry {
         return RouteProjection.pointAt(poly, cum, a).bearingTo(RouteProjection.pointAt(poly, cum, b))
     }
 
-    /** The line's points from [a] to [b] meters along it, the ends interpolated. */
-    private fun stretch(poly: List<LatLng>, cum: DoubleArray, a: Double, b: Double): List<LatLng> {
-        val pts = ArrayList<LatLng>()
-        pts += RouteProjection.pointAt(poly, cum, a)
+    /** The line's points from [a] to [b] meters along it, the ends interpolated, each with its meters. */
+    private fun stretch(poly: List<LatLng>, cum: DoubleArray, a: Double, b: Double): List<Pair<LatLng, Double>> {
+        val pts = ArrayList<Pair<LatLng, Double>>()
+        pts += RouteProjection.pointAt(poly, cum, a) to a
         var k = RouteProjection.segmentEnd(cum, a)
         while (k < cum.size && cum[k] < b) {
-            if (cum[k] > a) pts += poly[k]
+            if (cum[k] > a) pts += poly[k] to cum[k]
             k++
         }
-        pts += RouteProjection.pointAt(poly, cum, b)
+        pts += RouteProjection.pointAt(poly, cum, b) to b
         return pts
+    }
+
+    /**
+     * Rounds every bend of [pts] over [ROUND_MIN_DEG] into an arc of radius up to [ROUND_M], its
+     * tangent points no further from the bend than half of either segment beside it, so two arcs
+     * never overlap. [along] holds each point's meters along the line; an arc's points get meters
+     * spread evenly between its tangent points'. The ends stay.
+     */
+    private fun round(pts: List<LatLng>, along: DoubleArray): Pair<List<LatLng>, DoubleArray> {
+        if (pts.size < 3) return pts to along
+        val lat0 = pts[0].lat
+        val lng0 = pts[0].lng
+        val kx = 111_320.0 * cos(Math.toRadians(lat0))
+        val xs = DoubleArray(pts.size) { (pts[it].lng - lng0) * kx }
+        val ys = DoubleArray(pts.size) { (pts[it].lat - lat0) * 111_320.0 }
+        val outX = ArrayList<Double>(); val outY = ArrayList<Double>(); val outA = ArrayList<Double>()
+        fun add(x: Double, y: Double, a: Double) { outX += x; outY += y; outA += a }
+        add(xs[0], ys[0], along[0])
+        for (i in 1 until pts.size - 1) {
+            val ax = xs[i] - xs[i - 1]; val ay = ys[i] - ys[i - 1]
+            val bx = xs[i + 1] - xs[i]; val by = ys[i + 1] - ys[i]
+            val la = hypot(ax, ay); val lb = hypot(bx, by)
+            if (la < 1e-6 || lb < 1e-6) { add(xs[i], ys[i], along[i]); continue }
+            val cross = ax * by - ay * bx
+            val turn = kotlin.math.atan2(cross, ax * bx + ay * by) // signed, radians
+            val deg = Math.toDegrees(abs(turn))
+            if (deg < ROUND_MIN_DEG || deg > 179.0) { add(xs[i], ys[i], along[i]); continue }
+            val tanHalf = kotlin.math.tan(abs(turn) / 2)
+            val t = minOf(ROUND_M * tanHalf, la / 2, lb / 2)
+            val r = t / tanHalf
+            val ux = ax / la; val uy = ay / la; val vx = bx / lb; val vy = by / lb
+            val p1x = xs[i] - ux * t; val p1y = ys[i] - uy * t
+            // The center sits r to the inside of the first tangent point.
+            val sgn = if (cross > 0) 1.0 else -1.0
+            val cx = p1x - uy * r * sgn; val cy = p1y + ux * r * sgn
+            val a1 = along[i] - t * (along[i] - along[i - 1]) / la
+            val a2 = along[i] + t * (along[i + 1] - along[i]) / lb
+            val steps = maxOf(1, kotlin.math.ceil(deg / ARC_STEP_DEG).toInt())
+            val start = kotlin.math.atan2(p1y - cy, p1x - cx)
+            for (k in 0..steps) {
+                val ang = start + turn * k / steps
+                add(cx + r * kotlin.math.cos(ang), cy + r * kotlin.math.sin(ang), a1 + (a2 - a1) * k / steps)
+            }
+        }
+        add(xs.last(), ys.last(), along.last())
+        val out = List(outX.size) { LatLng(lat0 + outY[it] / 111_320.0, lng0 + outX[it] / kx) }
+        return out to outA.toDoubleArray()
     }
 
     /** Drops the vertices within [SIMPLIFY_M] of the chord between the ones kept (Douglas-Peucker in
      *  a local meter frame); the ends stay. */
-    private fun simplify(pts: List<LatLng>): List<LatLng> {
-        if (pts.size <= 2) return pts
+    private fun simplify(raw: List<Pair<LatLng, Double>>): List<Pair<LatLng, Double>> {
+        if (raw.size <= 2) return raw
+        val pts = raw.map { it.first }
         val lat0 = pts[0].lat
         val lng0 = pts[0].lng
         val kx = 111_320.0 * cos(Math.toRadians(lat0))
@@ -180,6 +270,6 @@ object TurnArrowGeometry {
             run(worst, b)
         }
         run(0, pts.size - 1)
-        return pts.filterIndexed { i, _ -> keep[i] }
+        return raw.filterIndexed { i, _ -> keep[i] }
     }
 }

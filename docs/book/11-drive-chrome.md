@@ -179,12 +179,18 @@ They draw from z15.4, just under the camera's 15.5 floor, above the route line.
 Turn arrows (Settings > Navigation, on by default) are short white arrows with a thin dark
 indigo edge drawn inside the blue line through each turn ahead, 30 m before the maneuver point to
 30 m past the corner, from z14, the way Google draws them. They are cut from the line the map
-draws, so they sit on it, and follow a curve within 1.5 m. The arrow is about three quarters of
-the line's width, with a round tail and a plain triangle head whose base runs into the shaft.
-The corner is where the line turns, which for a fork or a ramp is past the point the route puts
-the maneuver at, so the arrow runs on through the split. A continue, a merge and a roundabout's
-entry get none; the step you are on and everything after it has one, and a passed turn's arrow
-goes with the step.
+draws, so they sit on it, and follow a wavy road within half a meter. A corner is rounded into an
+arc of up to 5 m radius, so the arrow curves through the turn the way the car does. The arrow is
+about three quarters of the line's width, with a round tail and a plain triangle head whose base
+runs into the shaft. The corner is where the line turns, which for a fork or a ramp is past the
+point the route puts the maneuver at, so the arrow runs on through the split. A continue, a merge
+and a roundabout's entry get none.
+
+The part of an arrow the car has driven over is not drawn. As the car reaches an arrow its tail
+shortens under the car every frame, through the corner and out the other side, until the head
+goes too; nothing of the arrow is ever behind the car. The two arrows the car can be on (the one
+it is driving through and the next) each have a source of their own, and the cut is a paint
+change on them, never new geometry (SPEC 4.7, Turn arrows).
 
 ### The route line during a drive
 

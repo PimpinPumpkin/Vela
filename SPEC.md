@@ -5217,15 +5217,34 @@ A version query on `BAKED_URL` moves the map cache off old tiles after a rebake.
   Google and OsmAnd draw them): `TurnArrowGeometry.arrows` takes the route's stretch from
   `BEFORE_M` (30 m) before the maneuver point through the corner to `AFTER_M` (30 m) past it,
   for the maneuvers in `TYPES` (turns, forks, ramps, keeps, a U-turn, a roundabout's exit; not a
-  continue, a merge or the roundabout's entry) from the step in hand onward. The corner is found
+  continue, a merge or the roundabout's entry) from the step it is given onward: on the phone the
+  step before the one in hand, whose arrow the car is still driving through past the corner, and
+  on the car screen the step in hand. The corner is found
   on the line, from `CORNER_BACK_M` (10 m) before the point to `SEEK_M` (150 m) past it: the
   first vertex where the chords `HOLD_M` (25 m) long on either side differ by `BEND_DEG` (12)
   or more, moved on to a sharper vertex within `CORNER_NEAR_M` (15 m). A fork's or a ramp's
   split lies past the maneuver point, and a lane change is a jog the chord after it does not
   hold. With no such vertex the stretch ends `AFTER_M` past the point. Each arm is simplified
-  (Douglas-Peucker, `SIMPLIFY_M` 1.5 m, well inside the stripe's half width; at 5 m a curve's
-  chord ran up to 4.5 m inside it), the corner kept, and the arrowhead aims along the arrow's
+  (Douglas-Peucker, `SIMPLIFY_M` 0.5 m; at 1.5 m the shaft ran straight over a line weaving under
+  it), the corner kept. Then every bend over `ROUND_MIN_DEG` (2) becomes an arc of radius up to
+  `ROUND_M` (5 m) in steps of at most `ARC_STEP_DEG` (10), its tangent points no further from the
+  bend than half of either segment beside it, so the shaft curves through a corner as Google's
+  does instead of folding at a point. At a right angle the arc's middle is 2.1 m inside the
+  corner and the shaft's dark edge stays inside the stripe. The arrowhead aims along the arrow's
   own last `HEAD_CHORD_M` (6 m) as drawn.
+- Each `Arrow` carries `fromM` and `toM`, its ends in meters along the line it was cut from, and
+  `fraction(m)`, the share of the shaft as drawn that lies before `m` meters along the line (an
+  arc's points take meters spread evenly between its tangent points').
+- On the phone the part of an arrow the car has driven over is not drawn, as on Google's map.
+  The first `TURN_ARROW_NEAR` (2) arrows, the one the car is driving through and the next, each
+  draw from a source of their own with line metrics (`vela-turn-arrows-near<i>-src`) and their
+  own four layers; the rest share `vela-turn-arrows-src`. Per drive frame `TurnArrowCut.frame`
+  paints each near shaft's `line-gradient` clear before `fraction(progress)` and repaints only
+  when that moves a texel (`TURN_ARROW_TEXELS` 256, about 0.25 m of a 60 m arrow). A shaft the car
+  has passed the end of is hidden with its head. An arrow keeps its slot from one rebuild to the
+  next. A slot given a new arrow stays hidden for `TURN_ARROW_SHOW_MS` (250 ms) while the shared
+  source draws that arrow too, so the slot never shows the arrow it held before; then the slot
+  is painted and the shared source drops it.
 - The arrows are cut from the line the map draws (`VelaMapView`'s `routePolyline`, the
   `drawPolyline` moved to road centers and smoothed), passed as `arrows`'s `line`, not from the
   guidance line: a Google route is guided on Google's own line, which runs in a lane up to about
@@ -5239,7 +5258,8 @@ A version query on `BAKED_URL` moves the map cache off old tiles after a rebake.
   `vela-route*` line layer, the pieces' pending "-b" copies included, and are seated again when a
   piece has come in above them (the drive's `vela-route-cut-b` hid the bodies on a 4a), from
   z14, in this order: `vela-turn-arrows-casing`, `vela-turn-arrows-head-casing`,
-  `vela-turn-arrows`, `vela-turn-arrows-head`. The arrow sits inside the stripe, as Google's
+  `vela-turn-arrows`, `vela-turn-arrows-head`, each followed by its near slots' copies
+  (`-near0`, `-near1`), so no arrow's edge draws over another's white. The arrow sits inside the stripe, as Google's
   does: its dark edge (`TURN_ARROW_EDGE`, an opaque dark indigo) spans `TURN_ARROW_CASING_OF_ROUTE`
   (0.72) of the stripe's width at every zoom and its white `TURN_ARROW_BODY_OF_ROUTE` (0.54),
   both from the stripe's own curve (`realWidthCurve`), with round caps and joins. The head is a
