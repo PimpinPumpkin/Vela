@@ -207,6 +207,12 @@ Small items, one pull request each.
   started offline never picks up the patched style until the process restarts.
 - The first-line shortening measures speech in characters, so a Japanese, Chinese or Hebrew
   line is read as short and keeps its sign tail.
+- The neural voice's one worker both renders and plays (`PiperSynth`): it waits out each line's
+  playback, during which nothing is prepared, and a prepared line queues behind the phrase being
+  rendered, which cannot be cut. On a Pixel 4a with a high voice (RTF about 1.3) a line at the
+  turn waited up to 3.5 s that way on a Davis fixture mock drive, and joined lines late in a
+  dense run of turns were still rendered when spoken. Play prepared audio without the render
+  worker, and render while a line plays.
 - The neural voice's phonemizer. espeak, in front of the Piper model, misreads text that is
   not prose: "5:49 PM" came out as "five foot nine". `SpeechText` works around it case by
   case. The fix is a model that normalizes its own input and is fast enough on a Pixel 4a.

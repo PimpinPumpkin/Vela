@@ -565,8 +565,9 @@ signed file the app fetches at launch (SPEC 11).
   swipe can, with `input motionevent`. `setprop debug.vela.fps true` logs the camera
   zoom once a second (`VelaFps`), which is how to tell whether a pinch zoomed.
 - Log tags worth knowing: `VelaDirections`, `VelaSteps`, `VelaCapture` and `VelaSpeak` (set to
-  DEBUG; `VelaSpeak` prints every spoken line, names included, so only on a test phone),
-  `VelaTap`, `VelaSearch`, `VelaTransit`, `VelaDelta`, `VelaUpdate`, `VelaWeb`, `VelaSession`,
+  DEBUG; `VelaSpeak` prints every spoken line and every line prepared ahead (`prepare:`), names
+  included, so only on a test phone), `VelaTap`, `VelaSearch`, `VelaTransit`, `VelaDelta`,
+  `VelaUpdate`, `VelaWeb`, `VelaSession`,
   `VelaFps`, `VelaCar`, `VelaSim`, `VelaPassAlert`, `VelaDot` (`setprop debug.vela.tune.dotLog 1`),
   `VelaNavTrace` (`setprop debug.vela.tune.navTraceLog 1`: the arrow's progress and headings per
   frame, for `scripts/mockdrive/lagcheck.py`).

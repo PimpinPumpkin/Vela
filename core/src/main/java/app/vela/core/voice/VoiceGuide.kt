@@ -494,14 +494,35 @@ class VoiceGuide @Inject constructor(
      *  is up), so the line needs no synthesis when it is spoken. Only the neural voice can keep
      *  audio; the same voice choice and text changes as [speakNow], so the prepared line matches. */
     fun prepare(text: String, onDone: () -> Unit = {}) {
+        val n = preparer() ?: run { onDone(); return }
+        logPrepare(text)
+        n.prepare(forSpeech(SpokenScript.forVoice(text, n.voiceLanguage ?: targetLang(), roadNameLatin)), onDone)
+    }
+
+    /** [prepare] the drive's next [lines], most needed first, replacing the ones still waiting
+     *  from the call before ([NeuralSynth.prepareAll]). */
+    fun prepareAll(lines: List<String>) {
+        val n = preparer() ?: return
+        lines.forEach(::logPrepare)
+        val lang = n.voiceLanguage ?: targetLang()
+        n.prepareAll(lines.map { forSpeech(SpokenScript.forVoice(it, lang, roadNameLatin)) })
+    }
+
+    /** The voice that can keep audio ahead of time, or null. Before the first drive nothing is
+     *  initialized yet (init runs at Start) and [neural] is the chosen voice; once a system engine
+     *  is the active one, there is nothing to prepare. */
+    private fun preparer(): NeuralSynth? {
         val t = targetLang()
         val n = neural
-        // Before the first drive nothing is initialized yet (init runs at Start) and [neural] is
-        // the chosen voice; once a system engine is the active one, there is nothing to prepare.
         if (muted || n == null || (currentEngine != null && !useNeural) ||
             !(n.voiceLanguage.let { it == null || it == t } || n.voiceFor(t))
-        ) { onDone(); return }
-        n.prepare(forSpeech(SpokenScript.forVoice(text, n.voiceLanguage ?: t, roadNameLatin)), onDone)
+        ) return null
+        return n
+    }
+
+    /** A line asked for ahead of time, only when a developer asks (VelaSpeak, as [speak]). */
+    private fun logPrepare(text: String) {
+        runCatching { if (android.util.Log.isLoggable("VelaSpeak", android.util.Log.DEBUG)) android.util.Log.d("VelaSpeak", "prepare: $text") }
     }
 
     /** Speak the nav-START opener ("Starting navigation. Head ... on <road>"), but hold it briefly if

@@ -937,6 +937,10 @@ object NavEngine {
     /** The near approach band at [v] m/s: about 10 s out, at least 150 m (a track ride: [TRACK_NEAR_MIN_M]). */
     internal fun nearBand(v: Double, trackRide: Boolean = false) = maxOf(if (trackRide) TRACK_NEAR_MIN_M else 150.0, round50(v * 10.0))
 
+    /** A car's speed through a town turn, m/s: [upcomingPrompts] also places the next step's first
+     *  line as if the turn before it were taken at this speed. */
+    private const val TURN_PACE_MPS = 5.0
+
     /** A "then" past [CHAIN_M] means soon: never for a step further than this. */
     const val THEN_SOON_M = 500.0
 
@@ -1066,7 +1070,10 @@ object NavEngine {
      * prepared, and its own lines are the ones update still says. A line this misses (a real
      * distance on a short step, a speed that has moved a band) is synthesized when spoken.
      */
-    fun upcomingPrompts(route: Route, fromStep: Int, spoken: Set<Int>, speedMps: Double, imperial: Boolean, count: Int = 2, nearestFirst: Boolean = true, trackRide: Boolean = false): List<String> {
+    fun upcomingPrompts(
+        route: Route, fromStep: Int, spoken: Set<Int>, speedMps: Double, imperial: Boolean, count: Int = 2,
+        nearestFirst: Boolean = true, trackRide: Boolean = false, toTurnM: Double = Double.NaN,
+    ): List<String> {
         val ms = route.maneuvers
         val manAlong = geomFor(route).manAlong
         val out = LinkedHashSet<String>()
@@ -1085,15 +1092,47 @@ object NavEngine {
         for (i in fromStep.coerceAtLeast(1) until ms.size) {
             if (taken >= count) break
             val m = ms[i]
-            if (m.type == ManeuverType.ARRIVE) break
-            if (quiet(ms, i)) continue
-            taken++
             val said = when {
                 i == fromStep -> spoken
                 i == chainedInto -> chainedBands
                 else -> emptySet()
             }
-            val leg = ms[i - 1].distanceMeters
+            val chainedHere = i == chainedInto
+            // How far from turn i the car is when update first looks at it: the step in hand a
+            // second on from [toTurnM]; a later step just past the turn before it, which moves the
+            // step on its advance distance short of that turn, a fix (about a second) later, at
+            // this speed or, through a left or right turn, slowed to [TURN_PACE_MPS]. A short
+            // step's first line says that distance, so both ends of the second are tried. A step
+            // in hand whose lines have started: its next band, wherever the car is now.
+            val legM = manAlong[i] - manAlong[i - 1]
+            val entries = when {
+                i != fromStep -> {
+                    val v = if (turnLeftOf(ms[i - 1].type) != null) minOf(pace, TURN_PACE_MPS) else pace
+                    val adv = (v * 2.5).coerceIn(ADVANCE_MIN_M, 90.0)
+                    listOf(legM + adv - v, legM + adv - 2 * v)
+                }
+                said.isNotEmpty() -> listOf(Double.POSITIVE_INFINITY)
+                toTurnM.isNaN() -> listOf(legM)
+                else -> listOf(toTurnM - 0.5 * pace, toTurnM - 1.5 * pace)
+            }.map { it.coerceAtLeast(0.0) }.distinct()
+            // The distance an approach line at [d] says: its band crossed, or where the car is.
+            fun sayAt(d: Double, band: Double) = (if (d >= band * 0.85) band else round10(d)).coerceAtLeast(10.0)
+            if (m.type == ManeuverType.ARRIVE) {
+                // The destination's one approach line at the near distance and the line on
+                // arriving, as update says them. A stop on the way has lines of its own.
+                val arriveNear = if (detail == SpokenDetail.Mode.FULL) bandsOf(i)[1] else near
+                val sayAhead = if (detail == SpokenDetail.Mode.FULL) 1 !in said else said.isEmpty()
+                if (sayAhead && SpokenDetail.speaks(detail, m.type, speedMps)) for (e in entries) {
+                    val d = minOf(e, arriveNear)
+                    if (d > ARRIVE_RADIUS_M * 2) {
+                        out += nav().inThen(spokenDistance(sayAt(d, arriveNear), imperial), nav().destinationWillBe(when (m.side) { "left" -> true; "right" -> false; else -> null }))
+                    }
+                }
+                if (i == ms.lastIndex) out += m.side?.let { nav().destinationSide(left = it == "left") } ?: nav().arrived().trim().trimEnd(';')
+                break
+            }
+            if (quiet(ms, i)) continue
+            taken++
             // The turns update says on this one's lines (see update: TWO TURNS TOO CLOSE, FURTHER ON).
             val nextIdx = if (m.type == ManeuverType.DEPART) -1 else chainedNext(ms, manAlong, i, if (trackRide) TRACK_CHAIN_M else CHAIN_M)
             val laterIdx = if (nextIdx >= 0 || trackRide || m.type == ManeuverType.DEPART) -1 else dueNext(ms, manAlong, i, far + pace * BAND_MERGE_S)
@@ -1104,9 +1143,12 @@ object NavEngine {
                     val band = if (SpokenDetail.exitLike(m.type) || speedMps >= SpokenDetail.FAST_MPS) far else near
                     val line = if (SpokenDetail.exitLike(m.type)) nav().repeatShort(m.spokenInstruction())
                         else nav().repeatShort(m.instructionNoRoad ?: m.spokenInstruction())
-                    val joined = if (nextIdx >= 0) joinNext(m, ms[nextIdx], line, band + gapTo(nextIdx), detail).first else line
-                    if (leg >= band * 0.85) out += nav().inThen(spokenDistance(band, imperial), joined)
-                    if (joined != line) { chainedInto = nextIdx; chainedBands = setOf(0, 1) }
+                    for (e in entries) {
+                        val d = minOf(e, band)
+                        val joined = if (nextIdx >= 0) joinNext(m, ms[nextIdx], line, d + gapTo(nextIdx), detail).first else line
+                        out += nav().inThen(spokenDistance(sayAt(d, band), imperial), joined)
+                        if (joined != line) { chainedInto = nextIdx; chainedBands = setOf(0, 1) }
+                    }
                 }
                 continue
             }
@@ -1114,51 +1156,71 @@ object NavEngine {
             val full = if (lane != null) nav().useLanesToDo(lane.side, lane.count, nav().spokenSign(m.spokenInstruction()))
                 else nav().spokenSign(m.spokenInstruction())
             val brief = nav().repeatShort(m.spokenInstruction())
-            // One approach line where update says one (oneApproach).
-            val one = oneApproach(ms, i, speedMps)
-            val approach = if (one) maxOf(near, round50(speedMps * FAST_APPROACH_S)) else near
-            val farSpoken = !one && leg >= far * 0.85 && m.type != ManeuverType.MERGE
-            val anyApproach = leg >= approach * 0.85 || said.isNotEmpty()
-            val nowPlain = if (anyApproach) short(m, m.spokenInstruction()) else nav().spokenSign(m.spokenInstruction())
-            // An approach line [dist] out, as update's say() builds it: the step's first line takes
-            // its lanes or the turn after it, and is cut to its short form when it would still be
-            // playing at the line at the turn.
+            val bands = bandsOf(i)
+            // An approach line [d] out saying [sayM], as update's say() builds it: the step's first
+            // line takes its lanes or the turn after it.
             var joinedFirst = false
-            fun say(dist: Double, cueLine: CueLine, first: Boolean, instr: String): String {
-                val cue = lightCue(m, dist, cueLine)
+            fun say(d: Double, sayM: Double, cueLine: CueLine, first: Boolean, instr: String): String {
+                val cue = lightCue(m, d, cueLine)
                 val wrapped = when {
                     first && lane != null -> instr
                     first && nextIdx >= 0 -> {
                         val own = withLight(cue.takeIf { it == LightCue.AT_LIGHT || it == LightCue.AT_STOP }, instr)
-                        joinNext(m, ms[nextIdx], own, dist + gapTo(nextIdx), detail).first.also { if (it != own) joinedFirst = true }
+                        joinNext(m, ms[nextIdx], own, d + gapTo(nextIdx), detail).first.also { if (it != own) joinedFirst = true }
                     }
                     else -> withLight(cue.takeIf { it != LightCue.NEXT_STOP }, instr)
                 }
                 val nextStop = cue == LightCue.NEXT_STOP && !(first && (lane != null || nextIdx >= 0))
-                return if (nextStop) withLight(LightCue.NEXT_STOP, instr) else nav().inThen(spokenDistance(dist, imperial), wrapped)
+                return if (nextStop) withLight(LightCue.NEXT_STOP, instr) else nav().inThen(spokenDistance(sayM, imperial), wrapped)
             }
-            fun sayFirst(dist: Double, cueLine: CueLine): String {
-                val line = say(dist, cueLine, true, full)
-                if ((dist - turnNowM) / pace >= line.length / SPEECH_CPS + SPEECH_LEAD_S) return line
-                return say(dist, cueLine, true, if (lane != null) nav().useLanesToDo(lane.side, lane.count, brief) else brief)
-            }
+            // Update's approach lines replayed from the car's first look at the step ([entries])
+            // down to the turn: a line where a band is first due, at the real distance when the car
+            // is already well inside it, and the bands the line counts as said.
             val lines = ArrayList<String>()
-            if (farSpoken && 0 !in said) lines += if (said.isEmpty()) sayFirst(far, CueLine.FAR) else say(far, CueLine.FAR, false, brief)
-            if (leg >= approach * 0.85 && 1 !in said) {
-                lines += if (said.isEmpty() && !farSpoken) sayFirst(approach, CueLine.NEAR) else say(approach, CueLine.NEAR, false, brief)
+            var nearAlways = true // the near band said before the turn, wherever the car came in
+            var saidSome = false
+            var saidNone = false
+            for (e in entries) {
+                val sp = said.toMutableSet()
+                fun at(d: Double) {
+                    val due = bands.withIndex().filter { (slot, b) -> d <= b && slot !in sp && (m.type != ManeuverType.MERGE || slot == 1) }
+                    if (due.isEmpty()) return
+                    val first = sp.isEmpty()
+                    sp += due.map { it.index }
+                    val sayM = sayAt(d, due.last().value)
+                    val nearLine = due.last().index == 1 || bands[1] < sayM && (sayM - bands[1]) / pace < BAND_MERGE_S
+                    val cueLine = if (nearLine) CueLine.NEAR else CueLine.FAR
+                    var line = say(d, sayM, cueLine, first, if (first) full else brief)
+                    // Still playing at the line at the turn: the short form, as update cuts it.
+                    if (first && (d - turnNowM) / pace < line.length / SPEECH_CPS + SPEECH_LEAD_S) {
+                        line = say(d, sayM, cueLine, true, if (lane != null) nav().useLanesToDo(lane.side, lane.count, brief) else brief)
+                    }
+                    lines += line
+                    sp += bands.withIndex().filter { (slot, b) -> slot !in sp && b < sayM && (sayM - b) / pace < BAND_MERGE_S }.map { it.index }
+                }
+                if (e.isFinite()) at(e)
+                bands.distinct().sortedDescending().forEach { b -> if (b < e) at(b) }
+                if (1 !in sp) nearAlways = false
+                if (sp.isEmpty()) saidNone = true else saidSome = true
             }
             if (joinedFirst) { chainedInto = nextIdx; chainedBands = setOf(0, 1) }
-            val now = withLight(lightCue(m, 0.0, CueLine.NOW), nowPlain)
+            // The line at the turn repeats short once an approach line said the whole instruction.
+            val nows = listOfNotNull(
+                short(m, m.spokenInstruction()).takeIf { saidSome },
+                nav().spokenSign(m.spokenInstruction()).takeIf { saidNone },
+            ).map { withLight(lightCue(m, 0.0, CueLine.NOW), it) }.distinct()
             val idx = if (nextIdx >= 0) nextIdx else laterIdx
-            val ringSaid = m.type == ManeuverType.ROUNDABOUT && (leg >= near * 0.85 || 1 in said) && idx < 0
-            val mergeSaid = m.type == ManeuverType.MERGE && anyApproach && idx < 0
+            val ringSaid = m.type == ManeuverType.ROUNDABOUT && nearAlways && !chainedHere && idx < 0
+            val mergeSaid = m.type == ManeuverType.MERGE && nearAlways && idx < 0
             if (TURN_NOW_SLOT !in said && TURN_NOW_SAID_SLOT !in said && !ringSaid && !mergeSaid) {
-                if (idx < 0) lines += now else {
+                if (idx < 0) lines += nows else {
                     // Whether the pair fits depends on where the fix lands, up to a fix's travel
                     // inside the turn-now point: both ends are prepared when they differ.
                     val gap = gapTo(idx)
-                    val joins = listOf(turnNowM, (turnNowM - pace).coerceAtLeast(0.0)).map { dtn ->
-                        dtn to joinAtTurn(m, ms[idx], now, dtn + gap, dtn + gap - turnNowM, speedMps, detail, true)
+                    val joins = nows.flatMap { now ->
+                        listOf(turnNowM, (turnNowM - pace).coerceAtLeast(0.0)).map { dtn ->
+                            dtn to joinAtTurn(m, ms[idx], now, dtn + gap, dtn + gap - turnNowM, speedMps, detail, true)
+                        }
                     }
                     joins.forEach { (_, j) -> lines += j.line }
                     if (joins.any { it.second.chained }) {
@@ -1172,7 +1234,7 @@ object NavEngine {
                 }
             }
             // The turn in hand: nearest line first. A later turn: in the order it will be spoken.
-            out += if (i == fromStep && nearestFirst) lines.reversed() else lines
+            out += (if (i == fromStep && nearestFirst) lines.reversed() else lines).distinct()
         }
         return out.toList()
     }

@@ -468,8 +468,8 @@ class NavSession @Inject constructor(
         if (key == prewarmKey && !spoke) return
         prewarmKey = key
         // After the events below are spoken: speak() runs first on the same worker.
-        val lines = NavEngine.upcomingPrompts(route, nav.stepIndex, nav.spoken, speedMps, imperial, trackRide = app.vela.core.data.TrackRide.isTrack(route))
-        scope.launch { lines.forEach { voice.prepare(it) } }
+        val lines = NavEngine.upcomingPrompts(route, nav.stepIndex, nav.spoken, speedMps, imperial, trackRide = app.vela.core.data.TrackRide.isTrack(route), toTurnM = nav.distanceToNextManeuver)
+        scope.launch { voice.prepareAll(lines) }
     }
 
     fun stop() {

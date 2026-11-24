@@ -3090,10 +3090,12 @@ Frame rates are a Pixel 4a on a demo drive, per second from Start.
 - The opener and the first two turns' prompts are synthesized while the route preview is up
   (`NavSession.prepareStart` -> `VoiceGuide.prepare` -> `PiperSynth.prepare`, background
   priority). A finished drive's route behind the arrival card is not a preview and prepares
-  nothing. `NavEngine.startPrompts` gives the far and near approach lines at the 400 m and
-  150 m band floors and the turn-now line, in `update`'s wording (`StartPromptsTest`). Up to
-  `MAX_PREPARED` (8) lines are kept, by voice, speaker, speed and exact text. A spoken line
-  drops any prepare queued behind it (`speaksAsked`) and raises the one in hand (9.1).
+  nothing. `NavEngine.startPrompts` gives the first two turns' lines at the 400 m and 150 m
+  band floors, in `update`'s wording (`StartPromptsTest`), the first turn's from where the drive
+  starts: a turn closer than its bands says its first line at that distance. Up to
+  `MAX_PREPARED` (12) lines are kept, by voice, speaker, speed and exact text; a line asked for
+  again counts as new, and the oldest is dropped first. A spoken line drops any prepare queued
+  behind it (`speaksAsked`) and raises the one in hand (9.1).
 - No hidden Google page loads during a drive: the details page not while navigating or with
   the route chooser up (`pageWanted`), the review page not while navigating. A loaded page
   works on for about 20 s after its answer, whether stopped, paused or blanked.
@@ -6435,11 +6437,20 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
 - A voice install or a delete-fallback never speaks. Only an explicit library pick auditions.
 
 - The voice prepares the lines `NavEngine.upcomingPrompts` predicts for the current and next
-  spoken turn (the approach bands above and turn-now, a "then" included), up to
-  `MAX_PREPARED` (8), at background priority.
+  spoken turn, a "then" included, and the destination's approach line and arrival line when it
+  is one of them, at background priority. It replays `update`'s approach bands from where the
+  car first reaches each step: the step in hand a second on from the distance to its turn, the
+  next one a fix past the turn before it, at the current speed or, past a left or right turn,
+  `TURN_PACE_MPS` (5 m/s). A step shorter than its bands says its first line at the real distance
+  ("In 650 feet"); the spoken distance moves in 50 ft steps, so where the fix lands picks
+  between at most two wordings, and both are prepared. Asked again whenever the step, the bands
+  said or a speed band changes, and after each spoken line.
+- Each new set of predicted lines (`NeuralSynth.prepareAll`) replaces the prepares still queued
+  from the set before; the one being rendered finishes.
 - A line asked to be spoken drops every prepare still queued and ends the one being rendered at
-  its next phrase. A phrase is one engine call and cannot be cut, so the line waits for the
-  phrase in hand, and the worker renders that phrase at the waiting line's priority
+  its next phrase, unless that one is the line asked: it renders on, raised, and is played. A
+  phrase is one engine call and cannot be cut, so the line waits for the phrase in hand, and the
+  worker renders that phrase at the waiting line's priority
   (`PiperSynth.boostBackground`): the default for an imminent turn, the speaking priority
   otherwise. A voice load started by a warm-up or a prepare is raised the same way. A prepared
   line that was on its last phrase is kept.

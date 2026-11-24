@@ -168,11 +168,15 @@ class PiperSynth @Inject constructor(
         if (tid != 0) setPriority(if (urgent) android.os.Process.THREAD_PRIORITY_DEFAULT else SPEAK_PRIORITY, tid)
     }
 
-    /** Bumped by every [speak]: a [prepare] still queued when a real line is asked for is dropped,
-     *  so prepare-ahead work never sits between Start and the opener (four queued prepares held a
-     *  cold-start opener back by another 5 s on the 4a). The one already rendering stops at its
-     *  next phrase. */
+    /** Bumped by every [speak]: a [prepare] still queued when another line is asked for is
+     *  dropped, so prepare-ahead work never sits between Start and the opener (four queued
+     *  prepares held a cold-start opener back by another 5 s on the 4a). The one already
+     *  rendering stops at its next phrase. */
     @Volatile private var speaksAsked = 0
+    /** The text of the latest [speak], for a [prepare] of the same line to keep going. */
+    @Volatile private var lastSpeak: String? = null
+    /** Counts [prepareAll] calls: a queued prepare from an older one is dropped. */
+    @Volatile private var prepareRound = 0
 
 
     private fun ensureLoaded(): OfflineTts? {
@@ -250,6 +254,7 @@ class PiperSynth @Inject constructor(
 
     override fun speak(text: String, interrupt: Boolean, onDone: () -> Unit) {
         // Counted before the raise: [prepare] relies on that order.
+        lastSpeak = text
         speaksAsked++
         boostBackground(interrupt)
         val myGen = if (interrupt) ++generation else generation
@@ -460,26 +465,40 @@ class PiperSynth @Inject constructor(
 
     /** Synthesize [text] now, at background priority, and keep the audio for the next [speak] of
      *  exactly this line with the same voice and speed (a few lines at most). */
-    override fun prepare(text: String, onDone: () -> Unit) {
+    override fun prepare(text: String, onDone: () -> Unit) = enqueuePrepare(text, prepareRound, onDone)
+
+    /** The drive's next lines, most needed first. Lines an earlier call left queued are dropped
+     *  when the worker reaches them; the one being rendered finishes. */
+    override fun prepareAll(texts: List<String>) {
+        val round = ++prepareRound
+        texts.forEach { enqueuePrepare(it, round) {} }
+    }
+
+    private fun enqueuePrepare(text: String, round: Int, onDone: () -> Unit) {
         val asked = speaksAsked
+        // A line asked to be spoken since ends this one, unless it is this very line: the render
+        // here is then what the speak plays, sooner than starting it again.
+        fun overtaken() = asked != speaksAsked && lastSpeak != text
         worker.execute {
-            if (asked != speaksAsked) { onDone(); return@execute }
+            if (overtaken() || round != prepareRound) { onDone(); return@execute }
             backgroundTid = android.os.Process.myTid()
             setPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
             try {
                 // Read again with the priority down. [speak] counts a line before it raises this
                 // thread, so a line asked up to here ends the work and a later one raises it.
-                if (asked != speaksAsked) return@execute
+                if (overtaken()) return@execute
                 val engine = ensureLoaded() ?: return@execute
                 val sid = speakerId()
                 val spd = speed()
                 val key = preparedKey(text, sid, spd)
-                if (synchronized(prepared) { prepared.containsKey(key) }) return@execute
-                // A line asked to be SPOKEN while this one renders ends it at the next phrase: a
-                // turn about to be missed must not wait behind audio for one that is a minute
+                // Asked again: kept as the newest, so the lines the drive still wants outlast old ones.
+                if (synchronized(prepared) { prepared.remove(key)?.also { prepared[key] = it } != null }) return@execute
+                // Another line asked to be SPOKEN while this one renders ends it at the next phrase:
+                // a turn about to be missed must not wait behind audio for one that is a minute
                 // away. The phrase in hand finishes first, raised by [boostBackground]. A line that
-                // was on its last phrase is kept: it is paid for, and may be the one asked.
-                val made = synthesize(engine, text, sid, spd) { asked != speaksAsked } ?: return@execute
+                // was on its last phrase is kept: it is paid for, and may be the one asked. When
+                // the line asked is this one, it renders on, raised, and the speak plays it.
+                val made = synthesize(engine, text, sid, spd) { overtaken() } ?: return@execute
                 synchronized(prepared) {
                     prepared[key] = made
                     while (prepared.size > MAX_PREPARED) prepared.remove(prepared.keys.first())
@@ -564,8 +583,9 @@ class PiperSynth @Inject constructor(
          *  thread was measured on the 4a at 3x playback (2026-10-02): prompts ~30% slower to
          *  synthesize, and the frame dips at turns no different, so two stays the default. */
         val SYNTH_THREADS: Int get() = app.vela.ui.AppTune.local("synthThreads")?.toInt()?.coerceIn(1, 4) ?: 2
-        /** Prepared lines kept at once: a drive's opener and its first turns' prompts (up to 7). */
-        const val MAX_PREPARED = 8
+        /** Prepared lines kept at once, the oldest asked for dropped first: a drive's opener and its
+         *  first turns' prompts, or the two turns ahead with each line's possible distances. */
+        const val MAX_PREPARED = 12
         const val TAG = "PiperSynth"
         const val WORKER_NAME = "piper-tts"
         const val SPEED = 1.0f
