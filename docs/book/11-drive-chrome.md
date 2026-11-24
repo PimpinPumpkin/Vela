@@ -195,7 +195,10 @@ change on them, never new geometry (SPEC 4.7, Turn arrows).
 ### The route line during a drive
 
 The line is as wide as a two-lane street (`ROUTE_REAL_M = 8.5` m), with a dark blue outline of
-`ROUTE_OUTLINE_DP = 1.25` dp a side. It is split into pieces so that no geometry moves per frame:
+`ROUTE_OUTLINE_DP = 1.25` dp a side. Where two roads' centers meet at a junction the line turns
+on a curve that starts 10 m before the corner and ends 10 m after it, a right angle passing
+3.5 m inside the corner, so the arrow on the line goes round the turn the way the car does
+(SPEC 4.8, The geometry drawn). It is split into pieces so that no geometry moves per frame:
 
 ```
 full line     the whole route in gray, uploaded once per route

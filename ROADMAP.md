@@ -263,6 +263,10 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- The route line curves through junction corners (SPEC 4.8, `roundCorners`), the turn arrows and
+  the corner hold on it: on a Davis fixture mock drive on a 4a the two left turns drew as curves
+  and the arrow went round them. Not yet seen on a real drive: the puck through a tight turn, a
+  corner hold on the curve, and a jog across a median.
 - Traffic-light guidance on by default, with "At the light, turn left onto ..." for a turn at a
   light of its own (SPEC 4.6, Guidance): on a Davis fixture mock drive on a 4a the road features marked the
   left onto Mace Boulevard and the voice said "At the light, turn left onto Mace Boulevard" at

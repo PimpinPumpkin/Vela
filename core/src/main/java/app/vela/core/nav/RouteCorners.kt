@@ -7,7 +7,9 @@ import app.vela.core.model.LatLng
  * and the [LEG_M] after it differ by [CORNER_DEG] or more. A street corner, a hairpin or a
  * U-turn is one; a freeway ramp or fork bends too gently to be. Vertices of one corner within
  * [MERGE_M] of each other are one corner, at the sharpest of them, with the bearing in from the
- * first and out from the last.
+ * first and out from the last. The bearings in and out are read on the [SIDE_M] of line just
+ * beyond [LEG_M] either side, the roads themselves: the drawn line rounds a corner into a curve
+ * ([RouteSmoothing.roundCorners]), and a chord to its middle leaned into the turn.
  *
  * The drive arrow waits at such a corner while the gyroscope says the car is not turning
  * (SPEC 4.7, Corner hold).
@@ -20,24 +22,25 @@ object RouteCorners {
     fun find(poly: List<LatLng>, cum: DoubleArray): List<Corner> {
         if (poly.size < 3) return emptyList()
         val out = ArrayList<Corner>()
+        var sharpest = 0.0 // how sharply the last corner's own vertex turns
         for (i in 1 until poly.size - 1) {
             val m = cum[i]
             if (m < LEG_M || cum.last() - m < LEG_M) continue
             val a = RouteProjection.pointAt(poly, cum, m - LEG_M)
             val c = RouteProjection.pointAt(poly, cum, m + LEG_M)
-            val inDeg = bearing(a, poly[i])
-            val outDeg = bearing(poly[i], c)
-            val turn = signedDelta(inDeg, outDeg)
-            if (kotlin.math.abs(turn) < CORNER_DEG) continue
+            val here = kotlin.math.abs(signedDelta(bearing(a, poly[i]), bearing(poly[i], c)))
+            if (here < CORNER_DEG) continue
+            val inDeg = bearing(RouteProjection.pointAt(poly, cum, m - LEG_M - SIDE_M), a)
+            val outDeg = bearing(c, RouteProjection.pointAt(poly, cum, m + LEG_M + SIDE_M))
             val prev = out.lastOrNull()
             if (prev != null && m - prev.atM <= MERGE_M) {
-                val sharper = kotlin.math.abs(turn) > kotlin.math.abs(prev.turnDeg)
-                val outAll = outDeg
-                val turnAll = signedDelta(prev.inDeg, outAll)
-                out[out.size - 1] = if (sharper) Corner(m, prev.inDeg, outAll, turnAll, poly[i])
-                    else prev.copy(outDeg = outAll, turnDeg = turnAll)
+                val turnAll = signedDelta(prev.inDeg, outDeg)
+                out[out.size - 1] = if (here > sharpest) Corner(m, prev.inDeg, outDeg, turnAll, poly[i])
+                    else prev.copy(outDeg = outDeg, turnDeg = turnAll)
+                if (here > sharpest) sharpest = here
             } else {
-                out.add(Corner(m, inDeg, outDeg, turn, poly[i]))
+                out.add(Corner(m, inDeg, outDeg, signedDelta(inDeg, outDeg), poly[i]))
+                sharpest = here
             }
         }
         return out
@@ -78,6 +81,7 @@ object RouteCorners {
 
     const val CORNER_DEG = 35.0
     const val LEG_M = 12.0
+    const val SIDE_M = 6.0
     const val MERGE_M = 15.0
     const val PASSED_M = 4.0
     const val PASSED_FAR_M = 60.0

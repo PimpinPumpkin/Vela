@@ -24,6 +24,16 @@ class RouteCornersTest {
         assertEquals(-90.0, c[0].turnDeg, 1.0)
     }
 
+    @Test fun `a corner the drawn line rounds is one corner, with the roads' own bearings`() {
+        val line = RouteSmoothing.roundBends((0..30).map { at(-it * 10.0, 0.0) } + (1..30).map { at(-300.0, -it * 10.0) })
+        val c = corners(line)
+        assertEquals(1, c.size)
+        assertEquals("in the curve's middle", 300.0 - 10.0 + 8.1, c[0].atM, 2.0)
+        assertEquals(270.0, c[0].inDeg, 1.0)
+        assertEquals(180.0, c[0].outDeg, 1.0)
+        assertEquals(-90.0, c[0].turnDeg, 1.0)
+    }
+
     @Test fun `a gentle freeway ramp is no corner`() {
         // A 20 degree bend spread over 100 m.
         val line = ArrayList<LatLng>()

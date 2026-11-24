@@ -114,16 +114,68 @@ class RouteSmoothingTest {
         assertEquals(ring, RouteSmoothing.removeZigzags(ring))
     }
 
-    @Test fun `gentle bends are rounded a little, real corners and the ends stay`() {
+    private fun offLine(v: LatLng, line: List<LatLng>) = (0 until line.size - 1).minOf { k -> segDist(v, line[k], line[k + 1]) }
+
+    @Test fun `gentle bends are rounded a little, a junction corner into a curve, the ends stay`() {
         // A gentle curve in 40 m pieces turning 15 degrees each, then a right-angle corner.
         val poly = walk(90.0 to 40.0, 105.0 to 40.0, 120.0 to 40.0, 135.0 to 40.0, 225.0 to 120.0, step = 40.0)
         val out = RouteSmoothing.roundBends(poly)
         assertEquals(poly.first(), out.first()); assertEquals(poly.last(), out.last())
         val corner = poly[4] // where 135 becomes 225: a 90 degree turn
-        assertTrue("corner kept", out.any { it.distanceTo(corner) < 0.01 })
-        val worst = poly.maxOf { v -> (0 until out.size - 1).minOf { k -> segDist(v, out[k], out[k + 1]) } }
-        assertTrue("moves the line at most ~1.5 m ($worst)", worst < 1.5)
-        assertTrue("rounded (more points)", out.size > poly.size)
+        val worst = poly.filter { it != corner }.maxOf { offLine(it, out) }
+        assertTrue("moves the gentle bends at most ~1.5 m ($worst)", worst < 1.5)
+        // The corner's curve: a quadratic Bezier over 10 m either side passes 0.35 x 10 m inside it.
+        assertEquals(RouteSmoothing.CORNER_CUT_M * Math.sqrt(2.0) / 4, offLine(corner, out), 0.4)
+        assertTrue("no point at the corner", out.none { it.distanceTo(corner) < 2.0 })
+    }
+
+    @Test fun `a street corner becomes a curve that never turns sharply`() {
+        val poly = walk(90.0 to 200.0, 180.0 to 200.0)
+        val out = RouteSmoothing.roundCorners(poly)
+        assertEquals(poly.first(), out.first()); assertEquals(poly.last(), out.last())
+        for (k in 1 until out.size - 1) {
+            val b0 = out[k - 1].bearingTo(out[k]); val b1 = out[k].bearingTo(out[k + 1])
+            val bend = Math.abs(((b1 - b0 + 540.0) % 360.0) - 180.0)
+            assertTrue("vertex $k bends $bend", bend < 20.0)
+        }
+        val lenIn = RouteProjection.cumulative(poly).last(); val lenOut = RouteProjection.cumulative(out).last()
+        assertEquals("20 m of corner become a 16.2 m curve", 3.8, lenIn - lenOut, 0.3)
+        // Away from the corner the line is where it was.
+        assertTrue(offLine(poly[5], out) < 0.01 && offLine(poly[35], out) < 0.01)
+    }
+
+    @Test fun `two corners close together share the room between them`() {
+        // A jog across a median: east, south 8 m, east.
+        val poly = walk(90.0 to 200.0, 180.0 to 8.0, 90.0 to 200.0, step = 4.0)
+        val out = RouteSmoothing.roundCorners(poly)
+        val cum = RouteProjection.cumulative(out)
+        assertTrue("never doubles back", (1 until out.size - 1).all { k ->
+            val b0 = out[k - 1].bearingTo(out[k]); val b1 = out[k].bearingTo(out[k + 1])
+            Math.abs(((b1 - b0 + 540.0) % 360.0) - 180.0) < 90.0
+        })
+        assertTrue(cum.last() > 400.0)
+    }
+
+    @Test fun `real Google lines keep within a corner's curve of where they were`() {
+        val dir = java.io.File(javaClass.classLoader!!.getResource("google_lines")!!.toURI())
+        var corners = 0; var worstAll = 0.0; var shortest = 1.0
+        for (f in dir.listFiles()!!.filter { it.name.endsWith(".txt") }) {
+            val poly = app.vela.core.data.google.PolylineCodec.decode(f.readText().trim())
+            val out = RouteSmoothing.roundBends(poly)
+            // A curve passes at most 0.5 x CORNER_CUT_M inside its corner (a turn of 160 degrees).
+            val worst = poly.maxOf { offLine(it, out) }
+            assertTrue("${f.name}: a router point is $worst m from the drawn line", worst <= RouteSmoothing.CORNER_CUT_M * 0.5 + 0.1)
+            val lenIn = RouteProjection.cumulative(poly).last(); val lenOut = RouteProjection.cumulative(out).last()
+            assertTrue("${f.name}: longer", lenOut <= lenIn + 0.01)
+            corners += RouteSmoothing.roundCorners(poly).size - poly.size
+            worstAll = maxOf(worstAll, worst); shortest = minOf(shortest, lenOut / lenIn)
+        }
+        println("ROUNDCORNERS points added=$corners worst=${"%.2f".format(worstAll)} m shortest=${"%.4f".format(shortest)}")
+    }
+
+    @Test fun `a line that doubles back on itself keeps its point`() {
+        val poly = walk(90.0 to 200.0, 268.0 to 200.0)
+        assertEquals(poly, RouteSmoothing.roundCorners(poly))
     }
 
     @Test fun `a traffic circle bulge on a straight street is drawn straight, a median split is not`() {

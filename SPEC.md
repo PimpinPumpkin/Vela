@@ -2646,7 +2646,9 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
     envelope, and a 30 degree a second turn at 10 m/s is 22 degrees in after one second.
   - Corner hold (`RouteCorners`, at `CORNER_HOLD_MIN_MPS` (2 m/s) or more with a live reading):
     a corner is a vertex where the line's bearing over the `LEG_M` (12 m) before it and after it
-    differ by `CORNER_DEG` (35) or more, and corner vertices within `MERGE_M` (15 m) are one. From
+    differ by `CORNER_DEG` (35) or more, and corner vertices within `MERGE_M` (15 m) are one, at
+    the one that turns most. Its bearings in and out are read on the `SIDE_M` (6 m) of line just
+    beyond `LEG_M`, the roads themselves, since the drawn line curves through the corner. From
     `CORNER_REF_M` (20 m) before the next corner the car is not past, the heading is held to the
     bearing into it and progress stops `CORNER_HOLD_SLACK_M` (3 m) past it. A yaw of
     `CORNER_YAW_DPS` (5 degrees a second) or more toward the turn lets it go. The car is past a
@@ -3237,8 +3239,20 @@ The rules only drop or cut router vertices, and never touch a bend that keeps tu
 - `removeZigzags`: drops a vertex whose segments are both under 35 m, that turns 15 degrees or
   more with an opposite turn of 15 or more next to it, within 4 m of its neighbors' line. Up to
   four passes, at most 5.3 m of movement.
-- `roundBends`: bends under `ROUND_MAX_TURN_DEG` (45) are cut twice, by at most
-  `ROUND_MAX_CUT_M` (8 m) or a quarter of the shorter side. Junction corners stay exact.
+- `roundBends`: junction corners first (`roundCorners`), then bends under `ROUND_MAX_TURN_DEG`
+  (45) are cut twice, by at most `ROUND_MAX_CUT_M` (8 m) or a quarter of the shorter side.
+- `roundCorners`: a corner is a vertex whose chords `CORNER_LEG_M` (12 m) long either side turn
+  45 to `CORNER_MAX_TURN_DEG` (160) degrees, one per `CORNER_MERGE_M` (15 m) run turning the same
+  way (the sharpest); a jog one way and back is two. The line from `CORNER_CUT_M` (10 m) before it
+  to 10 m after it, or `CORNER_CUT_SHARE` (0.45) of the way to the next corner or an end if that
+  is less, becomes a quadratic Bezier with the corner as its control point, a point every
+  `CORNER_STEP_M` (1.5 m) at most. A cut under `CORNER_MIN_CUT_M` (2 m), or a turn past 160
+  degrees, keeps the point. A right angle's curve passes 3.5 m inside the corner, within the
+  stripe's 4.25 m half width, so the line and the arrow on it curve through a turn the way the
+  car does: two roads' centers meet at a point, and the stripe drew that point. Over the 39
+  captured Google lines no router point is more than 4.6 m from the drawn line and no line
+  is more than 0.9% shorter. Things placed by a share of the line's length (the traffic colors)
+  drift by up to that share.
 - The median-jog rule (the arrow's heading only): a stretch up to 140 m that leaves a straight
   road by 1 to 12 m and rejoins it within 2 m, on the same heading in and out within 3 degrees
   and along the chord within 7, becomes its chord. On the drawn line it put the stripe on the
