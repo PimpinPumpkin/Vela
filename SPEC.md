@@ -6593,7 +6593,8 @@ planned keeps the instructions it was built with.
 - Clock: Settings > Appearance > Clock (`clock_mode`) is the device's 12/24-hour setting, or
   either for Vela alone. `Clock24.on` and `ClockFormat.use24h` carry it. The route time picker,
   selected time, departure and arrival windows, and navigation arrival clock all follow it,
-  independently of the locale's default hour cycle. Transit directions
+  whatever clock the language prefers, in the language's own hour-and-minute pattern
+  (`clockPattern`: "7:30 PM", "下午7:30"). Transit directions
   times come from the payload's epoch and time zone (`ClockFormat.at`); `ClockFormat.show`
   converts the text of the one page still fetched in English, Google's stop-board fallback.
 - Calendar: the Depart at and Arrive by date picker is drawn in `AppLocale.calendarLocale()`.

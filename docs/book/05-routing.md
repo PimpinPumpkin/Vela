@@ -573,5 +573,5 @@ way you drove". A replayed trip never offers it.
   regions has no offline route.
 - No departure-time planning for driving, walking or cycling. The keyless request has no
   departure field, so "Depart at" and "Arrive by" only shift the arrival clock the chooser
-  works out and the time a toll is priced at. The chooser uses the selected clock format for its time field
-  and arrival/departure windows.
+  works out and the time a toll is priced at. The chooser's time and its departure and arrival
+  windows follow the 12 or 24 hour clock chosen in Settings.

@@ -26,4 +26,18 @@ class ClockTimeFormatterTest {
         assertEquals("7:15 PM", time.minusMinutes(15).format(fmt).uppercase(Locale.ROOT))
         assertEquals("7:19 PM", time.minusMinutes(11).format(fmt).uppercase(Locale.ROOT))
     }
+
+    @Test fun `the day period sits where the language puts it`() {
+        val t = LocalTime.of(19, 30)
+        assertEquals("下午7:30", t.format(clockTimeFormatter(false, Locale.forLanguageTag("zh-TW"))))
+        assertEquals("오후 7:30", t.format(clockTimeFormatter(false, Locale.KOREA)))
+        assertEquals("19:30", t.format(clockTimeFormatter(true, Locale.forLanguageTag("zh-TW"))))
+    }
+
+    @Test fun `a flexible or long day period becomes the plain one`() {
+        assertEquals("ah:mm", plainDayPeriod("Bh:mm"))
+        assertEquals("h:mm a", plainDayPeriod("h:mm b"))
+        assertEquals("h:mm a", plainDayPeriod("h:mm aaaa"))
+        assertEquals("H 'ba' mm", plainDayPeriod("H 'ba' mm"))
+    }
 }
