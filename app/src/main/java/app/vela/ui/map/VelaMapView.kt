@@ -954,7 +954,7 @@ fun VelaMapView(
     osmBusinesses: Boolean = false, // draw OSM's businesses under the open places layer too (deduped by name)
     hideCivic: Boolean = false, // "Parks, schools and civic places" off: the open layer drops those groups
     navExitCallout: Pair<LatLng, String>? = null, // the exit you are taking: green bubble with its number
-    navTurnCallout: Pair<LatLng, String>? = null, // the street the next turn enters: blue bubble at the corner
+    navTurnCallout: TurnCallout? = null, // the street the next turn enters: blue bubble at the corner
     navShields: List<app.vela.core.nav.RouteShields.Shield> = emptyList(), // the driven road's number, on the route line
     inNavOverview: Boolean = false, // the view model's word on whether the route overview is up
     navTapPlaces: Boolean = false, // drive nav: show the divert-worthy places and let a tap offer one as a stop
@@ -2062,7 +2062,10 @@ fun VelaMapView(
         src.setGeoJson(
             if (c == null) FeatureCollection.fromFeatures(emptyList())
             else FeatureCollection.fromFeature(
-                Feature.fromGeometry(Point.fromLngLat(c.first.lng, c.first.lat)).apply { addStringProperty("name", c.second) },
+                Feature.fromGeometry(Point.fromLngLat(c.at.lng, c.at.lat)).apply {
+                    addStringProperty("name", c.label)
+                    addStringProperty("side", c.side)
+                },
             ),
         )
     }
@@ -7346,7 +7349,9 @@ private fun addRouteBubbleImage(st: Style, id: String, fill: Int, edge: Int, d: 
     )
 }
 
-private fun navBubbleBitmap(dark: Boolean, d: Float, green: Boolean = false, blue: Boolean = false): android.graphics.Bitmap {
+/** The callout chip with its tail under the middle, or, with [tail] -1 or 1, under its left or right
+ *  end ([NAV_TURN_TAIL_DP] in from the edge), for a bubble that reaches right or left of its tail. */
+private fun navBubbleBitmap(dark: Boolean, d: Float, green: Boolean = false, blue: Boolean = false, tail: Int = 0): android.graphics.Bitmap {
     val w = (46 * d).toInt()
     val body = 26 * d
     val h = (body + 7 * d).toInt() // + tail
@@ -7358,11 +7363,15 @@ private fun navBubbleBitmap(dark: Boolean, d: Float, green: Boolean = false, blu
     val cx = w / 2f
     // One united path (chip + tail) so the outline strokes the whole teardrop cleanly.
     val p = android.graphics.Path().apply { addRoundRect(rect, r, r, android.graphics.Path.Direction.CW) }
-    val tail = android.graphics.Path().apply {
-        moveTo(cx - 5.5f * d, body - 2 * d); lineTo(cx + 5.5f * d, body - 2 * d)
-        lineTo(cx, h - inset); close()
+    val tailPath = android.graphics.Path().apply {
+        when {
+            tail < 0 -> { val x = NAV_TURN_TAIL_DP * d; moveTo(x, body - 2 * d); lineTo(x + 9 * d, body - 2 * d); lineTo(x, h - inset) }
+            tail > 0 -> { val x = w - NAV_TURN_TAIL_DP * d; moveTo(x - 9 * d, body - 2 * d); lineTo(x, body - 2 * d); lineTo(x, h - inset) }
+            else -> { moveTo(cx - 5.5f * d, body - 2 * d); lineTo(cx + 5.5f * d, body - 2 * d); lineTo(cx, h - inset) }
+        }
+        close()
     }
-    p.op(tail, android.graphics.Path.Op.UNION)
+    p.op(tailPath, android.graphics.Path.Op.UNION)
     val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = when {
@@ -7428,6 +7437,10 @@ private fun ensureNavShieldLayer(style: Style) {
 }
 
 private const val NAV_TURN_BUBBLE_IMG = "vela-nav-turn-bubble"
+private const val NAV_TURN_BUBBLE_R_IMG = "vela-nav-turn-bubble-r" // tail at its left end: reaches right
+private const val NAV_TURN_BUBBLE_L_IMG = "vela-nav-turn-bubble-l" // tail at its right end: reaches left
+// The side-tailed bubble's tail, in from its end: just past the 8 dp corner.
+private const val NAV_TURN_TAIL_DP = 9f
 private const val NAV_TURN_SRC = "vela-nav-turn-src"
 private const val NAV_TURN_LAYER = "vela-nav-turn"
 
@@ -7880,13 +7893,27 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
             ),
         )
     }
-    // The blue twin, for the street the next turn enters (user 2026-10-02).
+    // The blue twin, for the street the next turn enters (user 2026-10-02), and its two side-tailed
+    // forms (TurnCallout.side), which stretch only on the far side of the tail.
     style.addImage(
         NAV_TURN_BUBBLE_IMG, navBubbleBitmap(dark, d, blue = true),
         listOf(
             org.maplibre.android.maps.ImageStretches(r + d, cx - 7 * d),
             org.maplibre.android.maps.ImageStretches(cx + 7 * d, w - r - d),
         ),
+        listOf(org.maplibre.android.maps.ImageStretches(r + d, body - r - d)),
+        org.maplibre.android.maps.ImageContent(6 * d, 3 * d, w - 6 * d, body - 3 * d),
+    )
+    val tailX = NAV_TURN_TAIL_DP * d
+    style.addImage(
+        NAV_TURN_BUBBLE_R_IMG, navBubbleBitmap(dark, d, blue = true, tail = -1),
+        listOf(org.maplibre.android.maps.ImageStretches(tailX + 11 * d, w - r - d)),
+        listOf(org.maplibre.android.maps.ImageStretches(r + d, body - r - d)),
+        org.maplibre.android.maps.ImageContent(6 * d, 3 * d, w - 6 * d, body - 3 * d),
+    )
+    style.addImage(
+        NAV_TURN_BUBBLE_L_IMG, navBubbleBitmap(dark, d, blue = true, tail = 1),
+        listOf(org.maplibre.android.maps.ImageStretches(r + d, w - tailX - 11 * d)),
         listOf(org.maplibre.android.maps.ImageStretches(r + d, body - r - d)),
         org.maplibre.android.maps.ImageContent(6 * d, 3 * d, w - 6 * d, body - 3 * d),
     )
@@ -7903,10 +7930,28 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
                 PropertyFactory.textPitchAlignment(Property.TEXT_PITCH_ALIGNMENT_VIEWPORT),
                 PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_VIEWPORT),
                 PropertyFactory.iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_VIEWPORT),
-                PropertyFactory.iconImage(NAV_TURN_BUBBLE_IMG),
+                // The bubble reaches away from the turn (TurnCallout.side), its tail's tip on the
+                // anchor: 3 dp in from the text's edge, about 0.22 em at this size.
+                PropertyFactory.iconImage(
+                    Expression.match(
+                        Expression.get("side"), Expression.literal(NAV_TURN_BUBBLE_IMG),
+                        Expression.stop(TurnCallout.RIGHT, NAV_TURN_BUBBLE_R_IMG), Expression.stop(TurnCallout.LEFT, NAV_TURN_BUBBLE_L_IMG),
+                    ),
+                ),
                 PropertyFactory.iconTextFit(Property.ICON_TEXT_FIT_BOTH),
-                PropertyFactory.textAnchor(Property.TEXT_ANCHOR_BOTTOM),
-                PropertyFactory.textOffset(arrayOf(0f, -0.9f)),
+                PropertyFactory.textAnchor(
+                    Expression.match(
+                        Expression.get("side"), Expression.literal(Property.TEXT_ANCHOR_BOTTOM),
+                        Expression.stop(TurnCallout.RIGHT, Property.TEXT_ANCHOR_BOTTOM_LEFT), Expression.stop(TurnCallout.LEFT, Property.TEXT_ANCHOR_BOTTOM_RIGHT),
+                    ),
+                ),
+                PropertyFactory.textOffset(
+                    Expression.match(
+                        Expression.get("side"), Expression.literal(arrayOf(0f, -0.9f)),
+                        Expression.stop(TurnCallout.RIGHT, Expression.literal(arrayOf(-0.22f, -0.9f))),
+                        Expression.stop(TurnCallout.LEFT, Expression.literal(arrayOf(0.22f, -0.9f))),
+                    ),
+                ),
                 PropertyFactory.textMaxWidth(12f),
                 // Like the exit callout, it never yields: it names the next thing you do.
                 PropertyFactory.iconAllowOverlap(true),

@@ -3469,9 +3469,15 @@ Cross-street labels are points Vela places, not line-center labels on the basema
   below the camera badges, the controls' collision claim and the POI layer, so they yield.
 - The street the next turn enters (turn, slight, sharp and roundabout-exit maneuvers that name
   a road or ref) gets a blue callout on `NAV_TURN_LAYER` (`#1A66D9`) with its tail on the corner
-  (`TURN_CALLOUT_AHEAD_M`, 0). It never yields, and steps into the street
-  (`TURN_CALLOUT_STEPS_M`, up to 60 m) until no light, stop sign or camera is within 30 m. That
-  street leaves the white cross-street callouts.
+  (`turnCalloutFor`). For a left the bubble reaches right of its tail, for a right it reaches
+  left (`TurnCallout.side`, a bubble image with its tail at one end), so it stands over the
+  cross street the car does not take: centered on the corner it covered the turn arrow's head.
+  It never yields. While a light, stop sign or camera is within 15 m, the tail steps away from
+  the corner along the new street's direction mirrored through the corner
+  (`TURN_CALLOUT_SIDE_STEPS_M`, 10 m at a time up to 30 m; further, a left turn's bubble ran off
+  the screen). A roundabout's exit, bubble centered over its tail, steps into the new street
+  until 30 m clear (`TURN_CALLOUT_STEPS_M`, up to 60 m). That street leaves the white
+  cross-street callouts.
 - A passed callout is let go when its anchor projects within 28 dp of the nav bar's top edge
   (`navBarTopPx`) or off either side, checked every `NAV_XLABEL_TICK_MS` (80 ms), with
   `NAV_XLABEL_DROP_BEHIND_M` (600 m) as the backstop.

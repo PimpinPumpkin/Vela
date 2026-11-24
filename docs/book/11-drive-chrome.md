@@ -131,7 +131,10 @@ symbol placement on every tick.
 reroute, an added stop, a faster route you accept. When it did not, the white callouts stayed
 hidden after the change for as far as you had already driven.
 
-The street the next turn enters gets a blue callout 30 m in. A ramp, fork or keep whose
+The street the next turn enters gets a blue callout with its tail on the corner. The bubble reaches
+away from the turn, right of the corner for a left and left of it for a right, so it never sits on
+the turn arrow. A light, stop sign or camera on the corner moves the tail along the cross street,
+away from the turn. A ramp, fork or keep whose
 instruction names a numbered exit gets a green one `EXIT_CALLOUT_AHEAD_M = 70` m past the
 maneuver point, on the ramp. `ExitLabel.of` finds the number beside an exit word from a
 per-language table. A bare number is usually a route number and never counts. These two never
