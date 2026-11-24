@@ -250,7 +250,9 @@ road. It can only point where the route goes from a second behind it to a second
 ahead, which on a straight is a couple of degrees either way. And it can only turn as fast as
 the phone is being pushed sideways: a car turning at speed pushes, a mount twisting does not.
 The camera leads the arrow by a third of a second of the measured turn, inside the same limits.
-The nav trace's `gyro_dps` column says which way each frame was drawn.
+The nav trace's `gyro_dps` column says which way each frame was drawn, and `camera_target_deg`
+where the camera was aiming. A trip saved with the trace on keeps that drive's trace, and
+sharing trips from the list sends it with them.
 
 Between fixes the arrow glides along the route, so at a corner a car drives straight through it
 went round the turn for a second or two. With the gyroscope on, the arrow waits at a sharp

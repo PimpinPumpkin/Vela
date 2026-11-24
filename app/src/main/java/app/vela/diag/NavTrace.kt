@@ -19,7 +19,12 @@ import java.io.File
  * and must never be posted (see the location-hygiene rule in CLAUDE.md).
  *
  * Cheap by construction: one primitive-array append per frame into a bounded ring, no allocation
- * per row beyond the row itself, no I/O until the drive ends or the user exports.
+ * per row beyond the row itself, no I/O on the frame.
+ *
+ * While a trip is recording ([TripStore][app.vela.replay.TripStore] attaches it), the rows also
+ * go to that trip's own file (`files/navtrace/<trip id>.csv`, [TripNavTrace]), written every
+ * [FLUSH_ROWS] rows on a background thread, so the trip's share carries the trace of that drive
+ * and a restart loses at most a few seconds of it. Those files are not backed up.
  */
 object NavTrace {
     /** Settings > Diagnostics toggle, persisted in `vela_settings`. Off by default. */
@@ -34,6 +39,23 @@ object NavTrace {
     private val events = ArrayDeque<Pair<Float, String>>()
 
     @Volatile private var t0 = 0L
+
+    /** The recording trip's trace file, its start, and the wall clock minus elapsedRealtime. */
+    private class TripSink(val file: File, val startedAt: Long, val wallOffsetMs: Long, val header: String) {
+        @Volatile var capped = false
+    }
+    @Volatile private var trip: TripSink? = null
+    // Rows waiting for the trip's file, guarded by `rows`.
+    private var pending = ArrayList<DoubleArray>(FLUSH_ROWS)
+    private val writer by lazy {
+        java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "VelaNavTraceIO").apply { isDaemon = true } }
+    }
+
+    /** About five seconds of frames at 60 fps. */
+    private const val FLUSH_ROWS = 300
+
+    /** A trip's trace stops growing here (about an hour and a half at 60 fps). */
+    private const val TRIP_MAX_BYTES = 32L * 1024 * 1024
 
     fun init(context: Context) {
         enabled.value = prefs(context).getBoolean(KEY, false)
@@ -85,6 +107,8 @@ object NavTrace {
         gyroDps: Float,
         /** Meters along the route of the corner the arrow waits at (corner hold), NaN when none. */
         holdM: Double = Double.NaN,
+        /** The bearing the camera eases toward this frame, NaN when it follows the arrow. */
+        cameraTarget: Float = Float.NaN,
     ) {
         if (logging(elapsedMs)) {
             android.util.Log.d(
@@ -96,6 +120,7 @@ object NavTrace {
             )
         }
         if (!enabled.value) return
+        val sink = trip
         synchronized(rows) {
             if (t0 == 0L) t0 = elapsedMs
             if (rows.size >= CAP) rows.removeFirst()
@@ -105,7 +130,104 @@ object NavTrace {
                     chordBearing, displayBearing, cameraBearing.toFloat(), frameDt, gyroDps,
                 ),
             )
+            if (sink != null && !sink.capped) {
+                pending.add(
+                    doubleArrayOf(
+                        (elapsedMs + sink.wallOffsetMs - sink.startedAt).toDouble(), progressM, speed, windowM,
+                        chordBearing.toDouble(), displayBearing.toDouble(), cameraBearing, cameraTarget.toDouble(),
+                        frameDt * 1000.0, gyroDps.toDouble(), holdM,
+                    ),
+                )
+                if (pending.size >= FLUSH_ROWS) flushLocked()
+            }
         }
+    }
+
+    /** Start writing rows to the trace file of the trip [id], which began at [startedAt] (wall
+     *  clock). A resumed trip appends to the file it already has. */
+    fun attachTrip(context: Context, id: String, startedAt: Long) {
+        val sink = runCatching {
+            TripSink(
+                tripFile(context, id), startedAt,
+                System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime(), header(context),
+            )
+        }.getOrNull() ?: return
+        synchronized(rows) { flushLocked(); trip = sink }
+    }
+
+    /** Stop writing to the recording trip's file, after what is waiting has gone to it. */
+    fun detachTrip() {
+        synchronized(rows) { flushLocked(); trip = null }
+    }
+
+    /** Delete the trace of the trip [id], after any write still queued for it. */
+    fun deleteTrip(context: Context, id: String) {
+        val f = runCatching { tripFile(context, id) }.getOrNull() ?: return
+        writer.execute { runCatching { f.delete() } }
+    }
+
+    /** Delete every trip trace whose trip is not in [keep]. */
+    fun pruneTrips(context: Context, keep: Set<String>) {
+        val dir = runCatching { File(context.filesDir, DIR) }.getOrNull() ?: return
+        writer.execute {
+            dir.listFiles { f -> f.extension == "csv" && f.nameWithoutExtension !in keep }.orEmpty()
+                .forEach { runCatching { it.delete() } }
+        }
+    }
+
+    /** The trace saved with the trip [id], or null when it has none. Reads a file. */
+    fun tripTrace(context: Context, id: String): String? = runCatching {
+        tripFile(context, id).takeIf { it.isFile && it.length() > 0L }?.readText()
+    }.getOrNull()
+
+    /** Waits for the queued file writes. Tests only. */
+    internal fun awaitWrites() { writer.submit {}.get(5, java.util.concurrent.TimeUnit.SECONDS) }
+
+    private fun tripFile(context: Context, id: String) = File(File(context.filesDir, DIR), "$id.csv")
+
+    // Under `rows`. Hands what is waiting to the writer thread.
+    private fun flushLocked() {
+        val sink = trip
+        if (sink == null || pending.isEmpty()) { pending.clear(); return }
+        val batch = pending
+        pending = ArrayList(FLUSH_ROWS)
+        writer.execute { append(sink, batch) }
+    }
+
+    private fun append(sink: TripSink, batch: List<DoubleArray>) {
+        runCatching {
+            val f = sink.file
+            f.parentFile?.mkdirs()
+            val fresh = !f.isFile || f.length() == 0L
+            if (!fresh && f.length() >= TRIP_MAX_BYTES) {
+                if (!sink.capped) f.appendText("# stopped here: the trace reached ${TRIP_MAX_BYTES / (1024 * 1024)} MB\n")
+                sink.capped = true
+                return
+            }
+            java.io.FileWriter(f, true).buffered().use { w ->
+                if (fresh) w.write(sink.header)
+                for (r in batch) { w.write(app.vela.core.replay.TripNavTrace.format(r)); w.write("\n") }
+            }
+        }
+    }
+
+    /** The lines a file starts with: what it is, the build, the phone and the camera settings. */
+    private fun header(context: Context): String = buildString {
+        append("# Vela nav smoothness trace for one trip. No position data: bearings, along-route\n")
+        append("# distance, speed and frame timings. t_ms counts from the trip's start (its META time).\n")
+        append(buildLines(context))
+        append(app.vela.core.replay.TripNavTrace.COLUMNS).append('\n')
+    }
+
+    // The build, phone and settings lines both exports start with.
+    private fun buildLines(context: Context): String = buildString {
+        // What a report is read against: without the build nobody can tell which camera ran.
+        append("# vela ${app.vela.BuildConfig.VERSION_NAME} (build ${app.vela.BuildConfig.VERSION_CODE})\n")
+        append("# android ${android.os.Build.VERSION.RELEASE} (sdk ${android.os.Build.VERSION.SDK_INT}), ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\n")
+        val sp = runCatching { prefs(context) }.getOrNull()
+        append("# settings: north_up_start=${sp?.getBoolean("nav_north_up", false)} texture_render=${sp?.getBoolean("texture_render", false)}" +
+            " demo_drive=${sp?.getBoolean("demo_drive", false)} faster_route_auto=${sp?.getBoolean("faster_route_auto", true)}" +
+            " gyro_turn=${app.vela.ui.GyroTurn.on.value}\n")
     }
 
     /** A nav decision, timed on the rows' clock. No-op unless recording. */
@@ -134,13 +256,7 @@ object NavTrace {
             file.bufferedWriter().use { w ->
                 w.write("# Vela nav smoothness trace. No position data: bearings, along-route\n")
                 w.write("# distance, speed and frame timings only, safe to attach to an issue.\n")
-                // What a report is read against: without the build nobody can tell which camera ran.
-                w.write("# vela ${app.vela.BuildConfig.VERSION_NAME} (build ${app.vela.BuildConfig.VERSION_CODE})\n")
-                w.write("# android ${android.os.Build.VERSION.RELEASE} (sdk ${android.os.Build.VERSION.SDK_INT}), ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\n")
-                val sp = prefs(context)
-                w.write("# settings: north_up_start=${sp.getBoolean("nav_north_up", false)} texture_render=${sp.getBoolean("texture_render", false)}" +
-                    " demo_drive=${sp.getBoolean("demo_drive", false)} faster_route_auto=${sp.getBoolean("faster_route_auto", true)}" +
-                    " gyro_turn=${app.vela.ui.GyroTurn.on.value}\n")
+                w.write(buildLines(context))
                 w.write("# rows ${snapshot.size}, events ${evs.size}; events (route changes and why) are listed after the rows\n")
                 w.write("t_s,progress_m,speed_mps,window_m,chord_deg,display_deg,camera_deg,frame_dt_s,gyro_dps\n")
                 for (r in snapshot) {
@@ -164,4 +280,5 @@ object NavTrace {
         context.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
 
     private const val KEY = "nav_trace"
+    private const val DIR = "navtrace"
 }

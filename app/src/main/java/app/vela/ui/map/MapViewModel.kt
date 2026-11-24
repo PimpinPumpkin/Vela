@@ -8309,10 +8309,14 @@ class MapViewModel @Inject constructor(
             val names = app.vela.core.replay.TripShareBatch.entryNames(kept.map { tripStamp(it.first.startedAt) })
             val dir = java.io.File(appContext.cacheDir, "export").apply { mkdirs() }
             val file = java.io.File(dir, "vela-trips-${tripStamp(System.currentTimeMillis())}.zip")
-            app.vela.core.replay.TripShareBatch.writeZip(
-                names.zip(kept.map { it.second.csv }),
-                file.outputStream(),
-            )
+            // Each trip's nav trace goes beside it, trimmed to the frames of the kept fixes.
+            val entries = names.zip(kept).flatMap { (name, k) ->
+                val trace = app.vela.diag.NavTrace.tripTrace(appContext, k.first.id)?.let {
+                    app.vela.core.replay.TripNavTrace.trim(it, k.first.startedAt, k.second.keptFixTimes)
+                }
+                listOfNotNull(name to k.second.csv, trace?.let { app.vela.core.replay.TripShareBatch.traceName(name) to it })
+            }
+            app.vela.core.replay.TripShareBatch.writeZip(entries, file.outputStream())
             val uri = androidx.core.content.FileProvider.getUriForFile(
                 appContext, "${appContext.packageName}.fileprovider", file,
             )
@@ -8331,18 +8335,23 @@ class MapViewModel @Inject constructor(
     }
 
     /** The picked trips' full traces, untrimmed, as one zip: each entry named as [tripFullFileName]
-     *  names a single one. Writes a file, so call it off the main thread. Null when none can be read. */
-    private fun fullTripsZip(metas: List<app.vela.replay.TripMeta>): Pair<List<Pair<String, String>>, Int>? {
+     *  names a single one, with the trip's nav trace beside it when it has one. Reads files, so call
+     *  it off the main thread. Null when none can be read; else the entries, trips and fixes. */
+    private fun fullTripsZip(metas: List<app.vela.replay.TripMeta>): Triple<List<Pair<String, String>>, Int, Int>? {
         val kept = metas.mapNotNull { m -> tripStore.rawCsv(m.id)?.let { m to it } }
         if (kept.isEmpty()) return null
         val names = app.vela.core.replay.TripShareBatch.entryNames(kept.map { tripStamp(it.first.startedAt) })
             .map { it.removeSuffix(".csv") + "-full.csv" }
-        return names.zip(kept.map { it.second }) to kept.sumOf { it.first.fixCount }
+        val entries = names.zip(kept).flatMap { (name, k) ->
+            val trace = app.vela.diag.NavTrace.tripTrace(appContext, k.first.id)
+            listOfNotNull(name to k.second, trace?.let { app.vela.core.replay.TripShareBatch.traceName(name) to it })
+        }
+        return Triple(entries, kept.size, kept.sumOf { it.first.fixCount })
     }
 
     /** Share the picked trips' full traces as one zip ([fullTripsZip]). */
     fun shareFullTripsZipIntent(metas: List<app.vela.replay.TripMeta>): android.content.Intent? {
-        val (entries, fixes) = fullTripsZip(metas) ?: return null
+        val (entries, trips, fixes) = fullTripsZip(metas) ?: return null
         return runCatching {
             val dir = java.io.File(appContext.cacheDir, "export").apply { mkdirs() }
             val file = java.io.File(dir, "vela-trips-${tripStamp(System.currentTimeMillis())}-full.zip")
@@ -8353,7 +8362,7 @@ class MapViewModel @Inject constructor(
             val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                 type = app.vela.core.replay.TripShareBatch.MIME
                 putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                putExtra(android.content.Intent.EXTRA_SUBJECT, appContext.getString(R.string.mapvm_export_trips_subject, entries.size, fixes))
+                putExtra(android.content.Intent.EXTRA_SUBJECT, appContext.getString(R.string.mapvm_export_trips_subject, trips, fixes))
                 addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             android.content.Intent.createChooser(send, appContext.getString(R.string.mapvm_share_trip_chooser))
@@ -8364,7 +8373,7 @@ class MapViewModel @Inject constructor(
     /** Write the picked trips' full traces as one zip into [uri], a file the user picked with the
      *  system's save dialog. Nothing is sent anywhere. Call off the main thread. */
     fun saveTripsTo(metas: List<app.vela.replay.TripMeta>, uri: android.net.Uri): Boolean {
-        val (entries, _) = fullTripsZip(metas) ?: return false
+        val (entries, _, _) = fullTripsZip(metas) ?: return false
         return runCatching {
             appContext.contentResolver.openOutputStream(uri, "wt")?.use { app.vela.core.replay.TripShareBatch.writeZip(entries, it); true } ?: false
         }.getOrDefault(false)

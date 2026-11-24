@@ -38,4 +38,45 @@ class TripStoreResumeTest {
         assertFalse(s.resumeTrip(id))
         assertEquals(id, s.activeId)
     }
+
+    @Test fun `a drive's nav trace is kept with its trip and goes when the trip does`() {
+        val nav = app.vela.diag.NavTrace
+        nav.enabled.value = true
+        try {
+            val s = store()
+            val id = s.startTrip("Davis", null, 3_000L)!!
+            repeat(5) { s.note("K", "fix $it") }
+            for (i in 0 until 400) nav.record(i * 16L, i * 0.2, 12.0, 40.0, 90f, 90f, 90.0, 0.016f, Float.NaN, cameraTarget = 91f)
+            s.finishTrip(minFixes = 0)
+            nav.awaitWrites()
+            val trace = nav.tripTrace(ContextWrapperFor(tmp.root), id)!!
+            val lines = trace.lines().filter { it.isNotBlank() && !it.startsWith("#") }
+            assertEquals(app.vela.core.replay.TripNavTrace.COLUMNS, lines.first())
+            assertEquals("every row reaches the file once the trip ends", 400, lines.size - 1)
+            s.delete(id)
+            nav.awaitWrites()
+            assertFalse(File(tmp.root, "navtrace/$id.csv").exists())
+        } finally {
+            nav.enabled.value = false; nav.clear()
+        }
+    }
+
+    @Test fun `a trip too short to keep takes its nav trace with it`() {
+        val nav = app.vela.diag.NavTrace
+        nav.enabled.value = true
+        try {
+            val s = store()
+            val id = s.startTrip("Davis", null, 4_000L)!!
+            for (i in 0 until 400) nav.record(i * 16L, i * 0.2, 12.0, 40.0, 90f, 90f, 90.0, 0.016f, Float.NaN)
+            s.finishTrip()
+            nav.awaitWrites()
+            assertFalse(File(tmp.root, "navtrace/$id.csv").exists())
+        } finally {
+            nav.enabled.value = false; nav.clear()
+        }
+    }
+
+    private class ContextWrapperFor(val root: File) : ContextWrapper(null) {
+        override fun getFilesDir(): File = root
+    }
 }

@@ -7653,7 +7653,11 @@ from GitHub (5.8). With "Use Vela without Google" on, only the open services are
 - `NavTrace` (off by default) records one row per navigation frame: time, along-route progress,
   speed, bearing window, chord bearing, display bearing, camera bearing, frame dt, and the yaw
   rate that turned the arrow (`gyro_dps`, empty unless gyroscope mode drew the frame; the header
-  says whether the switch was on). It holds no position, so unlike a recorded trip it can be attached to a public issue. With
+  says whether the switch was on). It holds no position, so unlike a recorded trip it can be attached to a public issue.
+  While a trip records, the rows also go to that trip's own file, `files/navtrace/<trip id>.csv`
+  (`TripNavTrace`, not backed up), written every 300 rows off the frame and capped at 32 MB. Its
+  columns add `camera_target_deg` (the bearing the camera eases toward) and `hold_m`, and `t_ms`
+  counts from the trip's `META` time. Deleting or pruning a trip deletes its trace. With
   `debug.vela.tune.navTraceLog 1` (adb only) each row, with the corner the arrow is held at
   (`hold=`, meters along the route, NaN for none), and each fix the puck takes (its
   along-route meters, speed and age), also goes to logcat as `VelaNavTrace` on the
@@ -7678,6 +7682,12 @@ the geometry.
   has no position, but steps strung together retrace a walk, so it also needs a kept fix within
   `EVENT_NEAR_MS`. A walk or a location test shares its middle with its steps and dot.
 - `RC` lines are dropped: a router's answer runs to the destination.
+- A batch share puts each trip's nav trace beside it (`<entry>-navtrace.csv`). The full share
+  sends it whole. The trimmed share keeps a row only between the first and last kept fix and
+  within `EVENT_NEAR_MS` of one, rebases its time with the trip's, and counts each route's
+  `progress_m` and `hold_m` from that route's first kept row (a drop of 20 m, a jump of 200 m or
+  a 2 s gap starts a new route): a bearing and a speed every frame retrace a drive, and meters
+  along the first route say how far the driveway was.
 - `K`, `J` and `B` lines are kept for the whole drive, the trimmed ends included. They hold no
   position, name or spoken text, and the start of a drive is where its route is planned and
   named. One from before the first surviving fix has a negative time. They show how long the

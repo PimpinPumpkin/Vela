@@ -461,7 +461,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - After a crash, "Export crash report" shares the saved report.
 - "Simulate driving (demo)" and "Simulate my location (demo)" run the app without real GPS, on the
   car screen too.
-- "Nav smoothness trace" and "Building overlay debug" are developer aids.
+- "Nav smoothness trace" records how the map camera moved on each drive, with no location in it,
+  and trips shared from the list carry it. "Building overlay debug" is a developer aid.
 - The drive arrow turns when the phone feels the car turn, held to the road so a wobbly mount
   cannot turn it ("Turn the arrow with the gyroscope", on by default; off follows the road
   ahead). At a sharp corner it waits until the car turns.

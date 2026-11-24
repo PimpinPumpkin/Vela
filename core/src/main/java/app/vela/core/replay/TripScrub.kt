@@ -84,6 +84,9 @@ object TripScrub {
         val spokenDropped: Int,
         val routeTrimmed: Boolean,
         val otherLinesDropped: Int,
+        /** The kept fixes' own times, before the rebase, for trimming the trip's nav trace
+         *  ([TripNavTrace.trim]). Never written into the shared file. */
+        val keptFixTimes: LongArray = LongArray(0),
     ) {
         val fixesRemoved: Int get() = fixesBefore - fixesAfter
     }
@@ -230,6 +233,7 @@ object TripScrub {
             spokenDropped = spokenDropped,
             routeTrimmed = routeTrimmed,
             otherLinesDropped = otherDropped,
+            keptFixTimes = keptTimes,
         )
     }
 

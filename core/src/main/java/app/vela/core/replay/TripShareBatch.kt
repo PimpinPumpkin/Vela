@@ -52,6 +52,9 @@ object TripShareBatch {
         }
     }
 
+    /** The zip entry for the nav trace of the trip in entry [tripEntry] ([TripNavTrace]). */
+    fun traceName(tripEntry: String): String = tripEntry.removeSuffix(".csv") + "-navtrace.csv"
+
     /** Write [entries] (name to CSV body) into a zip on [out]. The stream is closed afterwards. */
     fun writeZip(entries: List<Pair<String, String>>, out: OutputStream) {
         ZipOutputStream(out.buffered()).use { zip ->

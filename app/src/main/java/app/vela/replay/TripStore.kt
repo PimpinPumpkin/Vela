@@ -67,6 +67,7 @@ class TripStore @Inject constructor(
             // and old parsers compatible - and an audit can now say which build recorded a trip.
             f.writeText("META,$safe,$startedAt,${dest?.lat ?: ""},${dest?.lng ?: ""},${app.vela.BuildConfig.VERSION_CODE}\n")
             active = f
+            app.vela.diag.NavTrace.attachTrip(context, id, startedAt)
         }
         return id
     }
@@ -82,6 +83,7 @@ class TripStore @Inject constructor(
         if (!f.isFile) return false
         active = f
         lastFixWallMs = 0L
+        readMeta(f)?.let { app.vela.diag.NavTrace.attachTrip(context, id, it.startedAt) }
         true
     }
 
@@ -171,8 +173,13 @@ class TripStore @Inject constructor(
     fun finishTrip(minFixes: Int = 5): TripMeta? = synchronized(lock) {
         val f = active ?: return null
         active = null
+        app.vela.diag.NavTrace.detachTrip()
         return runCatching {
-            if (countFixes(f) < minFixes) { f.delete(); null } else readMeta(f)
+            if (countFixes(f) < minFixes) {
+                f.delete()
+                app.vela.diag.NavTrace.deleteTrip(context, f.nameWithoutExtension)
+                null
+            } else readMeta(f)
         }.getOrNull()
     }
 
@@ -235,15 +242,19 @@ class TripStore @Inject constructor(
 
     fun delete(id: String) {
         runCatching { File(dir, "$id.csv").delete() }
-        if (active?.name == "$id.csv") active = null
+        if (active?.name == "$id.csv") { active = null; app.vela.diag.NavTrace.detachTrip() }
+        app.vela.diag.NavTrace.deleteTrip(context, id)
     }
 
     /** Deletes the drives past [app.vela.core.replay.TripRetention.KEEP_DAYS], never the one being
      *  recorded; returns how many went. */
     fun pruneExpired(nowMs: Long = System.currentTimeMillis()): Int = synchronized(lock) {
-        val old = dir.listFiles { f -> f.extension == "csv" }.orEmpty()
-            .filter { it != active && app.vela.core.replay.TripRetention.expired(it.lastModified(), nowMs) }
-        old.count { runCatching { it.delete() }.getOrDefault(false) }
+        val all = dir.listFiles { f -> f.extension == "csv" }.orEmpty()
+        val old = all.filter { it != active && app.vela.core.replay.TripRetention.expired(it.lastModified(), nowMs) }
+        val gone = old.count { runCatching { it.delete() }.getOrDefault(false) }
+        // A trip's nav trace goes with it, and one left by a trip deleted some other way too.
+        app.vela.diag.NavTrace.pruneTrips(context, all.filter { it.isFile }.map { it.nameWithoutExtension }.toSet())
+        gone
     }
 
     private fun readMeta(f: File): TripMeta? = runCatching {

@@ -3620,7 +3620,7 @@ fun VelaMapView(
                         android.os.SystemClock.elapsedRealtime(), navPuck.progressM, navPuck.speed,
                         win, chordBrg, navPuck.displayBearing,
                         mapRef?.cameraPosition?.bearing ?: Double.NaN, dtE,
-                        gyroRate?.toFloat() ?: Float.NaN, navPuck.holdAtM,
+                        gyroRate?.toFloat() ?: Float.NaN, navPuck.holdAtM, navPuck.camChord,
                     )
                 }
                 navPuck.drawn = pt // the camera follows this smoothed point, not the raw fix
