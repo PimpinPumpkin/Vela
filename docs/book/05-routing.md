@@ -62,8 +62,10 @@ went about 870 m round for 82 m of road, and the phone's route took the legal wa
 ### Where the two routes share the road
 
 `HybridRoute.stretchesFor` walks Google's line in 20 m steps and marks each point more than
-`OFF_M` (15 m) from the open route. At 25 m, a parking aisle 18 m from a street counted as the
-street. A marked run of at least `MIN_RUN_M` (40 m) becomes a stretch. Each stretch is widened
+`OFF_M` (15 m) from the open route, or near it but running the other way (more than 90 degrees
+off). At 25 m, a parking aisle 18 m from a street counted as the street, and a line that turned
+round in the road and came back along the open route's street read as on it, so its U-turn had
+no step. A marked run of at least `MIN_RUN_M` (40 m) becomes a stretch. Each stretch is widened
 by `PAD_M` (90 m) and its ends are kept clear of corners, so the turn off the shared road and
 the turn back onto it fall inside it.
 
@@ -399,7 +401,11 @@ and come back along the road just driven, to the turn the car missed. The rerout
 car's own track, the last 300 m it drove, and a route that runs back along it in its first
 400 m turns the car round as surely as a U-turn (`RouteGeometry.goesBack`). The track starts
 where the car last turned round, so after a U-turn of its own the way on back down the road is
-not read as turning round again. Both routers'
+not read as turning round again. A route can also go on ahead and then turn round on its own
+line: a U-turn in the road 600 m on, or right up a side street, a U-turn there and left back
+onto the road the other way. It counts as turning round further on when, in its first 1,500 m,
+50 m or more of it runs back within 15 m of its own earlier line (`RouteGeometry.doublesBack`).
+Both routers'
 routes are tested, the open router's alternates included (`forwardPick`), with the same price
 limit, and ranked: going on first, then turning round further on (round a block, or back from
 the next exit), then turning round where the car is. A route that still turns a moving car

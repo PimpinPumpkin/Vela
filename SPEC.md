@@ -1027,13 +1027,14 @@ the stretches, on Google's top line and the open route's top.
 
 #### Stretches
 
-`HybridRoute.stretchesFor` returns the parts of Google's line that leave the open route, in
-meters along Google's line.
+`HybridRoute.stretchesFor` returns the parts of Google's line that leave the open route, or run
+along it the other way, in meters along Google's line.
 
 | Constant | Value | Rule |
 | --- | --- | --- |
 | `STEP_M` | 20 m | Sampling interval on Google's line |
 | `OFF_M` | 15 m | A sample farther than this from the open route is off it |
+| `SAME_WAY_DEG`, `WAY_M` | 90 degrees, 10 m | A sample near the open route is off it unless the two run within this of the same way, each read this far either side. A line that turns round in the road and comes back along the open route's street was read as on it, and its U-turn had no step |
 | `JOIN_GAP_M` | 60 m | Off runs closer together than this are one |
 | `MIN_RUN_M` | 40 m | A shorter run is drawing noise |
 | `TIGHT_M`, `WALK_MAX_M` | 10 m, 600 m | Each end is walked out to where the lines are this close, at most this far |
@@ -2361,6 +2362,11 @@ START_REPLAN_M                 150   Start this far from the route plans again f
   400 m turns the car round too (`RouteGeometry.goesBack`): a U-turn onto either side of the
   road, or the way round a small block back to a missed turn, which starts the car's way and
   passed the heading test. A loop ramp never comes back onto the road driven and is not caught.
+  A route that turns round on its own line turns the car round too (`RouteGeometry.doublesBack`):
+  in its first `SELF_LOOK_M` (1,500 m), or its first leg when shorter, 50 m or more of it runs
+  back within 15 m of its own earlier line, the opposite way, leaving out the 40 m just behind
+  each point. That is a U-turn in the road ahead, or a turn up a side street to turn round there
+  and come back, on a road the car has not driven yet. A switchback's legs part too soon to count.
   The track starts where the car last turned round (`RouteGeometry.sinceTurnRound`): its newest
   stretch more than 135 degrees off the car's course, and everything before it, is left out.
   Kept whole, the track of a car that had made its own U-turn read every route on back down the
@@ -2470,8 +2476,8 @@ with abbreviated steps, no live traffic, or street names that fell short (`Route
   router's own route, or an on-device one) while the candidate is (`GOOGLE_HYBRID` or
   `GOOGLE_LINE_NAMED`, real steps, names not short): in a car the candidate replaces it
   silently (the `line` gain), unless it turns the car round from its last course
-  (`RouteGeometry.startsAgainst`, `startsBehind`, or `goesBack` along the track since its last
-  turn round); with no course known it waits. A reroute that set every Google route aside for
+  (`RouteGeometry.startsAgainst`, `startsBehind`, `goesBack` along the track since its last
+  turn round, or `doublesBack` on its own line); with no course known it waits. A reroute that set every Google route aside for
   turning the car round adopts the open router's route, and that route keeps the open router's
   way into the destination, which can be the street next to the right one (a real drive,
   2026-11-17). Such a route is re-checked on the fast cadence, and down to

@@ -1313,6 +1313,49 @@ object RouteGeometry {
     private const val BEHIND_M = 12.0
 
     /**
+     * True when [poly] turns round on itself within its first [SELF_LOOK_M], or by [upToM] (the
+     * end of its first leg) when that comes first: [SELF_RUN_M] or more of it runs back within
+     * [SELF_NEAR_M] of its own earlier line, the opposite way. A route that sends the car on to a
+     * U-turn in the road, or up a side street to turn there and come back, does. [goesBack]
+     * misses both: the road the route comes back along is one the car has not driven yet. The
+     * line within [SELF_GAP_M] behind each point is left out, where it is the same stretch of
+     * road. A switchback's legs part too soon to count.
+     */
+    internal fun doublesBack(poly: List<LatLng>, upToM: Double = Double.MAX_VALUE): Boolean {
+        if (poly.size < 2) return false
+        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+        val end = minOf(cum.last(), SELF_LOOK_M, upToM)
+        var run = 0.0
+        var m = SELF_GAP_M
+        while (m + BACK_STEP_M <= end) {
+            val p = app.vela.core.nav.RouteProjection.pointAt(poly, cum, m)
+            val q = app.vela.core.nav.RouteProjection.pointAt(poly, cum, m + BACK_STEP_M)
+            val dir = bearingDeg(p, q)
+            // The nearest stretch of the line up to SELF_GAP_M before this point, and its way.
+            val limit = m - SELF_GAP_M
+            var best = Double.MAX_VALUE
+            var lineDir = 0.0
+            for (i in 1 until poly.size) {
+                if (cum[i - 1] >= limit) break
+                val a = poly[i - 1]
+                val b = if (cum[i] <= limit) poly[i] else app.vela.core.nav.RouteProjection.pointAt(poly, cum, limit)
+                if (a.distanceTo(b) < 1.0) continue
+                val d = distToSegment(p, a, b)
+                if (d < best) { best = d; lineDir = bearingDeg(a, b) }
+            }
+            val opposite = best <= SELF_NEAR_M && angleBetween(dir, lineDir) > BACK_OPPOSITE_DEG
+            run = if (opposite) run + BACK_STEP_M else 0.0
+            if (run >= SELF_RUN_M) return true
+            m += BACK_STEP_M
+        }
+        return false
+    }
+    private const val SELF_LOOK_M = 1500.0
+    private const val SELF_GAP_M = 40.0
+    private const val SELF_NEAR_M = 15.0
+    private const val SELF_RUN_M = 50.0
+
+    /**
      * The part of the car's track [behind] (oldest first) driven since it last turned round: the
      * newest stretch more than [BACK_OPPOSITE_DEG] off the way it goes now ([headingDeg], else
      * the direction of its newest [TURN_REF_M]), and everything before it, is dropped. A car
@@ -1383,7 +1426,8 @@ object RouteGeometry {
     /**
      * The routes a reroute may lead with, given the way the car is going: Google's (the list
      * [forwardChoice] keeps) and the open router's, reordered. A route [back] is one that turns
-     * the car round ([startsAgainst] the heading, or [goesBack] along its track), and [now] one
+     * the car round ([startsAgainst] the heading, [goesBack] along its track, or [doublesBack]
+     * on its own line), and [now] one
      * that does so where the car is rather than further on. A route that goes on beats one that
      * turns the car round further on (round a block, back from the next exit), which beats one
      * that turns it round where it is, while it costs no more than [FORWARD_MAX_EXTRA_S] or

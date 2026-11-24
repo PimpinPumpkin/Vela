@@ -465,6 +465,13 @@ off the list when it has been.
   led at the first missed turn, and at the second, where Google's one route turned the car
   round, the re-ask fired and its answer went on (adopted after 4.2 s, no reroute after). Not
   seen on a real drive. The held-course turn check is unit-tested only.
+- A route that turns round on its own line (a U-turn in the road ahead, or up a side street to
+  turn round and come back) ranks as turning round further on (`doublesBack`), and a hybrid's
+  U-turn on the open route's street gets its step. Unit-tested and run on a recorded drive's
+  router answers at the desk: both of its bad reroutes would have gone on instead, and no other
+  reroute in 24 recorded trips changed its pick. Re-driven live on the 4a: the open router's
+  side-street loop and Google's two U-turns 660 m on were flagged, and both reroutes took a
+  route that goes on. Not yet seen on a drive.
 - A recorded drive keeps the nav engine's inputs (`N`) and every router answer (`RC`), and a
   replay feeds those inputs back: checked on the 4a, where the replay went off route and
   swapped routes in the drive's order. Also on the 4a with a Davis mock drive: a seek to three

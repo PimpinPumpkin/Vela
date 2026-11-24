@@ -197,4 +197,54 @@ class TurnBackTest {
         assertEquals(drove.size, RouteGeometry.sinceTurnRound(drove).size)
         assertEquals(drove.size, RouteGeometry.sinceTurnRound(drove, 0.0).size)
     }
+
+    @Test fun `up a side street to turn round there and back along the road doubles back`() {
+        // A divided road: on east 240 m, right down a side street 110 m, a U-turn in it, back up
+        // 15 m over, left onto the westbound side 12 m north and west past where the car is.
+        val loop = listOf(
+            p(0.0, 0.0), p(240.0, 0.0), p(240.0, -110.0), p(255.0, -110.0), p(255.0, 12.0), p(-300.0, 12.0),
+        )
+        assertFalse("the road back is one the car has not driven within the look", RouteGeometry.goesBack(loop, track))
+        assertFalse(RouteGeometry.startsAgainst(loop, 90.0))
+        assertTrue(RouteGeometry.doublesBack(loop))
+        // Ranked as turning round further on, it gives way to Google's route that goes on.
+        val now = { x: Route -> RouteGeometry.startsAgainst(x.polyline, 90.0) || RouteGeometry.startsBehind(x.polyline, 90.0) }
+        val turns = { x: Route -> now(x) || RouteGeometry.goesBack(x.polyline, track) || RouteGeometry.doublesBack(x.polyline) }
+        val gLoop = route(loop, 856.0)
+        val gOn = route(listOf(p(0.0, 0.0), p(240.0, 0.0), p(240.0, -110.0), p(240.0, -900.0)), 860.0)
+        assertEquals(1, RouteGeometry.turnRank(gLoop, turns, now))
+        assertSame(gOn, RouteGeometry.forwardPick(listOf(gLoop, gOn), emptyList(), turns, now).first.single())
+    }
+
+    @Test fun `a U-turn in the road further on doubles back`() {
+        val uturn = listOf(p(0.0, 0.0), p(600.0, 0.0), p(600.0, 2.0), p(-300.0, 2.0))
+        assertFalse(RouteGeometry.goesBack(uturn, track))
+        assertTrue(RouteGeometry.doublesBack(uturn))
+        assertFalse("past the end of the first leg it is the next leg's", RouteGeometry.doublesBack(uturn, upToM = 550.0))
+        assertFalse("too far on to count", RouteGeometry.doublesBack(listOf(p(0.0, 0.0), p(1600.0, 0.0), p(1600.0, 2.0), p(0.0, 2.0))))
+    }
+
+    @Test fun `corners, a loop ramp and a switchback do not double back`() {
+        assertFalse(RouteGeometry.doublesBack(listOf(p(0.0, 0.0), p(300.0, 0.0), p(300.0, 500.0), p(600.0, 500.0))))
+        assertFalse(RouteGeometry.doublesBack(listOf(p(0.0, 0.0), p(300.0, 0.0), p(300.0, 100.0), p(0.0, 100.0))))
+        val r = 50.0
+        val ramp = ArrayList<LatLng>()
+        ramp += p(0.0, 0.0); ramp += p(40.0, 0.0)
+        for (k in 0..54) {
+            val a = Math.toRadians(90.0 - k * 5.0)
+            ramp += p(40.0 + r * Math.cos(a), -r + r * Math.sin(a))
+        }
+        ramp += p(40.0 - r, 300.0)
+        assertFalse(RouteGeometry.doublesBack(ramp))
+        // A hairpin 12 m across whose legs part at 20 degrees.
+        val hairpin = ArrayList<LatLng>()
+        hairpin += p(-200.0, 0.0); hairpin += p(0.0, 0.0)
+        for (k in 1..17) {
+            val a = Math.toRadians(-90.0 + k * 10.0)
+            hairpin += p(6.0 * Math.cos(a), 6.0 + 6.0 * Math.sin(a))
+        }
+        val t = Math.toRadians(20.0)
+        hairpin += p(-300.0 * Math.cos(t), 12.0 + 300.0 * Math.sin(t))
+        assertFalse(RouteGeometry.doublesBack(hairpin))
+    }
 }

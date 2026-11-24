@@ -1074,7 +1074,10 @@ class GoogleMapsDataSource @Inject constructor(
         val turnsNow: (Route) -> Boolean = { r ->
             departBearingDeg != null && (RouteGeometry.startsAgainst(r.polyline, departBearingDeg) || RouteGeometry.startsBehind(r.polyline, departBearingDeg))
         }
-        val turnsBack: (Route) -> Boolean = { r -> turnsNow(r) || RouteGeometry.goesBack(r.polyline, behind) }
+        val turnsBack: (Route) -> Boolean = { r ->
+            turnsNow(r) || RouteGeometry.goesBack(r.polyline, behind) ||
+                RouteGeometry.doublesBack(r.polyline, r.legs.firstOrNull()?.distanceMeters ?: Double.MAX_VALUE)
+        }
         val judged = departBearingDeg != null || behind.size >= 2
         val turnRank = { r: Route -> RouteGeometry.turnRank(r, turnsBack, turnsNow) }
         fun turnFlags(r: Route): List<String> = when (if (judged) turnRank(r) else 0) { 0 -> emptyList(); 2 -> listOf("back"); else -> listOf("back", "later") }

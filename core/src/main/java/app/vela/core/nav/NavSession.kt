@@ -1276,7 +1276,8 @@ class NavSession @Inject constructor(
                 val h = lastBearing ?: movingCourse ?: return@run false
                 !app.vela.core.data.RouteGeometry.startsAgainst(candidate.polyline, h) &&
                     !app.vela.core.data.RouteGeometry.startsBehind(candidate.polyline, h) &&
-                    !app.vela.core.data.RouteGeometry.goesBack(candidate.polyline, trackTo(car, h))
+                    !app.vela.core.data.RouteGeometry.goesBack(candidate.polyline, trackTo(car, h)) &&
+                    !app.vela.core.data.RouteGeometry.doublesBack(candidate.polyline, candidate.legs.firstOrNull()?.distanceMeters ?: Double.MAX_VALUE)
             }
             val gains = if (sameCourse && candidate.drivable) RouteHeal.gains(current, candidate, lineOk) else null
             if (gains != null) {
