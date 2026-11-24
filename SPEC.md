@@ -3087,7 +3087,8 @@ Frame rates are a Pixel 4a on a demo drive, per second from Start.
   25 s with them left at nice 10 and 11 to 15 s with them moved along (4.6 s idle either way).
 - The opener and the first two turns' prompts are synthesized while the route preview is up
   (`NavSession.prepareStart` -> `VoiceGuide.prepare` -> `PiperSynth.prepare`, background
-  priority). `NavEngine.startPrompts` gives the far and near approach lines at the 400 m and
+  priority). A finished drive's route behind the arrival card is not a preview and prepares
+  nothing. `NavEngine.startPrompts` gives the far and near approach lines at the 400 m and
   150 m band floors and the turn-now line, in `update`'s wording (`StartPromptsTest`). Up to
   `MAX_PREPARED` (8) lines are kept, by voice, speaker, speed and exact text. A spoken line
   drops any prepare queued behind it (`speaksAsked`) and raises the one in hand (9.1).

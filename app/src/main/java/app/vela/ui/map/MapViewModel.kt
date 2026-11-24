@@ -595,8 +595,9 @@ class MapViewModel @Inject constructor(
         // The drive's opening line is synthesized while its route preview is up (settled for
         // 1.5 s), so Start plays it instead of synthesizing during the fly-in: two voice threads
         // on the 4a's fast cores held the map to 5-7 fps in seconds 3-4 of every drive start.
+        // A finished drive's route behind the arrival card is no preview: nothing will start it.
         viewModelScope.launch {
-            _state.map { s -> if (!s.navigating && s.directionsOpen && s.travelMode != TravelMode.TRANSIT) s.activeRoute else null }
+            _state.map { s -> if (!s.navigating && !s.arrived && s.directionsOpen && s.travelMode != TravelMode.TRANSIT) s.activeRoute else null }
                 .distinctUntilChanged { a, b -> a === b }
                 .collectLatest { r ->
                     if (r != null) { kotlinx.coroutines.delay(1500); runCatching { navSession.prepareStart(r, app.vela.ui.Units.imperial.value) } }
