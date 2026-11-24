@@ -41,9 +41,14 @@ data class Maneuver(
     // along the line (RouteGeometry.enrichWithLights; "Traffic-light guidance"). The voice says
     // "Pass the traffic light, then ..." for the ones still ahead of the car when it speaks.
     val lightsBeforeM: List<Double> = emptyList(),
-    // The turn's own junction has a traffic light (RouteGeometry.enrichWithLights). With no light
-    // still ahead before it, the voice says "At the light, turn left onto ...".
+    // The turn's own junction has a traffic light (RouteGeometry.enrichWithLights): the voice says
+    // "At the light, turn left onto ..." near the turn and at it.
     val lightAtTurn: Boolean = false,
+    // Stop signs the route stops at on the way to this maneuver, as meters before it, and whether
+    // the car stops at one at the turn itself (RouteGeometry.enrichWithLights): "At the stop sign,
+    // turn right onto ...", and further out "At the next stop sign" when none comes first.
+    val stopsBeforeM: List<Double> = emptyList(),
+    val stopAtTurn: Boolean = false,
     // OpenStreetMap bans this turn and both open routers refused it, but the legal way round cost
     // too much to replace Google's turn (TurnBans): the turn card and the step list say it may not
     // be allowed.

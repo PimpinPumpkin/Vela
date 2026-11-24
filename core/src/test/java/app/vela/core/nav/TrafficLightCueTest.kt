@@ -12,7 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Locale
 
-/** A traffic light named once per turn, on the first line that can carry it. */
+/** Light and stop-sign cues on a drive: the near line, the line at the turn and a "then". */
 class TrafficLightCueTest {
     private val lat = 38.5449
     private val lng0 = -121.7405
@@ -54,27 +54,46 @@ class TrafficLightCueTest {
         return said
     }
 
-    @Test fun `a turn at a light says so on its approach and not again at the turn`() {
+    @Test fun `a turn at a light says so near the turn and at it, not from far out`() {
         val said = drive(route(400.0, elm = { copy(lightAtTurn = true) }), 400.0)
-        val elm = said.filter { "Elm Street" in it || it == "Turn right" }
-        assertTrue("$said", elm.first().contains("At the light, turn right onto Elm Street"))
-        assertEquals("$said", 1, elm.count { "At the light" in it })
-        assertTrue("$said", said.none { "Oak Avenue" in it && "At the light" in it })
+        val elm = said.filter { "Elm Street" in it || it.startsWith("Turn right") || it.startsWith("At the light, turn right") }
+        assertTrue("$said", "light" !in elm.first())
+        assertTrue("$said", elm.any { "At the light, turn right onto Elm Street" in it })
+        assertTrue("$said", elm.last().startsWith("At the light, turn right"))
+        assertTrue("$said", said.none { "light, turn left onto Oak Avenue" in it })
     }
 
-    @Test fun `a turn too close to the one before says it on the joined line or at its turn`() {
+    @Test fun `a turn too close to the one before says it in the then and again at its turn`() {
         val said = drive(route(80.0, elm = { copy(lightAtTurn = true) }, oak = { copy(lightAtTurn = true) }), 80.0)
-        val pair = said.first { "Elm Street" in it }
-        assertTrue("$said", pair.endsWith("At the light, turn right onto Elm Street, then turn left onto Oak Avenue"))
-        // Oak Avenue has no approach line of its own: its line at the turn carries it.
+        // From far out the first turn names no light; the "then" names the second's.
+        assertTrue("$said", said.first().endsWith("Turn right onto Elm Street, then at the light, turn left onto Oak Avenue"))
+        assertTrue("$said", "At the light, turn right onto Elm Street, then at the light, turn left onto Oak Avenue" in said)
         assertEquals("$said", "At the light, turn left onto Oak Avenue", said.last { "Oak Avenue" in it })
     }
 
-    @Test fun `one light before the turn is gone past, and no other line names a light`() {
-        val said = drive(route(400.0, elm = { copy(lightsBeforeM = listOf(150.0), lightAtTurn = true) }), 400.0)
-        val elm = said.filter { "Elm Street" in it || it.startsWith("Turn right") || it.startsWith("At the light") }
-        assertTrue("$said", elm.first().contains("Go past this light, then turn right onto Elm Street"))
+    @Test fun `a stop sign in the then`() {
+        val said = drive(route(80.0, oak = { copy(stopAtTurn = true) }), 80.0)
+        assertTrue("$said", "Turn right onto Elm Street, then at the stop sign, turn left onto Oak Avenue" in said)
+        assertEquals("$said", "At the stop sign, turn left onto Oak Avenue", said.last { "Oak Avenue" in it })
+    }
+
+    @Test fun `a line at the turn cut short to fit keeps the next turn's light`() {
+        // 60 m apart at 12 m/s: the whole pair does not fit before the second turn's own line.
+        val said = drive(route(60.0, elm = { copy(stopAtTurn = true) }, oak = { copy(lightAtTurn = true) }), 60.0, mps = 12.0)
+        assertTrue("$said", said.any { it.startsWith("Turn right, then at the light, turn left onto Oak Avenue") })
+    }
+
+    @Test fun `one light before a turn with none of its own is gone past on the near line only`() {
+        val said = drive(route(400.0, elm = { copy(lightsBeforeM = listOf(120.0)) }), 400.0)
+        val elm = said.filter { "Elm Street" in it || it.startsWith("Turn right") || it.startsWith("Go past") }
         assertEquals("$said", 1, elm.count { "light" in it })
+        assertTrue("$said", elm.single { "light" in it }.contains("Go past this light, then turn right onto Elm Street"))
+    }
+
+    @Test fun `a turn at a light with a light before it says at the light`() {
+        val said = drive(route(400.0, elm = { copy(lightsBeforeM = listOf(120.0), lightAtTurn = true) }), 400.0)
+        assertTrue("$said", said.none { "Go past" in it })
+        assertTrue("$said", said.any { "At the light, turn right onto Elm Street" in it })
     }
 
     @Test fun `two lights to go past say nothing until one is left`() {
@@ -84,7 +103,13 @@ class TrafficLightCueTest {
         assertTrue("$said", elm.count { "light" in it } <= 1)
     }
 
+    @Test fun `the shorter voice settings say no landmark`() {
+        SpokenDetail.mode = SpokenDetail.Mode.BRIEF
+        val said = drive(route(80.0, elm = { copy(lightAtTurn = true) }, oak = { copy(stopAtTurn = true) }), 80.0)
+        assertTrue("$said", said.none { "light" in it || "stop sign" in it })
+    }
+
     @Test fun `no light, no cue`() {
-        assertTrue(drive(route(80.0), 80.0).none { "light" in it })
+        assertTrue(drive(route(80.0), 80.0).none { "light" in it || "stop sign" in it })
     }
 }

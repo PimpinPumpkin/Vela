@@ -58,6 +58,14 @@ interface NavStrings {
      *  language has no such phrase and the turn is said alone. */
     fun atLight(instruction: String): String? = null
 
+    /** A turn at a stop sign the car stops at: EN "At the stop sign, turn right onto 5th Ave".
+     *  Null = the language has no such phrase. */
+    fun atStop(instruction: String): String? = null
+
+    /** The same turn said further out, when no other stop sign comes first, in place of the
+     *  distance: EN "At the next stop sign, turn right onto 5th Ave". Null = no such phrase. */
+    fun atNextStop(instruction: String): String? = null
+
     /** The SPOKEN form of a sign instruction: the secondary sign destinations after a colon are
      *  dropped ("Take the ramp toward I 5 North: Vancouver British Columbia" -> "... toward I 5
      *  North"). The full sign stays on the banner; speaking it all took so long the next prompt
@@ -258,6 +266,10 @@ object EnNavStrings : NavStrings {
     override fun passLights(count: Int): String = if (count <= 1) "Go past this light" else "Go past $count lights"
 
     override fun atLight(instruction: String): String = "At the light, " + instruction.replaceFirstChar { it.lowercaseChar() }
+
+    override fun atStop(instruction: String): String = "At the stop sign, " + instruction.replaceFirstChar { it.lowercaseChar() }
+
+    override fun atNextStop(instruction: String): String = "At the next stop sign, " + instruction.replaceFirstChar { it.lowercaseChar() }
 
     // Trailing SEMICOLON on purpose (spoken-only string — NavEngine Speak, never displayed): bare text
     // gives the Piper voice no final prosody contour and the callout ended oddly; the user A/B'd
@@ -2972,6 +2984,11 @@ object FaNavStrings : NavStrings by EnNavStrings {
         if (lead.isBlank()) instruction else "$lead، سپس $instruction"
 
     override fun thenNext(instruction: String, next: String): String = "$instruction، سپس $next"
+    // No Persian phrase yet for a turn at a light or a stop sign: the English ones would be
+    // spoken in English.
+    override fun atLight(instruction: String): String? = null
+    override fun atStop(instruction: String): String? = null
+    override fun atNextStop(instruction: String): String? = null
 
     override fun spokenSign(instruction: String): String = instruction
     override fun repeatShort(instruction: String): String = instruction

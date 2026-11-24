@@ -1,6 +1,7 @@
 package app.vela.core
 
 import app.vela.core.data.RouteGeometry
+import app.vela.core.data.TrafficControl
 import app.vela.core.model.LatLng
 import app.vela.core.model.ManeuverType
 import app.vela.core.model.Route
@@ -151,17 +152,80 @@ class OsrmRouterTest {
         assertTrue("a light at the stop line is the turn's own", t2.lightAtTurn && t2.lightsBeforeM.isEmpty())
     }
 
-    @Test fun aTurnAtALightSaysAtTheLightOnceNoOtherLightIsAhead() {
+    @Test fun aTurnAtALightSaysAtTheLightNearTheTurnWhateverComesFirst() {
+        val near = app.vela.core.nav.NavEngine.CueLine.NEAR
+        val far = app.vela.core.nav.NavEngine.CueLine.FAR
         val turn = app.vela.core.model.Maneuver(ManeuverType.TURN_LEFT, "Turn left onto Main Street", LatLng(0.0, 0.0), 0.0, 0.0,
             lightsBeforeM = listOf(150.0), lightAtTurn = true)
-        val lead = { dtn: Double -> app.vela.core.nav.NavEngine.lightLead(turn, dtn, turn.instruction) }
-        assertEquals("Go past this light, then turn left onto Main Street", lead(300.0))
-        assertEquals("At the light, turn left onto Main Street", lead(120.0))
-        val alone = turn.copy(lightsBeforeM = emptyList())
-        assertEquals("At the light, turn left onto Main Street", app.vela.core.nav.NavEngine.lightLead(alone, 400.0, alone.instruction))
-        // Three lights ahead first: nothing is said about any of them.
-        val busy = turn.copy(lightsBeforeM = listOf(350.0, 250.0, 150.0))
-        assertEquals("Turn left onto Main Street", app.vela.core.nav.NavEngine.lightLead(busy, 400.0, busy.instruction))
+        val lead = { dtn: Double, line: app.vela.core.nav.NavEngine.CueLine -> app.vela.core.nav.NavEngine.lightLead(turn, dtn, turn.instruction, line) }
+        assertEquals("At the light, turn left onto Main Street", lead(300.0, near))
+        assertEquals("At the light, turn left onto Main Street", lead(120.0, near))
+        assertEquals("not from far out", "Turn left onto Main Street", lead(400.0, far))
+        assertEquals("At the light, turn left onto Main Street", lead(30.0, app.vela.core.nav.NavEngine.CueLine.NOW))
+        assertEquals("At the light, turn left onto Main Street", lead(200.0, app.vela.core.nav.NavEngine.CueLine.THEN))
+    }
+
+    /** East 300 m to a left turn, then north 200 m, a point every 10 m. */
+    private fun cornerRoute(): Route {
+        val lat = 38.5449
+        val k = 111_320.0 * Math.cos(Math.toRadians(lat))
+        fun pt(e: Double, n: Double) = LatLng(lat + n / 111_320.0, -121.7405 + e / k)
+        val poly = (0..30).map { pt(it * 10.0, 0.0) } + (1..20).map { pt(300.0, it * 10.0) }
+        val mans = listOf(
+            app.vela.core.model.Maneuver(ManeuverType.DEPART, "Head east", poly[0], 300.0, 0.0),
+            app.vela.core.model.Maneuver(ManeuverType.TURN_LEFT, "Turn left onto Main Street", poly[30], 200.0, 0.0),
+            app.vela.core.model.Maneuver(ManeuverType.ARRIVE, "Arrive", poly.last(), 0.0, 0.0),
+        )
+        return Route(poly, listOf(RouteLeg(500.0, 0.0, null, mans)), 500.0, 0.0, null)
+    }
+
+    private fun cornerPt(e: Double, n: Double): LatLng {
+        val lat = 38.5449
+        return LatLng(lat + n / 111_320.0, -121.7405 + e / (111_320.0 * Math.cos(Math.toRadians(lat))))
+    }
+
+    private fun stop(e: Double, n: Double, road: Int?) = TrafficControl(cornerPt(e, n), TrafficControl.Kind.STOP, road)
+
+    private fun turnWith(vararg stops: TrafficControl) = RouteGeometry.enrichWithLights(cornerRoute(), emptyList(), stops.toList()).legs[0].maneuvers[1]
+
+    @Test fun aStopSignOnTheApproachMarksTheTurn() {
+        val t = turnWith(stop(292.0, -3.0, 90))
+        assertTrue(t.stopAtTurn)
+        assertTrue(t.stopsBeforeM.isEmpty())
+        assertTrue("an all-way stop on the junction's own node", turnWith(stop(300.0, 0.0, null)).stopAtTurn)
+    }
+
+    @Test fun theSignHoldingTheStreetTurnedOntoIsNotTheCars() {
+        // On the street turned onto, a few meters up it, its road running north-south.
+        assertTrue(!turnWith(stop(303.0, 4.0, 0)).stopAtTurn)
+        assertTrue(!turnWith(stop(303.0, 9.0, 0)).stopAtTurn)
+        // The junction's node holding the street the car turns onto (its most minor road).
+        assertTrue(!turnWith(stop(300.0, 0.0, 0)).stopAtTurn)
+    }
+
+    @Test fun stopSignsBeforeTheTurnAreCountedAndTheCrossStreetsAreNot() {
+        // A four-way stop 150 m back: the car's sign and the one facing the other way, one junction.
+        val t = turnWith(stop(142.0, -3.0, 90), stop(158.0, 3.0, 90))
+        assertEquals(1, t.stopsBeforeM.size)
+        assertTrue("${t.stopsBeforeM}", t.stopsBeforeM.single() in 140.0..160.0)
+        assertTrue(!t.stopAtTurn)
+        // A two-way stop that holds the cross street: its signs sit up the side street.
+        assertTrue(turnWith(stop(150.0, 12.0, 0), stop(150.0, -12.0, 0)).stopsBeforeM.isEmpty())
+        // A sign with no known road counts only on the line.
+        assertTrue(turnWith(stop(150.0, 15.0, null)).stopsBeforeM.isEmpty())
+    }
+
+    @Test fun aCornersLightOrStopSignIsNotTheNextTurnsJustPastIt() {
+        // Left at 300 m, then right into a lot 20 m up the new street.
+        val base = cornerRoute()
+        val ms = base.legs[0].maneuvers
+        val lot = app.vela.core.model.Maneuver(ManeuverType.TURN_RIGHT, "Turn right into the parking lot", base.polyline[32], 180.0, 0.0)
+        val r = base.copy(legs = listOf(base.legs[0].copy(maneuvers = listOf(ms[0], ms[1].copy(distanceMeters = 20.0), lot, ms[2]))))
+        val stopAtCorner = stop(300.0, 0.0, null)
+        val lit = RouteGeometry.enrichWithLights(r, listOf(cornerPt(300.0, 0.0)), listOf(stopAtCorner, stop(297.0, 12.0, 0)))
+        val (corner, lotTurn) = lit.legs[0].maneuvers[1] to lit.legs[0].maneuvers[2]
+        assertTrue(corner.lightAtTurn && corner.stopAtTurn)
+        assertTrue("$lotTurn", !lotTurn.lightAtTurn && !lotTurn.stopAtTurn && lotTurn.stopsBeforeM.isEmpty() && lotTurn.lightsBeforeM.isEmpty())
     }
 
     @Test fun lightsAtOneJunctionClusterToASingleIntersection() {

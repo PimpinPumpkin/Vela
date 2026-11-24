@@ -267,13 +267,13 @@ off the list when it has been.
   the corner hold on it: on a Davis fixture mock drive on a 4a the two left turns drew as curves
   and the arrow went round them. Not yet seen on a real drive: the puck through a tight turn, a
   corner hold on the curve, and a jog across a median.
-- Traffic-light guidance (off by default) and its rules (SPEC 4.6, Guidance): "Go past this
-  light, then ..." for one light just before a turn, "At the light, ..." for a turn at a light,
-  one light named per turn. On a Davis fixture mock drive on a 4a the road features marked the
-  left onto Mace Boulevard and the voice said "At the light, turn left onto Mace Boulevard" at
-  the turn. The left at the end of the exit 75 ramp, at a light too, was not marked. Not yet
-  heard on a real drive: whether the lights it names are there, and whether a light 30 m from a
-  turn is ever another junction's.
+- Lights and stop signs in directions (off by default) and its rules (SPEC 4.6, Guidance),
+  matched to Google's lines on two Davis fixture mock drives: "At the light" on the near line and
+  at the turn, "At the next stop sign" from far out, "At the stop sign" near it, and the cue in a
+  "then". The left at the end of the exit 75 ramp, at a light too, was not marked. Not yet heard
+  on a real drive: whether the lights and stop signs it names are there, whether a light 30 m
+  from a turn is ever another junction's, and whether "the next stop sign" is wrong where a sign
+  in between is missing from OpenStreetMap.
 
 - Toll prices from the toll file (#954, from #965; SPEC 4.3): on the API 26 emulator a Vaughan to
   Markham drive showed "Toll about $8.94 + $5.30 fee" and "$10.00 + $5.30 fee" on its two 407

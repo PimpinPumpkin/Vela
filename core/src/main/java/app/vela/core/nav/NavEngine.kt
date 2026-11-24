@@ -34,9 +34,6 @@ object NavEngine {
     /** In [NavState.spoken]: the step's turn-now WORDS were already said as the "then" of the line
      *  just before, so its turn-now point buzzes without speaking ([CHAIN_REPEAT_S]). */
     const val TURN_NOW_SAID_SLOT = 3
-    /** In [NavState.spoken]: a line of the step has named a traffic light ([lightCue]); the
-     *  step's other lines do not. */
-    const val LIGHT_SAID_SLOT = 4
     /** A chained step whose own turn-now line would come within this many seconds of the "then"
      *  that named it, in the same words, is not said again: at speed two forks 45 m apart said
      *  "keep slight right" twice in two seconds. */
@@ -616,7 +613,10 @@ object NavEngine {
             // thenSaid keeps the words without the lanes: chainRepeatsSoon compares them with the
             // step's own line at its turn.
             val plain = thenShort(target, next, nextText)
-            val both = nav().thenNext(line, withLanes(next, plain))
+            // "then at the light, turn left": the full voice only, and not with lanes to say.
+            val cued = if (detail == SpokenDetail.Mode.FULL && app.vela.core.model.laneGuidance(next.lanes) == null)
+                withLight(lightCue(next, dtn + manAlong[idx] - manAlong[idxCur], CueLine.THEN), plain) else plain
+            val both = nav().thenNext(line, withLanes(next, cued))
             if (both != line) { chainedNow = true; chainedIdx = idx; thenSaid = plain; thenAtTurn = false }
             return both
         }
@@ -643,6 +643,15 @@ object NavEngine {
             val nextBare = if (SpokenDetail.exitLike(next.type)) nextNamed else nav().repeatShort(next.instructionNoRoad ?: next.spokenInstruction())
             val named = nav().thenNext(bare, withLanes(next, nextNamed))
             thenAtTurn = true
+            // The second turn's light or stop sign stays in the shorter line while it fits:
+            // "Turn right, then at the light, turn left onto West Covell Boulevard".
+            if (detail == SpokenDetail.Mode.FULL && app.vela.core.model.laneGuidance(next.lanes) == null) {
+                val cued = withLight(lightCue(next, dtn + manAlong[idx] - manAlong[idxCur], CueLine.THEN), nextNamed)
+                if (cued != nextNamed) {
+                    val withCue = nav().thenNext(bare, cued)
+                    if (fits(withCue)) { thenSaid = nextNamed; return withCue }
+                }
+            }
             if (fits(named)) { thenSaid = nextNamed; return named }
             thenSaid = nextBare
             return nav().thenNext(bare, withLanes(next, nextBare))
@@ -700,35 +709,36 @@ object NavEngine {
                     // (real-drive report, 2026-07-17; Google shortens repeats the same way).
                     else -> nav().repeatShort(lotLine ?: target.spokenInstruction())
                 }
-                // The traffic-light cue, once per turn (LIGHT_SAID_SLOT), rides on the plain form
-                // only: a lane line already says where to be, and "go past this light, then use the
-                // left 2 lanes" has the order backward. A line that names the stop after it takes
-                // none either: two "then"s. One that names the turn after it takes "At the light"
-                // alone, which adds no "then".
-                val cue = if (LIGHT_SAID_SLOT in spoken || isArrive) null else lightCue(target, dtn)
-                var cueSaid = false
-                fun wrap(instr: String) = when {
-                    firstForStep && thenStopHere -> { cueSaid = false; withStop(instr) }
-                    isArrive || (firstForStep && lane != null) -> { cueSaid = false; instr }
-                    firstForStep && nextIdx >= 0 -> {
-                        cueSaid = cue == LightCue.AT_LIGHT
-                        withNext(if (cueSaid) withLight(cue, instr) else instr)
-                    }
-                    else -> { cueSaid = cue != null; withLight(cue, instr) }
-                }
-                val distancePhrase = spokenDistance(sayM, imperial)
-                var line = nav().inThen(distancePhrase, wrap(instruction))
                 val pace = v.coerceAtLeast(MIN_PACE_MPS)
+                // The light or stop-sign cue (lightCue) rides on the plain form only: a lane line
+                // already says where to be, and "go past this light, then use the left 2 lanes" has
+                // the order backward. A line that names the stop after it takes none either: two
+                // "then"s. One that names the turn after it takes "At the light" or "At the stop
+                // sign" alone, which add no "then". The step's near line is the one said at the
+                // near band, or close enough before it that the near band counts as said by it.
+                val nearLine = due.last().index == 1 || bands.size > 1 && bands[1] < sayM && (sayM - bands[1]) / pace < BAND_MERGE_S
+                val cue = if (isArrive) null else lightCue(target, dtn, if (nearLine) CueLine.NEAR else CueLine.FAR)
+                fun wrap(instr: String) = when {
+                    firstForStep && thenStopHere -> withStop(instr)
+                    isArrive || (firstForStep && lane != null) -> instr
+                    firstForStep && nextIdx >= 0 -> withNext(withLight(cue.takeIf { it == LightCue.AT_LIGHT || it == LightCue.AT_STOP }, instr))
+                    else -> withLight(cue.takeIf { it != LightCue.NEXT_STOP }, instr)
+                }
+                // "At the next stop sign, turn right onto ..." stands in for the distance, on a
+                // plain line only.
+                val nextStop = cue == LightCue.NEXT_STOP && !(firstForStep && (thenStopHere || lane != null || nextIdx >= 0))
+                val distancePhrase = spokenDistance(sayM, imperial)
+                fun say(instr: String) = if (nextStop) withLight(LightCue.NEXT_STOP, instr) else nav().inThen(distancePhrase, wrap(instr))
+                var line = say(instruction)
                 // Entering a short step at speed, the whole line was still playing when the line
                 // at the turn cut in (it interrupts), and the sign's tail was what got cut. When
                 // the car reaches the turn-now point before the line could end, the first prompt
                 // keeps its lanes and drops the tail, as a repeat does.
                 if (firstForStep && !isArrive && (dtn - turnNowM) / pace < line.length / SPEECH_CPS + SPEECH_LEAD_S) {
                     val brief = nav().repeatShort(lotLine ?: target.spokenInstruction())
-                    line = nav().inThen(distancePhrase, wrap(if (lane != null) nav().useLanesToDo(lane.side, lane.count, brief) else brief))
+                    line = say(if (lane != null) nav().useLanesToDo(lane.side, lane.count, brief) else brief)
                 }
                 events += NavEvent.Speak(line)
-                if (cueSaid) spoken = spoken + LIGHT_SAID_SLOT
                 // A band the car reaches within BAND_MERGE_S of this line is said by it: entering
                 // a step 170 m from its turn said the line, and the 150 m band said it again
                 // three seconds later.
@@ -761,9 +771,8 @@ object NavEngine {
                     // Turn-now repeats short once any approach band already spoke the full
                     // instruction — "Take the ramp", not the whole sign again (see repeatShort).
                     val plainTurn = if (spoken.isEmpty()) nav().spokenSign(lotLine ?: target.spokenInstruction()) else lotLine?.let { nav().repeatShort(it) } ?: short(target, target.spokenInstruction())
-                    // "At the light" here when no approach line has named a light (a turn too close
-                    // to the one before for an approach line of its own). Never "Go past" this late.
-                    val turnText = if (LIGHT_SAID_SLOT !in spoken && lightCue(target, dtn) == LightCue.AT_LIGHT) withLight(LightCue.AT_LIGHT, plainTurn) else plainTurn
+                    // "At the light" or "At the stop sign" again at the turn. Never "Go past" this late.
+                    val turnText = withLight(lightCue(target, dtn, CueLine.NOW), plainTurn)
                     // A roundabout said at its near band by its own approach is not said again at
                     // its entry, where the driver is yielding and the words would be the same. The
                     // line still comes when it carries the step after it (roundabouts in a row).
@@ -1129,18 +1138,17 @@ object NavEngine {
             val anyApproach = leg >= approach * 0.85 || said.isNotEmpty()
             val nowPlain = if (anyApproach) short(m, m.spokenInstruction()) else nav().spokenSign(m.spokenInstruction())
             val lines = ArrayList<String>()
-            var litSaid = LIGHT_SAID_SLOT in said
-            fun lit(dtn: Double, text: String): String {
-                val c = if (litSaid) null else lightCue(m, dtn)
-                if (c != null) litSaid = true
-                return withLight(c, text)
+            fun lit(dtn: Double, line: CueLine, text: String) = withLight(lightCue(m, dtn, line), text)
+            if (farSpoken && 0 !in said) lines += when {
+                lane != null -> nav().inThen(spokenDistance(far, imperial), full)
+                lightCue(m, far, CueLine.FAR) == LightCue.NEXT_STOP -> withLight(LightCue.NEXT_STOP, full)
+                else -> nav().inThen(spokenDistance(far, imperial), full)
             }
-            if (farSpoken && 0 !in said) lines += nav().inThen(spokenDistance(far, imperial), if (lane != null) full else lit(far, full))
             if (leg >= approach * 0.85 && 1 !in said) lines += nav().inThen(
                 spokenDistance(approach, imperial),
-                if (farSpoken || said.isNotEmpty()) lit(approach, brief) else if (lane != null) full else lit(approach, full),
+                if (farSpoken || said.isNotEmpty()) lit(approach, CueLine.NEAR, brief) else if (lane != null) full else lit(approach, CueLine.NEAR, full),
             )
-            val now = if (!litSaid && lightCue(m, 0.0) == LightCue.AT_LIGHT) withLight(LightCue.AT_LIGHT, nowPlain) else nowPlain
+            val now = lit(0.0, CueLine.NOW, nowPlain)
             val ringSaid = m.type == ManeuverType.ROUNDABOUT && (leg >= near * 0.85 || 1 in said)
             val mergeSaid = m.type == ManeuverType.MERGE && anyApproach
             if (TURN_NOW_SLOT !in said && TURN_NOW_SAID_SLOT !in said && !ringSaid && !mergeSaid) lines += now
@@ -1150,41 +1158,55 @@ object NavEngine {
         return out.toList()
     }
 
-    /** Which traffic-light cue a car [dtn] meters short of [m] gets ([lightCue]). */
-    internal enum class LightCue { GO_PAST, AT_LIGHT }
+    /** The landmark cue a line gets ([lightCue]). */
+    internal enum class LightCue { GO_PAST, AT_LIGHT, AT_STOP, NEXT_STOP }
+
+    /** Which of a step's lines a cue is asked for: an approach line said before the near one, the
+     *  near approach line, the line at the turn, or the "then" of the line before. */
+    internal enum class CueLine { FAR, NEAR, NOW, THEN }
 
     /**
-     * The traffic-light cue for a car [dtn] meters short of [m] (SPEC 4.6, Guidance), counted
-     * when it is spoken, so a light already behind the car, or one it is at (within
-     * [LIGHT_AHEAD_MIN_M]), never counts:
-     * - exactly one marked light (`Maneuver.lightsBeforeM`) between the car and the turn, at most
-     *   [GO_PAST_MAX_M] before the turn: [LightCue.GO_PAST], "Go past this light, then turn left";
-     * - none, and the turn at a light of its own (`Maneuver.lightAtTurn`): [LightCue.AT_LIGHT],
-     *   "At the light, turn left";
-     * - otherwise none: two or more lights to count, a light too far before the turn, a car
-     *   further than [LIGHT_SPEAK_MAX_M] out (lights are marked no further back than that), or a
-     *   language without the phrase.
+     * The traffic-light or stop-sign cue for [line] of turn [m], spoken [dtn] meters short of it
+     * (SPEC 4.6, Guidance). A light counts as ahead when the car has at least
+     * [LIGHT_AHEAD_MIN_M] to go to it, so one already passed, or the one the car is at, never
+     * counts. Nothing on a line further out than [LIGHT_SPEAK_MAX_M], as far back as lights and
+     * signs are marked.
+     * - A turn at a light of its own (`Maneuver.lightAtTurn`): [LightCue.AT_LIGHT], "At the light,
+     *   turn left", on the near line, the line at the turn and a "then". Not on a far line.
+     * - A turn at a stop sign (`Maneuver.stopAtTurn`): [LightCue.AT_STOP] on those same lines, and
+     *   on a far line [LightCue.NEXT_STOP], "At the next stop sign, turn left", when no other stop
+     *   sign comes first.
+     * - Otherwise, exactly one light between the car and the turn, at most [GO_PAST_MAX_M] before
+     *   the turn: [LightCue.GO_PAST], "Go past this light, then turn left", on the near line.
+     * A language without a phrase gets no cue of that kind; one with no "at the light" says "go
+     * past" where it can.
      */
-    internal fun lightCue(m: Maneuver, dtn: Double): LightCue? {
-        if (m.lightsBeforeM.isEmpty() && !m.lightAtTurn) return null
+    internal fun lightCue(m: Maneuver, dtn: Double, line: CueLine): LightCue? {
+        if (m.lightsBeforeM.isEmpty() && !m.lightAtTurn && m.stopsBeforeM.isEmpty() && !m.stopAtTurn) return null
         if (dtn > LIGHT_SPEAK_MAX_M) return null
-        val ahead = m.lightsBeforeM.filter { it <= dtn - LIGHT_AHEAD_MIN_M }
-        return when {
-            ahead.size == 1 -> if (ahead[0] <= GO_PAST_MAX_M && nav().passLights(1).isNotBlank()) LightCue.GO_PAST else null
-            ahead.isEmpty() && m.lightAtTurn && nav().atLight("") != null -> LightCue.AT_LIGHT
-            else -> null
+        val n = nav()
+        if (m.lightAtTurn && n.atLight("") != null) return if (line == CueLine.FAR) null else LightCue.AT_LIGHT
+        if (m.stopAtTurn && !m.lightAtTurn) {
+            if (line != CueLine.FAR) return if (n.atStop("") != null) LightCue.AT_STOP else null
+            val stopFirst = m.stopsBeforeM.any { it <= dtn - LIGHT_AHEAD_MIN_M }
+            return if (!stopFirst && n.atNextStop("") != null) LightCue.NEXT_STOP else null
         }
+        if (line != CueLine.NEAR) return null
+        val ahead = m.lightsBeforeM.filter { it <= dtn - LIGHT_AHEAD_MIN_M }
+        return if (ahead.size == 1 && ahead[0] <= GO_PAST_MAX_M && n.passLights(1).isNotBlank()) LightCue.GO_PAST else null
     }
 
     /** [text] with [cue]'s words in front ([lightCue]). */
     internal fun withLight(cue: LightCue?, text: String): String = when (cue) {
         LightCue.GO_PAST -> nav().lightThen(nav().passLights(1), text)
         LightCue.AT_LIGHT -> nav().atLight(text) ?: text
+        LightCue.AT_STOP -> nav().atStop(text) ?: text
+        LightCue.NEXT_STOP -> nav().atNextStop(text) ?: text
         null -> text
     }
 
-    /** [text] with the cue a car [dtn] meters short of [m] gets, said or not before. */
-    internal fun lightLead(m: Maneuver, dtn: Double, text: String): String = withLight(lightCue(m, dtn), text)
+    /** [text] with the cue [line] of [m] gets [dtn] meters short of it. */
+    internal fun lightLead(m: Maneuver, dtn: Double, text: String, line: CueLine = CueLine.NEAR): String = withLight(lightCue(m, dtn, line), text)
 
     /** A light counts as ahead when the car has at least this far to go to it. */
     private const val LIGHT_AHEAD_MIN_M = 20.0

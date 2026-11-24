@@ -59,6 +59,11 @@ object RouteGeometry {
     // One physical junction is often several OSM nodes (one traffic_signals node per approach/carriageway,
     // ~15-30 m apart) — cluster matched signals within this radius so we count INTERSECTIONS, not nodes.
     private const val LIGHT_CLUSTER_M = 30.0
+    // A stop sign the route stops at this far before a turn, or this far past it (a sign on the
+    // junction's own node lands either side of the vertex), is the turn's own: a stop line sits
+    // a few meters to a lane's width short of the junction's middle.
+    internal const val STOP_AT_TURN_M = 30.0
+    internal const val STOP_PAST_TURN_M = 5.0
     private val json = Json { ignoreUnknownKeys = true }
 
     /** The FOSSGIS OSRM backend for each mode. Transit has none → null geometry. */
@@ -817,29 +822,39 @@ object RouteGeometry {
         return out
     }
 
-    /**
-     * Mark the traffic lights on the approach to each plain turn (`Maneuver.lightsBeforeM`), for
-     * the spoken landmark cue "Go past this light, then turn left onto 5th Avenue". Only
-     * surface-street left and right turns, sharp ones too (not ramps, forks, merges, roundabouts
-     * or continues), only signals within [LIGHT_APPROACH_M] before the turn and within [LIGHT_SNAP_M] of the driven
-     * line (a light on a parallel street does not count), and never the turn's own junction.
-     * Signals at one junction count once. A signal within [LIGHT_CLUSTER_M] of the turn marks the
-     * turn itself as at a light (`Maneuver.lightAtTurn`), for "At the light, turn left onto ...".
-     * The instruction text is left alone: the engine adds the clause when it speaks, for the
-     * lights still ahead of the car (`NavEngine.lightLead`). The route itself comes back when no
-     * turn gains a light.
-     */
-    /** The turns a traffic-light cue is for: plain and sharp lefts and rights. */
+    /** The turns a traffic-light or stop-sign cue is for: plain and sharp lefts and rights. */
     private val LIGHT_TURNS = setOf(ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.SHARP_LEFT, ManeuverType.SHARP_RIGHT)
 
-    fun enrichWithLights(route: Route, signals: List<LatLng>): Route {
+    /**
+     * Mark the traffic lights and stop signs on the approach to each plain turn, for the spoken
+     * landmark cues ("Go past this light, then turn left onto 5th Avenue", "At the light, ...",
+     * "At the stop sign, ..."). Only surface-street left and right turns, sharp ones too (not
+     * ramps, forks, merges, roundabouts or continues), and only what is within [LIGHT_APPROACH_M]
+     * before the turn.
+     *
+     * Lights: [signals] within [LIGHT_SNAP_M] of the driven line (a light on a parallel street does
+     * not count), one per junction ([LIGHT_CLUSTER_M]), as `Maneuver.lightsBeforeM`. A signal
+     * within [LIGHT_CLUSTER_M] of the turn is the turn's own and sets `Maneuver.lightAtTurn`.
+     *
+     * Stop signs: the [stops] the route stops at, by the map's rule for a stop sign on the route
+     * (`RouteProjection.stopIsOnRoute`: on the line, its road running the way the car comes in),
+     * one per junction, as `Maneuver.stopsBeforeM`. One within [STOP_AT_TURN_M] before the turn,
+     * or [STOP_PAST_TURN_M] past it (a sign on the junction's own node), sets
+     * `Maneuver.stopAtTurn`. The sign holding the street the route turns onto sits past the turn
+     * on a road across the approach, and is left out.
+     *
+     * The instruction text is left alone: the engine adds the clause when it speaks
+     * (`NavEngine.lightCue`). The route itself comes back when no turn gains either.
+     */
+    fun enrichWithLights(route: Route, signals: List<LatLng>, stops: List<TrafficControl> = emptyList()): Route {
         val poly = route.polyline
-        if (signals.isEmpty() || poly.size < 2) return route
+        if ((signals.isEmpty() && stops.isEmpty()) || poly.size < 2) return route
         fun nearestIdx(p: LatLng): Int {
             var best = 0; var bd = Double.MAX_VALUE
             for (i in poly.indices) { val d = poly[i].distanceTo(p); if (d < bd) { bd = d; best = i } }
             return best
         }
+        val cum = if (stops.isEmpty()) DoubleArray(0) else app.vela.core.nav.RouteProjection.cumulative(poly)
         var marked = false
         val legs = route.legs.map { leg ->
             val idx = leg.maneuvers.map { nearestIdx(it.location) }
@@ -853,25 +868,60 @@ object RouteGeometry {
                 var acc = 0.0; var k = toIdx
                 while (k > fromIdx && acc < LIGHT_APPROACH_M) { approach.add(poly[k] to acc); acc += poly[k].distanceTo(poly[k - 1]); k-- }
                 // A signal belonging to the turn's OWN junction is the one you're turning at, not one you
-                // "pass" first. Exclude any signal within LIGHT_CLUSTER_M of the turn vertex — the SAME
+                // "pass" first. Exclude any signal within LIGHT_CLUSTER_M of the turn vertex, the SAME
                 // radius the clustering below treats as one physical junction (one signal per approach can
                 // sit 25-30 m before the junction-center vertex, so LIGHT_SNAP_M=25 was too tight and let
-                // the turn's own light through; audit 2026-07-07). LIGHT_SNAP_M stays the on-the-driven-line
-                // snap tolerance.
+                // the turn's own light through). LIGHT_SNAP_M stays the on-the-driven-line snap tolerance.
                 val turnPt = poly[toIdx]
+                // The step before's corner: a light or stop sign there is that turn's, not this
+                // one's, when the two corners are close (a lot entrance just round a corner).
+                val prevPt = poly[fromIdx]
                 // Cluster the matched nodes: OSM maps one traffic_signals node per approach/carriageway at a
                 // junction, so counting raw nodes would say "pass 2 lights" for one physical intersection.
                 val clusters = ArrayList<Pair<LatLng, Double>>()
                 var atTurn = false
                 for (s in signals) {
+                    if (prevPt.distanceTo(s) < LIGHT_CLUSTER_M) continue
                     if (turnPt.distanceTo(s) < LIGHT_CLUSTER_M) { atTurn = true; continue }
                     val (at, before) = approach.minByOrNull { it.first.distanceTo(s) } ?: continue
                     if (at.distanceTo(s) >= LIGHT_SNAP_M) continue
                     if (clusters.none { it.first.distanceTo(s) < LIGHT_CLUSTER_M }) clusters.add(s to before)
                 }
-                if (clusters.isEmpty() && !atTurn) m else {
+                var stopsBefore = emptyList<Double>()
+                var stopAtTurn = false
+                val turnAlong = if (stops.isEmpty()) 0.0 else cum[toIdx]
+                // From STOP_AT_TURN_M past the step before: a sign just past a corner the car has
+                // turned at holds the traffic coming the other way, or is that corner's.
+                val fromAlong = if (stops.isEmpty()) 0.0 else maxOf(cum[fromIdx] + STOP_AT_TURN_M, turnAlong - LIGHT_APPROACH_M)
+                if (stops.isNotEmpty() && fromAlong < turnAlong + STOP_PAST_TURN_M) {
+                    // Projected onto this step's stretch and a little past the turn only, so a
+                    // later stretch of the same line passing nearby cannot claim the sign. The whole
+                    // stretch, so a sign outside the window lands outside it instead of on its end.
+                    var hi = toIdx
+                    while (hi < poly.size - 1 && cum[hi] < turnAlong + STOP_PAST_TURN_M + 1.0) hi++
+                    val sub = poly.subList(fromIdx, hi + 1)
+                    val subCum = cum.copyOfRange(fromIdx, hi + 1)
+                    val stopClusters = ArrayList<Pair<LatLng, Double>>()
+                    for (c in stops) {
+                        if (c.kind != TrafficControl.Kind.STOP) continue
+                        val reach = if (c.roadBearingDeg == null) app.vela.core.nav.RouteProjection.STOP_NO_BEARING_M else app.vela.core.nav.RouteProjection.STOP_ON_ROUTE_M
+                        val at = app.vela.core.nav.RouteProjection.alongMeters(sub, subCum, c.loc, reach) ?: continue
+                        if (at < fromAlong || at > turnAlong + STOP_PAST_TURN_M) continue
+                        // The approach's heading, also for a sign on the junction's own node.
+                        val heading = app.vela.core.nav.RouteProjection.bearingAt(sub, subCum, minOf(at, turnAlong - 1.0))
+                        if (c.roadBearingDeg != null && !app.vela.core.nav.RouteProjection.alignedWithRoad(heading, c.roadBearingDeg)) continue
+                        val before = turnAlong - at
+                        if (before <= STOP_AT_TURN_M) { stopAtTurn = true; continue }
+                        if (stopClusters.none { it.first.distanceTo(c.loc) < LIGHT_CLUSTER_M }) stopClusters.add(c.loc to before)
+                    }
+                    stopsBefore = stopClusters.map { it.second }.sortedDescending()
+                }
+                if (clusters.isEmpty() && !atTurn && stopsBefore.isEmpty() && !stopAtTurn) m else {
                     marked = true
-                    m.copy(lightsBeforeM = clusters.map { it.second }.sortedDescending(), lightAtTurn = atTurn)
+                    m.copy(
+                        lightsBeforeM = clusters.map { it.second }.sortedDescending(), lightAtTurn = atTurn,
+                        stopsBeforeM = stopsBefore, stopAtTurn = stopAtTurn,
+                    )
                 }
             }
             leg.copy(maneuvers = newMans)

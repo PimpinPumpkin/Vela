@@ -174,6 +174,18 @@ second apart. Its later prompt is still said when it comes well after. A step wi
 them in the "then" ("then use the left lane to keep slight left"), and a merge said this way is
 not said again. A roundabout keeps its own lines.
 
+"Lights and stop signs in directions" (Settings > Navigation, off by default) names the light
+or stop sign at a turn, as Google does: the far prompt is plain, then the near prompt and the
+line at the turn say "At the light, turn left onto La Rue Road", even with another light a block
+before it. A turn at a stop sign is "At the next stop sign, turn right onto Catalina Drive" from
+far out, in place of the distance, when no other sign comes first, then "At the stop sign, ...".
+A turn with no light of its own and one light just before it says "Go past this light, then turn
+left" on the near prompt. A "then" carries the cue: "Turn right onto Alvarado Avenue, then at
+the stop sign, turn right onto Catalina Drive". Both come from the road-features file of the
+region. The stop sign counts only when it holds the car, by the same rule the map uses to draw
+it on the route (chapter 3). The rules and numbers are in
+[SPEC 4.6](../../SPEC.md#46-the-navigation-loop), Guidance.
+
 An exit with no number and no sign says "Take the ramp toward" the road it leads to, taken from
 the fork or merge after it, instead of a bare "Take the exit".
 

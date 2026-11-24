@@ -539,22 +539,24 @@ internal class NavController(
      *  NavStrings table doesn't implement passLights (currently all but English). Best-effort + IO;
      *  a fetch miss just leaves the route unchanged. */
     /**
-     * Settings > Navigation "Traffic-light guidance" (pref `nav_traffic_lights`, off by default):
-     * mark the lights before each turn of [route], the one just taken up by the drive, and the
-     * turns at a light, and hand the marked copy to the session, which speaks "Pass the traffic
-     * light, then ..." and "At the light, ..." from it. Nothing is looked up with the switch off
-     * or in a language with no such phrase. The lights come from the road features file of the
-     * region, which downloads by itself. Where the catalog has no region, the public Overpass
-     * server is asked for the [first] route of a drive only, never for each reroute.
+     * Settings > Navigation "Lights and stop signs in directions" (pref `nav_traffic_lights`, off
+     * by default): mark the lights and stop signs before each turn of [route], the one just taken
+     * up by the drive, and the turns at one, and hand the marked copy to the session, which speaks
+     * "Go past this light, then ...", "At the light, ..." and "At the stop sign, ..." from it.
+     * Nothing is looked up with the switch off or in a language with none of the phrases. Both
+     * come from the road features file of the region, which downloads by itself. Where the catalog
+     * has no region, the public Overpass server is asked for the lights of the [first] route of a
+     * drive only, never for each reroute.
      */
     private fun lightCues(route: app.vela.core.model.Route, first: Boolean) {
         if (!settingsPrefs.getBoolean("nav_traffic_lights", false)) return
-        if (app.vela.core.i18n.NavStringsRegistry.current().passLights(1).isBlank()) return
+        val words = app.vela.core.i18n.NavStringsRegistry.current()
+        if (words.passLights(1).isBlank() && words.atLight("") == null && words.atStop("") == null) return
         scope.launch {
             val lit = runCatching { enrichLights(route, overpass = first) }.getOrNull() ?: return@launch
             // Counts only: which turns, and where, stays off the log.
             runCatching {
-                android.util.Log.i("VelaDirections", "light cues: ${lit.maneuvers.count { it.lightsBeforeM.isNotEmpty() }} of ${lit.maneuvers.size} step(s) have a light before them, ${lit.maneuvers.count { it.lightAtTurn }} turn at one")
+                android.util.Log.i("VelaDirections", "light cues: ${lit.maneuvers.count { it.lightsBeforeM.isNotEmpty() }} of ${lit.maneuvers.size} step(s) have a light before them, ${lit.maneuvers.count { it.lightAtTurn }} turn at one; ${lit.maneuvers.count { it.stopsBeforeM.isNotEmpty() }} have a stop sign before them, ${lit.maneuvers.count { it.stopAtTurn }} turn at one")
             }
             if (lit !== route) navSession.applyEnrichedRoute(route, lit)
         }
@@ -562,12 +564,17 @@ internal class NavController(
 
     private suspend fun enrichLights(route: app.vela.core.model.Route, overpass: Boolean): app.vela.core.model.Route {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            var stops = emptyList<app.vela.core.data.TrafficControl>()
             val signals = when (host.roadFeaturesCoverRoute(route.polyline)) {
-                MapViewModel.RoadCover.LOADED -> withContext(Dispatchers.Default) { app.vela.data.RoadFeatures.signalsAlong(route.polyline) }
+                MapViewModel.RoadCover.LOADED -> withContext(Dispatchers.Default) {
+                    val all = app.vela.data.RoadFeatures.controlsAlong(route.polyline, app.vela.data.RoadFeatures.SIGNALS_ALONG_M)
+                    stops = all.filter { it.kind == app.vela.core.data.TrafficControl.Kind.STOP }
+                    all.filter { it.kind == app.vela.core.data.TrafficControl.Kind.SIGNAL }.map { it.loc }
+                }
                 MapViewModel.RoadCover.FAILED -> emptyList()
                 MapViewModel.RoadCover.NONE -> if (overpass) app.vela.core.data.OverpassTrafficSignals.fetchAlong(http, route.polyline) else emptyList()
             }
-            app.vela.core.data.RouteGeometry.enrichWithLights(route, signals)
+            app.vela.core.data.RouteGeometry.enrichWithLights(route, signals, stops)
         }
     }
 

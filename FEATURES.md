@@ -231,9 +231,10 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - "Tap places while driving (experiment)" offers a tapped place as a stop, with the time it adds.
 - During a drive the only places on the map are gas stations. "Simplify the map in turns" hides more
   while turning.
-- "Traffic-light guidance" adds spoken cues: "go past this light, then turn left" when one light
-  comes just before your turn, and "at the light, turn right" for a turn at a light, once per
-  turn. Off by default, in English and a few other languages.
+- "Lights and stop signs in directions" adds spoken landmarks near a turn: "at the light, turn
+  right", "at the stop sign, turn left" (from further out "at the next stop sign"), and "go past
+  this light, then turn left" when one light comes just before a turn with none of its own. Off
+  by default, in English, and "go past this light" in a few other languages.
 
 ## Transit
 

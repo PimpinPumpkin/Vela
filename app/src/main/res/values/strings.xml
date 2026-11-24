@@ -1430,8 +1430,8 @@
     <string name="settings_font_vazirmatn_hint">Vazirmatn is an open-licensed Persian and Arabic typeface, bundled under the SIL Open Font License 1.1.</string>
     <string name="settings_font_bad">That file could not be read as a font.</string>
     <string name="settings_font_custom">Custom font</string>
-    <string name="settings_traffic_lights">Traffic-light guidance</string>
-    <string name="settings_traffic_lights_hint">Names a traffic light at or just before a turn: \"go past this light, then turn left\" or \"at the light, turn right\". Not in every language.</string>
+    <string name="settings_traffic_lights">Lights and stop signs in directions</string>
+    <string name="settings_traffic_lights_hint">Names the light or stop sign at a turn: \"at the light, turn right\", \"at the stop sign, turn left\". Not in every language.</string>
     <string name="settings_speeding_alert">Speeding alert</string>
     <string name="settings_speeding_alert_hint">Says \"You\'re over the speed limit\" once you have been over the posted limit for a few seconds, and again after you slow down and creep back over it. Only where a posted limit is known, the one the speed badge shows. Off unless you turn it on.</string>
     <string name="nav_speeding_alert">You\'re over the speed limit</string>
