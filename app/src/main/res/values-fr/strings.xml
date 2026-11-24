@@ -1484,4 +1484,32 @@
         <item quantity="other">Supprimer %d listes ?</item>
     </plurals>
     <string name="settings_takeout_list_default">Liste importée</string>
+    <string name="settings_auto_parking">Enregistrer ma place de parking</string>
+    <string name="settings_auto_parking_hint">Après un trajet, l\'emplacement est automatiquement enregistré lorsque vous quittez votre véhicule, quand Android Auto se déconnecte, ou quand vous fermez Vela à votre destination.</string>
+    <string name="settings_auto_parking_bt">Également lorsque le Bluetooth de la voiture se déconnecte</string>
+    <string name="settings_auto_parking_bt_hint">Demande l\'accès aux appareils à proximité pour différencier voiture et écouteurs, ainsi que l\'accès permanent à la localisation pour fonctionner même lorsque Vela est fermée.</string>
+    <string name="settings_auto_parking_bt_denied">Sans l\'accès aux appareils à proximité, Vela ne peut pas différencier le Bluetooth de votre voiture de celui de vos écouteurs.</string>
+    <string name="settings_turn_with_travel">Pivoter la carte avec le véhicule</string>
+    <string name="settings_turn_with_travel_hint">Sans itinéraire, la carte pivote dans votre direction dès que vous roulez. Désactivé, elle reste orientée Nord à moins que vous ne la tourniez.</string>
+    <plurals name="settings_location_test_minutes">
+        <item quantity="one">%d min</item>
+        <item quantity="many">%d min</item>
+        <item quantity="other">%d min</item>
+    </plurals>
+    <string name="trip_start_point">Départ</string>
+    <string name="place_review_more">Plus</string>
+    <string name="nav_turn_may_be_banned">Ce virage pourrait ne pas être autorisé. Vérifiez les panneaux de signalisation.</string>
+    <string name="nav_turn_may_be_banned_short">pourrait ne pas être autorisé</string>
+    <string name="nav_no_signal">Aucun signal</string>
+    <string name="place_on_the_way">Sur la route</string>
+    <string name="map_parking_auto_saved">Place de parking enregistrée</string>
+    <string name="list_show_on_map">Montrer sur la carte</string>
+    <string name="list_hidden_on_map">Caché sur la carte</string>
+    <string name="measure_distance">Mesurer la distance</string>
+    <string name="measure_hint">Cliquez sur la carte pour mesurer de point à point</string>
+    <plurals name="settings_takeout_imported">
+        <item quantity="one">Importé %1$d lieu dans %2$s.</item>
+        <item quantity="many">Importé %1$d lieux dans %2$s.</item>
+        <item quantity="other">Importé %1$d lieux dans %2$s.</item>
+    </plurals>
 </resources>
