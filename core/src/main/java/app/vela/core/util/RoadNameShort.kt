@@ -38,11 +38,20 @@ object RoadNameShort {
         }.joinToString(" ")
     }
 
-    /** A sign destination, which may be a town: shortened only when a word after its first is a
-     *  street word ("J Street" is "J St"), so "South Lake Tahoe" and "North Highlands" stay. */
-    fun destination(name: String): String {
+    /** A sign destination, which may be a town: shortened only when it is a street ([isStreet]:
+     *  "J Street" is "J St"), so "South Lake Tahoe" and "North Highlands" stay. */
+    fun destination(name: String): String = if (isStreet(name)) shorten(name) else name
+
+    /** True when a word after the first is a street word, long or short ("J Street", "J St"). */
+    fun isStreet(name: String): Boolean =
+        name.trim().split(' ').filter { it.isNotEmpty() }.drop(1).any { it.lowercase() in STREET_WORDS }
+
+    /** The short street word that ends [name] ("St" in "Russell St"), or null. The turn card draws it
+     *  smaller, as Google's card does. A one-word name has none. */
+    fun trailingType(name: String): String? {
         val words = name.trim().split(' ').filter { it.isNotEmpty() }
-        return if (words.drop(1).any { it.lowercase() in TYPES }) shorten(name) else name
+        val last = words.lastOrNull() ?: return null
+        return last.takeIf { words.size >= 2 && it in SHORT_TYPES }
     }
 
     /** [text] with its one [road] name shortened in place: "Turn right onto Court Street" with the
@@ -65,6 +74,9 @@ object RoadNameShort {
     fun routeCardinals(text: String): String = ROUTE_CARDINAL.replace(text) { m ->
         m.groupValues[1] + " " + CARDINAL_LETTER.getValue(m.groupValues[2].lowercase().removeSuffix("bound"))
     }
+
+    private val SHORT_TYPES = TYPES.values.toSet()
+    private val STREET_WORDS = TYPES.keys + TYPES.values.map { it.lowercase() }
 
     private val CARDINAL_LETTER = mapOf("north" to "N", "south" to "S", "east" to "E", "west" to "W")
     private val ROUTE_CARDINAL = Regex("""\b((?:[A-Z]{1,4}[ -]?)\d{1,4}[A-Z]?)\s+(North|South|East|West|Northbound|Southbound|Eastbound|Westbound)\b""")

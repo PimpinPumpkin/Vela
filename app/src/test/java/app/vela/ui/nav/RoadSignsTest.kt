@@ -34,4 +34,10 @@ class RoadSignsTest {
         assertEquals(emptyList<String>(), roadSigns("At the roundabout, take the 1st exit onto 5th St").map { it.label })
         assertEquals(listOf("I 80"), roadSigns("Take the exit toward I 80").map { it.label })
     }
+
+    @Test fun `a historic route gets no shield`() {
+        assertEquals(emptyList<String>(), roadSigns("Turn left onto Russell Blvd", explicitRef = "US 40 Hist").map { it.label })
+        assertEquals(emptyList<String>(), roadSigns("Continue on US 40 Hist").map { it.label })
+        assertEquals(listOf("US 40"), roadSigns("Continue on US 40").map { it.label })
+    }
 }

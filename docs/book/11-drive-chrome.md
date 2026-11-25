@@ -42,18 +42,21 @@ number and route numbers in the text. Lane arrows and the "Then" tab appear with
 Off route the headline reads "Rerouting". In landscape the banner and the bar are a column on
 the left.
 
-The card leads with where you are going, the way Google's does, with the distance under the
-arrow. A turn shows the road in bold ("W Covell Blvd") and one small line for what follows it
-("toward Downtown"). "Turn right onto" is not shown; the arrow says it. An exit or a ramp shows
-the exit tab and the route shields as chips, and the sign's other destinations in bold
-("Sacramento, Reno"), a street shortened as a sign writes it ("J St") and a town left whole
-("South Lake Tahoe"); "Take exit 4A toward I 5 S" is not repeated as words, since the chips say
-it. A ramp toward both directions of one route gets one shield with no direction. A screen
-reader hears the whole instruction from the arrow. A roundabout keeps "take the 2nd exit onto" above the
-road. The road is found by its own text in any language; the sign destinations need the
-language's "toward" marker (`TurnCardText`, `NavStrings.signDestination`), which English and
-Romanian have. Other languages, the first and last steps, and a step neither rule fits keep the
-distance row and the sentence.
+The card leads with where you are going and is laid out the way Google's is: a large arrow on
+the left, then the distance, the exit tab and shields on a row of their own, and the place in
+large type. A turn shows the road ("W Covell Blvd", the "Blvd" smaller) and one small line for
+what follows it ("toward Downtown"). "Turn right onto" is not shown; the arrow says it. An exit
+or a ramp shows the exit tab ("4A" in an outlined box with an arrow to the exit's side) and the
+route shields ("5 NORTH"), a street on the sign beside them ("519B J St") and the sign's towns
+in large type, joined as Google joins them ("Sacramento / Reno"). A town keeps its whole name
+("South Lake Tahoe"). "Take exit 4A toward I 5 S" is not repeated as words, since the chips say
+it. A ramp toward both directions of one route gets one shield with no direction. A historic
+route such as Historic US 40 gets no shield. Lanes sit on a darker strip across the card's foot.
+A screen reader hears the whole instruction from the arrow. A roundabout keeps "take the 2nd
+exit onto" above the road. The road is found by its own text in any language; the sign
+destinations need the language's "toward" marker (`TurnCardText`, `NavStrings.signDestination`),
+which English and Romanian have. Other languages, the first and last steps, and a step neither
+rule fits keep the distance row and the sentence.
 
 A ramp, a fork or a keep shows the slight-left or slight-right arrow, the way you go and nothing
 else. A picture with both branches looked like a road sign offering either one. The step list,

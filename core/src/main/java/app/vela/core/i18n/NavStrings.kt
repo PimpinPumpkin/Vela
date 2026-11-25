@@ -103,6 +103,11 @@ interface NavStrings {
      *  overrides with its own marker, same English-first pattern as [repeatShort]). */
     fun signDestination(instruction: String): String? = null
 
+    /** The direction beside a route shield ("N" in "I 5 N"), as the turn card writes it next to
+     *  the shield: Google's card spells it out ("NORTH"). Default = the letter, for a language
+     *  that has not given its words. */
+    fun shieldDirection(letter: String): String = letter
+
     /** A distance phrased for SPEECH, honoring the imperial/metric preference — "500 feet" / "150 mètres". */
     fun spokenDistance(meters: Double, imperial: Boolean): String
 
@@ -349,6 +354,10 @@ object EnNavStrings : NavStrings {
 
     override fun signDestination(instruction: String): String? =
         instruction.indexOf(" toward ").takeIf { it >= 0 }?.let { instruction.substring(it + " toward ".length).trim().ifEmpty { null } }
+
+    override fun shieldDirection(letter: String): String = when (letter.uppercase()) {
+        "N" -> "NORTH"; "S" -> "SOUTH"; "E" -> "EAST"; "W" -> "WEST"; else -> letter
+    }
 
     override fun useLanesToDo(side: LaneSide, count: Int, instruction: String): String {
         val sideWord = when (side) { LaneSide.LEFT -> "left"; LaneSide.RIGHT -> "right"; LaneSide.CENTER -> "center" }

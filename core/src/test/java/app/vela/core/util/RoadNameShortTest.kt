@@ -36,6 +36,22 @@ class RoadNameShortTest {
         assertEquals("Downtown", RoadNameShort.destination("Downtown"))
     }
 
+    @Test fun aStreetIsKnownByItsStreetWordLongOrShort() {
+        assertEquals(true, RoadNameShort.isStreet("J Street"))
+        assertEquals(true, RoadNameShort.isStreet("J St"))
+        assertEquals(false, RoadNameShort.isStreet("Downtown"))
+        assertEquals(false, RoadNameShort.isStreet("Street"))
+        assertEquals(false, RoadNameShort.isStreet("South Lake Tahoe"))
+    }
+
+    @Test fun theClosingStreetWordIsFound() {
+        assertEquals("Blvd", RoadNameShort.trailingType("Russell Blvd"))
+        assertEquals("St", RoadNameShort.trailingType("1st St"))
+        assertEquals(null, RoadNameShort.trailingType("Russell Rd NE"))
+        assertEquals(null, RoadNameShort.trailingType("St"))
+        assertEquals(null, RoadNameShort.trailingType("Sacramento"))
+    }
+
     @Test fun aCompassWordAfterARouteNumberIsItsLetter() {
         assertEquals("Take the ramp on the right toward US 169 N: I 44, Tulsa",
             RoadNameShort.inText("Take the ramp on the right toward US 169 North: I 44, Tulsa", null))

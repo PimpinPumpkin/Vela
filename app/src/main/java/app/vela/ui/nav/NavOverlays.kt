@@ -86,6 +86,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -297,11 +299,12 @@ fun ManeuverBanner(
         val headline = strings.spokenSign(full)
         val rest = if (headline.length < full.length) full.substring(headline.length).trim(':', ' ') else ""
         val signs = if (rerouting) emptyList() else roadSigns(text, ref)
-        // Glance layout (Google's card): the distance under the arrow, the chips, and ONE large
-        // line for where you are going: the road entered, or the sign's destinations that are not
-        // already a chip. The verb is not shown (the arrow and the exit tab say it); a roundabout
-        // keeps its exit phrase. Depart ("Head north"), the arrival, rerouting and a step the
-        // language cannot take apart keep the sentence layout.
+        // Glance layout, placed as Google's card places it: the arrow, then the distance on top,
+        // the exit tab and shields on their own row (with the sign's streets beside them), and ONE
+        // large line for where you are going: the road entered, or the sign's towns. The verb is
+        // not shown (the arrow and the exit tab say it); a roundabout keeps its exit phrase.
+        // Depart ("Head north"), the arrival, rerouting and a step the language cannot take apart
+        // keep the sentence layout.
         val parts = if (rerouting || type == ManeuverType.ARRIVE || type == ManeuverType.DEPART) null
         else app.vela.core.nav.TurnCardText.of(full, road, strings.signDestination(full), signs.map { it.label })
         val glance = parts != null
@@ -310,14 +313,35 @@ fun ManeuverBanner(
         // Skipped when the upcoming maneuver's own chips already show the same route, and while
         // rerouting (the headline owns the row).
         val cur = if (rerouting) null else currentRef?.trim()?.replace(WS_RUN, " ")
-            ?.uppercase()?.takeIf { c -> c.isNotBlank() && signs.none { routeKey(it.label) == routeKey(c) } }
+            ?.uppercase()?.takeIf { c ->
+                c.isNotBlank() && !app.vela.core.nav.isHistoricRef(c) && signs.none { routeKey(it.label) == routeKey(c) }
+            }
         val padV = when {
             compact -> 8.dp
             glance -> 12.dp
             else -> 16.dp
         }
-        Column(Modifier.padding(horizontal = if (compact) 12.dp else 18.dp, vertical = padV)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        // Only show lane guidance when you're actually APPROACHING the maneuver (Google-style):
+        // otherwise the arrows sit there for miles telling you to pick a lane for an exit way
+        // ahead. In step preview (swiping ahead) always, since you're inspecting a step.
+        val laneOn = (previewing || distanceMeters <= laneShowM) && !offLine && (lanes.isNotEmpty() || laneHint != null)
+        // At a glance the arrow is as large as Google's and sits nearer the card's edge, so the
+        // text starts where Google's does.
+        val padStart = when {
+            compact -> 12.dp
+            glance -> 6.dp
+            else -> 18.dp
+        }
+        Column {
+        Column(
+            Modifier.padding(
+                start = padStart,
+                end = if (compact) 12.dp else 18.dp,
+                top = padV,
+                bottom = if (laneOn) 8.dp else padV,
+            ),
+        ) {
+            Row(verticalAlignment = if (glance) Alignment.Top else Alignment.CenterVertically) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     // The refresh glyph SPINS while rerouting (user 2026-07-16: nothing moved, so a
                     // slow fetch read as frozen). The angle is read in graphicsLayer - a draw-phase
@@ -349,22 +373,15 @@ fun ManeuverBanner(
                         modifier = Modifier.size(
                             when {
                                 compact -> 36.dp
-                                glance -> 48.dp // leaves room for the distance under it
+                                glance -> 72.dp // Google's arrow, beside two lines of text
                                 else -> 54.dp
                             },
                         ),
                     )
-                    if (glance) Text(
-                        formatDistance(distanceMeters),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        softWrap = false,
-                    )
                 }
-                Spacer(Modifier.width(if (compact) 10.dp else 16.dp))
+                Spacer(Modifier.width(if (compact) 10.dp else if (glance) 6.dp else 16.dp))
                 Column(Modifier.weight(1f)) {
-                    if (!glance) Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         // One line that shrinks to fit beside the shield: wrapped at large text it
                         // took two headline lines. Reset only when its length changes, not on
                         // every distance tick.
@@ -373,10 +390,17 @@ fun ManeuverBanner(
                             rerouting -> stringResource(R.string.nav_rerouting)
                             else -> formatDistance(distanceMeters)
                         }
-                        val distStyle = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium
+                        // At a glance the distance sits above the road, a size under it and in
+                        // the regular weight, as on Google's card.
+                        val distStyle = when {
+                            glance && compact -> MaterialTheme.typography.titleMedium
+                            glance -> MaterialTheme.typography.titleLarge.copy(fontSize = 23.sp)
+                            compact -> MaterialTheme.typography.titleLarge
+                            else -> MaterialTheme.typography.headlineMedium
+                        }
                         FitText(
                             distText,
-                            style = distStyle.copy(fontWeight = FontWeight.Bold),
+                            style = distStyle.copy(fontWeight = if (glance) FontWeight.Normal else FontWeight.Bold),
                             color = LocalContentColor.current,
                             modifier = Modifier.weight(1f),
                             resetKey = distText.length,
@@ -386,15 +410,24 @@ fun ManeuverBanner(
                             SignChip(Sign(isExit = false, label = cur), onBanner = true)
                         }
                     }
-                    // In the glance layout the distance row is gone, so the current road's chip
-                    // joins the maneuver's chips.
-                    val chips = if (glance && cur != null) signs + Sign(isExit = false, label = cur) else signs
-                    if (chips.isNotEmpty()) {
+                    // The sign's streets ride beside the exit tab, as Google writes "519B J St".
+                    val signRoads = parts?.signRoads.orEmpty()
+                    if (signs.isNotEmpty() || signRoads.isNotEmpty()) {
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                             modifier = Modifier.padding(top = 2.dp, bottom = 1.dp),
-                        ) { chips.forEach { SignChip(it, onBanner = true) } }
+                        ) {
+                            signs.forEach { SignChip(it, onBanner = true, exitLeft = exitOnLeft(type)) }
+                            if (signRoads.isNotEmpty()) Text(
+                                roadNames(signRoads),
+                                style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.align(Alignment.CenterVertically).clearAndSetSemantics { },
+                            )
+                        }
                     }
                     if (noSignal && backToRoute != null) {
                         val far = formatDistance(backToRoute.meters)
@@ -425,9 +458,9 @@ fun ManeuverBanner(
                         )
                         // Empty when the sign named only the route the chips already show.
                         if (parts.main.isNotEmpty()) Text(
-                            parts.main,
-                            style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
+                            roadNames(parts.main),
+                            style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium.copy(fontSize = 26.sp),
+                            fontWeight = FontWeight.Medium,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -475,21 +508,6 @@ fun ManeuverBanner(
                     }
                 }
             }
-            // Real per-lane diagram from OSRM (a cell per lane, arrows for what it allows, the ones for
-            // THIS turn highlighted) when we have it; else the old count-based hint from Google markup.
-            // Only show lane guidance when you're actually APPROACHING the maneuver (Google-style) —
-            // otherwise the arrows sit there for miles telling you to "be in the right lane" for an exit
-            // way ahead, which is just noise. The distance gate covers BOTH paths (the count-based hint
-            // was just as noisy). In step-preview (swiping ahead) always show, since you're inspecting a step.
-            if ((previewing || distanceMeters <= laneShowM) && !offLine) {
-                if (lanes.isNotEmpty()) {
-                    Spacer(Modifier.height(10.dp))
-                    LaneDiagram(lanes, type, on = content)
-                } else laneHint?.let {
-                    Spacer(Modifier.height(10.dp))
-                    LaneGuide(it, type, on = content)
-                }
-            }
             if (previewing) {
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -498,6 +516,19 @@ fun ManeuverBanner(
                     color = content.copy(alpha = 0.85f),
                 )
             }
+        }
+        // Lanes on a darker strip across the card's foot, centered, as on Google's card: the real
+        // per-lane diagram from OSRM (a cell per lane, the arrows for THIS turn lit) when we have
+        // it, else the count-based hint from Google's markup.
+        if (laneOn) {
+            Box(
+                Modifier.fillMaxWidth().background(Color.Black.copy(alpha = 0.22f)).padding(vertical = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (lanes.isNotEmpty()) LaneDiagram(lanes, type, on = content, plain = true)
+                else laneHint?.let { LaneGuide(it, type, on = content) }
+            }
+        }
         }
     }
         // Detached Google-style "then" strip: its own smaller, darker tab under the main
@@ -580,8 +611,33 @@ private val EXIT_RE = Regex("""\b(?:exit|ie[șş]irea)\s+((?=[\w-]*\d)\w[\w-]*)"
 // (user replay report 2026-07-16).
 private val ROUTE_RE = Regex("""\b(?:(?:I|US|CA|SR|US-?Hwy|Hwy)[-\s]?\d+|(?-i:[A-Z]{2}[-\s]\d+))(?:\s?[NSEW]\b)?""", RegexOption.IGNORE_CASE)
 
+/** A historic marker straight after a route number ("US 40 Hist"). */
+private val HIST_AFTER = Regex("""\s+Hist(oric)?\b""", RegexOption.IGNORE_CASE)
+
 /** The direction letter at the end of a route label ("I 5 N", "I-80E"). */
 private val ROUTE_DIR = Regex("""(?<=\d)\s?([NSEW])$""")
+
+/** Names as the turn card writes them: each name's closing street word ("St", "Blvd") smaller,
+ *  as Google's card does. Names are split at the card's " / ". */
+private fun roadNames(text: String): androidx.compose.ui.text.AnnotatedString =
+    androidx.compose.ui.text.buildAnnotatedString {
+        text.split(" / ").forEachIndexed { i, name ->
+            if (i > 0) append(" / ")
+            val t = app.vela.core.util.RoadNameShort.trailingType(name)
+            if (t == null) append(name)
+            else {
+                append(name.substring(0, name.length - t.length))
+                pushStyle(androidx.compose.ui.text.SpanStyle(fontSize = 0.6.em)); append(t); pop()
+            }
+        }
+    }
+
+/** True when the exit leaves on the left, so its tab's arrow points that way. */
+internal fun exitOnLeft(type: ManeuverType): Boolean = when (type) {
+    ManeuverType.RAMP_LEFT, ManeuverType.SLIGHT_LEFT, ManeuverType.KEEP_LEFT, ManeuverType.FORK_LEFT,
+    ManeuverType.TURN_LEFT, ManeuverType.SHARP_LEFT -> true
+    else -> false
+}
 
 /** A highway shield or exit tab extracted from an instruction. */
 internal data class Sign(val isExit: Boolean, val label: String)
@@ -598,10 +654,12 @@ internal fun roadSigns(text: String, explicitRef: String? = null): List<Sign> {
         val label = "Exit ${it.groupValues[1]}"
         if (seen.add(label.lowercase())) out.add(Sign(isExit = true, label = label))
     }
-    explicitRef?.trim()?.replace(WS_RUN, " ")?.uppercase()?.takeIf { it.isNotBlank() }?.let {
+    explicitRef?.trim()?.replace(WS_RUN, " ")?.uppercase()?.takeIf { it.isNotBlank() && !app.vela.core.nav.isHistoricRef(it) }?.let {
         if (seen.add(routeKey(it))) out.add(Sign(isExit = false, label = it))
     }
     ROUTE_RE.findAll(text).forEach { m ->
+        // "US 40 Hist" is a historic route, not signed as US 40 today: no shield.
+        if (HIST_AFTER.matchesAt(text, m.range.last + 1)) return@forEach
         val label = m.value.trim().replace(WS_RUN, " ").uppercase()
         val k = routeKey(label)
         if (seen.add(k)) out.add(Sign(isExit = false, label = label))
@@ -649,18 +707,33 @@ internal fun TurnBanWarning(color: Color, modifier: Modifier = Modifier) {
 }
 
 @Composable
-internal fun SignChip(sign: Sign, onBanner: Boolean = false) {
+internal fun SignChip(sign: Sign, onBanner: Boolean = false, exitLeft: Boolean = false) {
     // White on the green banner + in step rows; the theme ink only when SignChip is
     // used OFF a sheet surface that already supplies it (default keeps callers unchanged).
     val bannerInk = androidx.compose.ui.graphics.Color.White
     if (sign.isExit) {
-        Surface(color = Color(0xFF1E7E34), shape = RoundedCornerShape(4.dp)) {
+        // Google's exit tab: the number in an outlined box with an arrow to the exit's side
+        // ("4A" and an arrow up and to the right).
+        val ink = if (onBanner) bannerInk else MaterialTheme.colorScheme.onPrimaryContainer
+        Row(
+            Modifier
+                .border(1.5.dp, ink, RoundedCornerShape(4.dp))
+                .padding(start = 6.dp, end = 3.dp, top = 1.dp, bottom = 1.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                sign.label,
-                color = Color.White,
-                style = MaterialTheme.typography.labelMedium,
+                sign.label.removePrefix("Exit ").trim(),
+                color = ink,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                maxLines = 1,
+                softWrap = false,
+            )
+            Icon(
+                Sym.NorthWest,
+                contentDescription = null,
+                tint = ink,
+                modifier = Modifier.size(16.dp).graphicsLayer { if (!exitLeft) scaleX = -1f },
             )
         }
     } else {
@@ -757,6 +830,7 @@ internal fun LaneDiagram(
     maneuver: ManeuverType = ManeuverType.STRAIGHT,
     on: Color = MaterialTheme.colorScheme.onPrimaryContainer,
     modifier: Modifier = Modifier,
+    plain: Boolean = false, // no tile of its own: the turn card's lane strip is the background
 ) {
     val bright = on
     // Flat mid-gray for the arrows you're NOT taking — a solid color (not a translucent tint of
@@ -766,7 +840,7 @@ internal fun LaneDiagram(
     // ROUNDABOUT / arrive / unknown) — in that case we can't say WHICH allowed direction we're
     // taking, so a valid lane lights ALL its arrows rather than guessing (and lighting the wrong one).
     val target = maneuverBucket(maneuver)
-    Surface(color = on.copy(alpha = 0.10f), shape = RoundedCornerShape(8.dp), modifier = modifier) {
+    Surface(color = if (plain) Color.Transparent else on.copy(alpha = 0.10f), shape = RoundedCornerShape(8.dp), modifier = modifier) {
         Row(
             Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -784,7 +858,8 @@ internal fun LaneDiagram(
                 // One SHARED vertical shaft + a head per indication (not a whole arrow each — that
                 // double-drew the shaft). Wider cell + smaller heads so two forked heads don't
                 // overlap; dim heads drawn first so the bright active head sits on top of any touch.
-                Canvas(Modifier.size(width = 30.dp, height = 26.dp)) {
+                // On the turn card's strip the arrows are Google's size.
+                Canvas(Modifier.size(width = if (plain) 38.dp else 30.dp, height = if (plain) 34.dp else 26.dp)) {
                     val cw = size.width; val ch = size.height
                     val baseX = cw / 2f; val bendY = ch * 0.44f; val stroke = cw * 0.11f
                     drawLine(if (lane.valid) bright else dim, Offset(baseX, ch * 0.92f), Offset(baseX, bendY), stroke, cap = StrokeCap.Round)

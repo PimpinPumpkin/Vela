@@ -4,14 +4,15 @@ import app.vela.core.util.RoadNameShort
 
 /**
  * What the turn card shows in place of the instruction sentence, so the step reads at a glance
- * the way Google's card does: [main] is the one large bold line, the place you are going (the
- * road entered, or the sign's destinations), [lead] is a short line above it and [sub] a short
- * line below. Route numbers the card already draws as shields are left out of the text.
+ * the way Google's card does: [main] is the one large line, the place you are going (the road
+ * entered, or the sign's towns), [lead] is a short line above it and [sub] a short line below.
+ * [signRoads] are the sign's streets, which Google's card writes beside the exit tab ("519B J St"
+ * over "Downtown"). Route numbers the card already draws as shields are left out of the text.
  *
  * [of] works on the finished instruction text in any language. The road is found by its own
  * text; the sign destinations come from the language's marker ([app.vela.core.i18n.NavStrings.signDestination]).
  */
-data class TurnCardText(val lead: String, val main: String, val sub: String) {
+data class TurnCardText(val lead: String, val main: String, val sub: String, val signRoads: String = "") {
     companion object {
         /**
          * The card text for [full] (the whole instruction, sign cities after a colon included), or
@@ -21,9 +22,11 @@ data class TurnCardText(val lead: String, val main: String, val sub: String) {
          * as chips ("I 80", "EXIT 72"); a destination that is one of them is dropped from the text.
          *
          * A turn onto a named road: lead = the words before the road, main = the road, sub = the
-         * words after it. A ramp, exit, fork or merge with a sign: main = the destinations that are
-         * not shields, a street shortened as a sign writes it ("J St, Downtown"); lead and sub
-         * empty. A sign whose only destination is a shield gives an empty main: the chips say it all.
+         * words after it. A ramp, exit, fork or merge with a sign: the destinations that are not
+         * shields, joined with " / " as Google's card does; the towns are main and the streets,
+         * shortened as a sign writes them, are [signRoads] ("J St" beside the tab, "Downtown"
+         * under it). A sign with streets only puts them in main. lead and sub are empty. A sign
+         * whose only destination is a shield gives an empty main: the chips say it all.
          */
         fun of(full: String, road: String?, signDest: String?, shields: List<String>): TurnCardText? {
             val keys = shields.map(::key).filter { it.isNotEmpty() }
@@ -41,8 +44,11 @@ data class TurnCardText(val lead: String, val main: String, val sub: String) {
             val d = signDest?.trim().orEmpty()
             if (d.isEmpty()) return null
             val items = d.split(':', ',').map { it.trim() }.filter { it.isNotEmpty() }
-            val places = items.filterNot(::onShield).map(RoadNameShort::destination)
-            return TurnCardText(lead = "", main = places.joinToString(", "), sub = "")
+            val places = items.filterNot(::onShield)
+            val (streets, towns) = places.partition(RoadNameShort::isStreet)
+            val shortStreets = streets.map(RoadNameShort::shorten)
+            return if (towns.isEmpty()) TurnCardText(lead = "", main = shortStreets.joinToString(SEP), sub = "")
+            else TurnCardText(lead = "", main = towns.joinToString(SEP), sub = "", signRoads = shortStreets.joinToString(SEP))
         }
 
         /**
@@ -70,6 +76,9 @@ data class TurnCardText(val lead: String, val main: String, val sub: String) {
                 from = at + 1
             }
         }
+
+        /** Between two sign destinations, as Google's card writes them ("Sacramento / Reno"). */
+        private const val SEP = " / "
 
         /** "I-80 E", "I 80" and "Exit 72" compared as route labels: letters and digits, upper case. */
         private fun key(label: String): String = label.uppercase().filter { it.isLetterOrDigit() }

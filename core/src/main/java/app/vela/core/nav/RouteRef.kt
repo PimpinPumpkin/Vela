@@ -44,6 +44,11 @@ fun parseRouteRef(label: String): RouteRef {
     return RouteRef(type, number, dir, t)
 }
 
+/** True for a historic route's ref ("US 40 Hist", "Historic US 66"): the old road is not signed
+ *  as the route today, so the turn card draws no shield for it, as Google's card draws none. */
+fun isHistoricRef(label: String): Boolean = HISTORIC.containsMatchIn(label)
+private val HISTORIC = Regex("""\bHist(oric)?\b""", RegexOption.IGNORE_CASE)
+
 /** The route a sign part, a ref or a road name names, as (family, number): ("I", "5") for
  *  "I 80 West", "I-80" or "Interstate 80"; ("US", "50"); ("S", "99") for a state or provincial
  *  route ("CA 99", "SR 520", "Highway 1"). Null for a place name or a street ("NE 8th Street"). */

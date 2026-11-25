@@ -502,12 +502,17 @@ off the list when it has been.
   none was flagged as turning round, and the reroute was adopted in 1.2 s; missing the next
   exit too, the second in 1.0 s.
 
-- The turn card leads with where you are going (#851, `TurnCardText`, `signDestination`): the
-  distance under the arrow, the road or the sign's destinations in bold, the verb left to the
-  arrow. Seen on a Pixel 5 on a simulated highway drive in English, and on a Pixel 4a on a
-  Davis mock drive (a roundabout, a reroute, the arrival) and in previews of a Davis to
-  Sacramento route at large text, in landscape, in Romanian and in Japanese. Not yet seen on a
-  real drive, and not heard with TalkBack (the arrow's description was read from a UI dump).
+- The turn card leads with where you are going (#851, `TurnCardText`, `signDestination`), laid
+  out as Google's card: the distance above the road or the sign's towns, the exit tab and
+  shields on their own row, lanes on a strip across the foot, the verb left to the arrow.
+  Compared step by step with Google Maps on the same Davis to Sacramento route on a Pixel 4a
+  (its previews and a live mock drive). Seen on a Pixel 5 on a simulated highway drive in
+  English, and on the 4a on a Davis mock drive (a roundabout, a reroute, the arrival), a demo
+  drive, and previews at large text, in landscape, in Romanian and in Japanese. Not yet seen on
+  a real drive, and not heard with TalkBack (the arrow's description was read from a UI dump).
+  Still unlike Google: the "Then" tab names the next step (Google shows the arrow only), and
+  where Google's card knows more than the step text (the "EAST" on an on-ramp's shield, the one
+  direction of a sign listing both) Vela shows what the text says.
 - Data job fixes: the camera bake asks for CSV and tries again, the maxspeed bake skips a
   region with no tagged roads, a failed velamaps.org deploy no longer stops GitHub Pages, and
   the baseline profile run warns instead of failing when it may not open a pull request. Each

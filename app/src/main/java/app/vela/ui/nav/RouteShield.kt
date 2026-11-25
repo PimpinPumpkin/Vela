@@ -70,6 +70,11 @@ internal fun RouteShield(label: String, ink: Color, dim: Color) {
     }
 }
 
+/** The direction beside a shield in the card's language ("NORTH" in English, as Google's card
+ *  writes it); the letter where the language has no words for it. */
+private fun shieldDirection(letter: String): String =
+    app.vela.core.i18n.NavStringsRegistry.current().shieldDirection(letter)
+
 /** A US-shield/badge silhouette: rounded flat top, straight shoulders, curving to a soft point. */
 private fun shieldPath(w: Float, h: Float): Path = Path().apply {
     val cr = w * 0.16f
@@ -119,8 +124,8 @@ private fun ShieldBadge(
             )
         }
         direction?.let {
-            Spacer(Modifier.width(3.dp))
-            Text(it, color = dim, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+            Spacer(Modifier.width(4.dp))
+            Text(shieldDirection(it), color = dim, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
         }
     }
 }
@@ -148,8 +153,8 @@ private fun StateMarker(number: String, direction: String?, dim: Color) {
             )
         }
         direction?.let {
-            Spacer(Modifier.width(3.dp))
-            Text(it, color = dim, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+            Spacer(Modifier.width(4.dp))
+            Text(shieldDirection(it), color = dim, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
         }
     }
 }

@@ -50,15 +50,16 @@ class TurnCardTextTest {
     fun exitShowsOnlyTheDestinationsNotOnAShield() {
         // The exit tab and the I 5 shield are chips; the sentence and "I 5" are redundant.
         assertEquals(
-            TurnCardText("", "Los Angeles, Sacramento", ""),
+            TurnCardText("", "Los Angeles / Sacramento", ""),
             card("Take exit 4A toward I 5 S: Los Angeles, Sacramento", null, listOf("Exit 4A", "I 5")),
         )
     }
 
     @Test
-    fun exitDestinationsAreShortenedLikeASign() {
+    fun anExitsStreetGoesBesideTheTabAndItsTownUnderIt() {
+        // Google's card: "519B J St" on the tab's row, "Downtown" as the large line.
         assertEquals(
-            TurnCardText("", "J St, Downtown", ""),
+            TurnCardText("", "Downtown", "", signRoads = "J St"),
             card("Take exit 519B toward J Street, Downtown", null, listOf("Exit 519B")),
         )
     }
@@ -66,7 +67,7 @@ class TurnCardTextTest {
     @Test
     fun aTownIsNotShortenedLikeAStreet() {
         assertEquals(
-            TurnCardText("", "Sacramento, South Lake Tahoe", ""),
+            TurnCardText("", "Sacramento / South Lake Tahoe", ""),
             card("Keep slight left toward Sacramento, South Lake Tahoe", null, listOf("US 50")),
         )
     }
@@ -75,15 +76,15 @@ class TurnCardTextTest {
     fun bothDirectionsOfAShieldAreLeftToIt() {
         // The ramp serves I 5 both ways and the card's shield is the bare "I 5".
         assertEquals(
-            TurnCardText("", "Redding, Los Angeles", ""),
+            TurnCardText("", "Redding / Los Angeles", ""),
             card("Take exit 4A toward I 5 N, I 5 S: Redding, Los Angeles", null, listOf("Exit 4A", "I 5")),
         )
     }
 
     @Test
-    fun forkWithoutAShieldShowsItsDestinations() {
+    fun aSignWithOnlyStreetsShowsThemLarge() {
         assertEquals(
-            TurnCardText("", "Russell Blvd, Anderson Rd", ""),
+            TurnCardText("", "Russell Blvd / Anderson Rd", ""),
             card("Keep slight right toward Russell Boulevard, Anderson Road", null, emptyList()),
         )
     }
@@ -92,7 +93,7 @@ class TurnCardTextTest {
     fun aRouteRoadThatIsAShieldGivesWayToTheCities() {
         // road = "I 80" is already the chip: the cities are what is left to read.
         assertEquals(
-            TurnCardText("", "Sacramento, Reno", ""),
+            TurnCardText("", "Sacramento / Reno", ""),
             card("Keep slight left toward I 80 E: Sacramento, Reno", "I 80", listOf("I 80")),
         )
     }
@@ -134,6 +135,13 @@ class TurnCardTextTest {
             TurnCardText("Continue on", "5th St", "toward Davis"),
             TurnCardText.split("Continue on 5th St, toward Davis", "5th St"),
         )
+    }
+
+    @Test
+    fun englishSpellsOutTheDirectionBesideAShield() {
+        assertEquals("NORTH", en.shieldDirection("N"))
+        assertEquals("WEST", en.shieldDirection("W"))
+        assertEquals("N", app.vela.core.i18n.NavStringsRegistry.forLanguage("ro").shieldDirection("N"))
     }
 
     @Test

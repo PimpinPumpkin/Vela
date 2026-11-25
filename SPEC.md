@@ -2273,7 +2273,9 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
 - Turn card shields (`roadSigns`, `ui/nav/NavOverlays.kt`): the exit tab (`EXIT_RE`: a number with
   a digit after "exit" or the Romanian "ieșirea", so "the 1st exit onto" makes none), the
   maneuver's own ref and every route number in the instruction text, deduplicated by `routeKey`
-  (letters and number; spaces, dashes and a trailing direction dropped), three at most. The card's
+  (letters and number; spaces, dashes and a trailing direction dropped), three at most. A
+  historic route ("US 40 Hist", `isHistoricRef`) gets no shield, on the maneuver or as the
+  current road: it is not signed as the route, and Google's card shows none. The card's
   "then" row skips a roundabout's own exit step and shows the maneuver after it at the summed
   distance.
 - Turn glyphs come from one table, `maneuverGlyph` (`ui/nav/ManeuverGlyph.kt`), for the turn
@@ -6860,21 +6862,34 @@ or last chip scrolls the row all the way to that end.
   The distance is one line that shrinks to fit beside the road's shield (`FitText`, started over
   when its length changes, not on every tick). The instruction stops at `BANNER_HEADLINE_LINES`
   (3) lines.
-- Glance layout (`TurnCardText.of`, `core/nav`): when the step can be taken apart, the card is the
-  distance (`titleMedium` bold) under a 48 dp glyph, the chips, and one large bold line
-  (`headlineSmall`, `titleLarge` when compact, at most 2 lines) for where you are going. For a
-  turn whose text contains `Maneuver.road` whole-word, that line is the road, with the words
-  after it small below (at most 1 line); the words before it are not shown, except at a
-  roundabout, where they carry the exit number (at most 2 lines). Otherwise, when the language
-  gives the sign destinations (`NavStrings.signDestination`, the text after " toward "; English
-  and Romanian), the line is those destinations split on ":" and ",", minus any that is a chip
-  (a route number compared as letters and digits, a direction letter allowed), a street among
-  them shortened (`RoadNameShort.destination`: only a name with a street word after its first,
-  so "J St" but "South Lake Tahoe"). A sign that named only the chips leaves the line out.
-  Depart, the arrival, rerouting and a step neither rule fits keep the sentence layout above.
-  In the glance layout the arrow carries the whole instruction as its content description and
-  the large lines are hidden from TalkBack, so a screen reader still hears "Turn right onto J
-  St". The voice is unchanged.
+- Glance layout (`TurnCardText.of`, `core/nav`): when the step can be taken apart, the card is
+  placed as Google's card is (compared step by step on a Davis to Sacramento route, 2026-11-25):
+  a 72 dp glyph near the card's edge (6 dp start padding and gap), then a column of the distance
+  (`titleLarge` at 23 sp, regular weight) with the current road's shield beside it, the chips
+  row, and one large line (26 sp, medium weight; `titleLarge` when compact; at most 2 lines) for
+  where you are going. Each name's closing street word is drawn at 0.6 em
+  (`RoadNameShort.trailingType`: "Russell Blvd"). For a turn whose text contains
+  `Maneuver.road` whole-word, that line is the road, with the words after it small below (at
+  most 1 line); the words before it are not shown, except at a roundabout, where they carry the
+  exit number (at most 2 lines). Otherwise, when the language gives the sign destinations
+  (`NavStrings.signDestination`, the text after " toward "; English and Romanian), they are split
+  on ":" and ",", minus any that is a chip (a route number compared as letters and digits, a
+  direction letter allowed), and joined with " / " as Google writes them. A street among them
+  (`RoadNameShort.isStreet`: a street word, long or short, after its first word) is shortened and
+  goes on the chips row after the exit tab (`TurnCardText.signRoads`: "519B J St"); the towns are
+  the large line ("Downtown", "Sacramento / South Lake Tahoe"). A sign with streets only puts
+  them in the large line. A sign that named only the chips leaves the line out. Depart, the
+  arrival, rerouting and a step neither rule fits keep the sentence layout above. In the glance
+  layout the arrow carries the whole instruction as its content description and the large lines
+  are hidden from TalkBack, so a screen reader still hears "Turn right onto J St". The voice is
+  unchanged.
+- The exit tab (`SignChip`) is Google's: the number alone in an outlined box with a small arrow
+  toward the exit's side (`exitOnLeft` from the maneuver type), on the card and in the step
+  list. Beside a route shield the direction is the language's word (`NavStrings.shieldDirection`:
+  "NORTH" in English, the letter where a language has none).
+- Lanes (`LaneDiagram`, or `LaneGuide` for the count-based hint) sit on a strip across the card's
+  foot, black at 22 percent over the card's color, centered, with 38 x 34 dp cells, as on
+  Google's card; in both layouts.
 - `roadSigns` keeps the longer of two labels for one route, so the text's "I 80 E" wins over the
   ref's "I 80" and the shield shows its direction. A sign toward both directions of one route
   ("toward I 5 N, I 5 S") gets one shield with no direction, and the card's line drops both.

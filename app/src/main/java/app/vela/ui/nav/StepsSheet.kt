@@ -642,7 +642,7 @@ fun StepRow(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     verticalArrangement = Arrangement.spacedBy(4.dp),
                                     modifier = Modifier.padding(top = 3.dp).then(fade),
-                                ) { signs.forEach { SignChip(it) } }
+                                ) { signs.forEach { SignChip(it, exitLeft = exitOnLeft(m.type)) } }
                             }
                             // The arrive row names WHERE the trip ends (business + address), same
                             // dedupe rules as the banner: no line that just repeats another.
