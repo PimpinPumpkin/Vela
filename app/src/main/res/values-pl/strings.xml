@@ -1314,8 +1314,8 @@
     <string name="draw_saved">Zapisano „%1$s” w Moich rysunkach</string>
     <string name="draw_list_name">Moje rysunki</string>
     <string name="draw_delete">Usuń ten rysunek</string>
-    <string name="settings_pip_turn_card">Karta skrętu na minimapie</string>
-    <string name="settings_pip_turn_card_hint">Podczas nawigacji w trybie obraz w obrazie pokazuje następny skręt jako kartę u góry a pozostały czas u dołu. Wył.: jeden pasek u dołu z drogą, odległością do skrętu i godziną przyjazdu jak na minimapie Google.</string>
+    <string name="settings_pip_turn_card">Karta manewru skrętu na minimapie</string>
+    <string name="settings_pip_turn_card_hint">Podczas nawigacji w trybie obraz w obrazie pokazuje następny skręt jako kartę manewru skrętu u góry a pozostały czas u dołu. Wył.: jeden pasek u dołu z drogą, odległością do skrętu i godziną przyjazdu jak na minimapie Google.</string>
     <string name="cat_menu">Kategorie</string>
     <string name="settings_category_chips">Skróty kategorii</string>
     <string name="settings_category_chips_hint">Skróty takie jak „Restauracje”, „Kawa”, „Stacje paliw…” znajdują się pod paskiem wyszukiwania. Za pomocą jednego przycisku można je zwinąć do menu. To które z nich są widoczne i w jakiej kolejności można określić w sekcji „Wyszukiwanie”.</string>
@@ -1531,7 +1531,7 @@
     <string name="settings_turn_arrows">Włącz strzałki na trasie</string>
     <string name="settings_turn_arrows_hint">Krótkie strzałki na trasie wskazują nadchodzące zakręty podczas jazdy.</string>
     <string name="settings_zoom_to_turn">Przybliż widok na kolejny zakręt</string>
-    <string name="settings_zoom_to_turn_hint">Mapa oddala się aż kolejny manewr znajdzie się tuż pod kartą wskazówek następnie kieruje się w stronę zjazdu a gdy jesteś już blisko – ponownie przybliża widok. Funkcja ta sprawdza się na długich odcinkach między manewrami; przy takim oddaleniu nazwy ulic oraz sygnalizacja świetlna nie są widoczne. Działa to również na ekranie w samochodzie.</string>
+    <string name="settings_zoom_to_turn_hint">Mapa oddala się aż kolejny manewr znajdzie się tuż pod kartą manewru skrętu następnie kieruje się w stronę zjazdu a gdy jesteś już blisko – ponownie przybliża widok. Funkcja ta sprawdza się na długich odcinkach między manewrami; przy takim oddaleniu nazwy ulic oraz sygnalizacja świetlna nie są widoczne. Działa to również na ekranie w samochodzie.</string>
     <string name="settings_zoom_to_turn_floor">Oddal widok tak bardzo jak to możliwe</string>
     <string name="settings_zoom_to_turn_floor_town">Miasto</string>
     <string name="settings_zoom_to_turn_floor_region">Region</string>
@@ -1654,4 +1654,9 @@
     <string name="nav_route_updated_traffic">Trasa zaktualizowana z uwzględnieniem bieżącej sytuacji drogowej</string>
     <string name="nav_reached_stop">Osiągnąłeś %1$s</string>
     <string name="nav_reached_your_stop">Dotarłeś do swojego przystanku</string>
+    <string name="settings_auto_parking_bt_hint">Wymaga dostępu do funkcji „Urządzenia w pobliżu” aby odróżnić samochód od słuchawek oraz stałego dostępu do lokalizacji dzięki czemu działa nawet przy zamkniętej aplikacji Vela.</string>
+    <string name="settings_house_numbers_furthest">Najdalej (wolniej w dużych miastach)</string>
+    <string name="settings_location_test_hint">Rejestruje każde ustalenie pozycji, każdy krok oraz położenie kropki w wybranym przedziale czasowym a następnie zatrzymuje się. Każdy test stanowi nową trasę na poniższej liście, gotową do udostępnienia.</string>
+    <string name="settings_map_keys_crosshair_hint">Zaznacza miejsce naciśnięcia klawisza wyboru podczas korzystania z klawiszy mapy i znika kilka sekund po ostatnim naciśnięciu.</string>
+    <string name="settings_car_lanes_hint">Gdy funkcja jest wyłączona, karta manewru skrętu w samochodzie nie uwzględnia strzałek kierunkowych więc nie powiększają się one w miarę zbliżania się do zakrętu. Na telefonie strzałki te są nadal widoczne.</string>
 </resources>
