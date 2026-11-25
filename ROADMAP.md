@@ -208,12 +208,12 @@ Small items, one pull request each.
 - The first-line shortening measures speech in characters, so a Japanese, Chinese or Hebrew
   line is read as short and keeps its sign tail.
 - Lines the voice cannot prepare. On a Pixel 4a a high voice renders at 1.7 to 2 times the
-  audio's length mid-drive, so a line rendered when it is asked comes that late: on a Davis
-  fixture mock drive "Rerouting" came 3.4 s late and the new route's first line 10.9 s late. The
-  plan: keep each rendered phrase and the spoken distances per voice, so "Rerouting" and "In 600
-  feet" never render twice and a late line picks its distance when it plays; say a line's short
-  form when the full one cannot be ready by the time it is needed, from the voice's measured
-  render speed; and in Settings, suggest a faster voice when the chosen one cannot keep up.
+  audio's length mid-drive, so a line rendered when it is asked comes that late. Kept phrases
+  (SPEC 9.1) made "Rerouting" play at once and cut the new route's first line on a Davis fixture
+  mock drive from 10.9 s late to 3.9 s; its instruction still renders. Next: a late line picks
+  its distance when it plays; say a line's short form when the full one cannot be ready by the
+  time it is needed, from the voice's measured render speed; and in Settings, suggest a faster
+  voice when the chosen one cannot keep up.
 - The neural voice's phonemizer. espeak, in front of the Piper model, misreads text that is
   not prose: "5:49 PM" came out as "five foot nine". `SpeechText` works around it case by
   case. The fix is a model that normalizes its own input and is fast enough on a Pixel 4a.

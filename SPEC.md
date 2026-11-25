@@ -3092,10 +3092,9 @@ Frame rates are a Pixel 4a on a demo drive, per second from Start.
   priority). A finished drive's route behind the arrival card is not a preview and prepares
   nothing. `NavEngine.startPrompts` gives the first two turns' lines at the 400 m and 150 m
   band floors, in `update`'s wording (`StartPromptsTest`), the first turn's from where the drive
-  starts: a turn closer than its bands says its first line at that distance. Up to
-  `MAX_PREPARED` (12) lines are kept, by voice, speaker, speed and exact text; a line asked for
-  again counts as new, and the oldest is dropped first. A spoken line drops any prepare queued
-  behind it (`speaksAsked`) and raises the one in hand (9.1).
+  starts: a turn closer than its bands says its first line at that distance. A prepared line
+  is one whose phrases are all kept (`PiperSynth.pieces`, 9.1). A spoken line drops any
+  prepare queued behind it (`speaksAsked`) and raises the one in hand (9.1).
 - No hidden Google page loads during a drive: the details page not while navigating or with
   the route chooser up (`pageWanted`), the review page not while navigating. A loaded page
   works on for about 20 s after its answer, whether stopped, paused or blanked.
@@ -6363,7 +6362,20 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   3.5 s behind the worker's render before).
 - A line renders phrase by phrase (`SpeechText.speechFragments`) and each phrase goes to the
   player as it is made (Pixel 4a, 52 characters, a medium voice: first audio at 0.29 s, all
-  rendered at 0.70 s). Prepared lines (`prepare`) render whole.
+  rendered at 0.70 s).
+- Each rendered phrase is kept (`PiperSynth.pieces`: by voice, speaker, speed and exact text, as
+  16-bit samples, up to `PIECE_BUDGET_SEC` (60 s) of audio, the least recently used dropped
+  first, all dropped on a voice switch or memory pressure). A line plays from kept phrases and
+  renders only the ones it lacks, so the wordings of one line at two distances share their rest
+  and a prepare stopped part way keeps what it finished. `SpokenPieces.forDrive` names the
+  phrases kept for the whole drive, rendered after each set of upcoming lines
+  (`prepareAll(lines, keep)`) and never dropped while the voice, speaker and speed stay: the
+  rerouting line and every distance clause from 100 feet to a mile (feet in fifties, quarter
+  miles, "0.9 miles"), or meters in fifties and the first kilometers. A language whose approach
+  line has no comma ("Через 500 метров поверните") keeps only its rerouting line
+  (`SpokenPiecesTest`). On Davis fixture mock drives on a Pixel 4a with a high voice,
+  "Rerouting" played within 10 ms after each of three reroutes (3.4 s late before) and the new
+  route's first line came 3.9 s late (10.9 s before), its instruction still rendered.
 - Playing starts once the audio made outlasts the next phrase's render and the amount the rest
   renders slower than it plays (`StreamStart.ready`, from per-letter render time and audio length
   kept per voice, speaker and speed). A fast voice starts on its first phrase. A voice that renders

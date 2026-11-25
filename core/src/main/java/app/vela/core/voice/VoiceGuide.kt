@@ -500,12 +500,13 @@ class VoiceGuide @Inject constructor(
     }
 
     /** [prepare] the drive's next [lines], most needed first, replacing the ones still waiting
-     *  from the call before ([NeuralSynth.prepareAll]). */
-    fun prepareAll(lines: List<String>) {
+     *  from the call before, then the phrases to [keep] for the drive ([NeuralSynth.prepareAll]). */
+    fun prepareAll(lines: List<String>, keep: List<String> = emptyList()) {
         val n = preparer() ?: return
         lines.forEach(::logPrepare)
         val lang = n.voiceLanguage ?: targetLang()
-        n.prepareAll(lines.map { forSpeech(SpokenScript.forVoice(it, lang, roadNameLatin)) })
+        val spoken = { t: String -> forSpeech(SpokenScript.forVoice(t, lang, roadNameLatin)) }
+        n.prepareAll(lines.map(spoken), keep.map(spoken))
     }
 
     /** The voice that can keep audio ahead of time, or null. Before the first drive nothing is

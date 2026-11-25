@@ -469,7 +469,8 @@ class NavSession @Inject constructor(
         prewarmKey = key
         // After the events below are spoken: speak() runs first on the same worker.
         val lines = NavEngine.upcomingPrompts(route, nav.stepIndex, nav.spoken, speedMps, imperial, trackRide = app.vela.core.data.TrackRide.isTrack(route), toTurnM = nav.distanceToNextManeuver, chainedStep = nav.chainedStep, chainedStepBands = nav.chainedBands)
-        scope.launch { voice.prepareAll(lines) }
+        // Then "Rerouting" and the distance clauses, kept for the drive (SpokenPieces).
+        scope.launch { voice.prepareAll(lines, SpokenPieces.forDrive(imperial)) }
     }
 
     fun stop() {
