@@ -32,14 +32,39 @@ interface NavStrings {
     /** A ferry leg on a walk or a ride: EN "Take the ferry". Every language overrides it. */
     fun ferry(): String
 
-    /** Landmark lead-in "Pass the traffic light" / "Pass N traffic lights" for Google-style guidance, prepended
-     *  to a turn ("Pass the light, then turn left onto 5th Ave"). Default "" = feature omitted for that language
-     *  (English-first); only added when it makes sense (1–2 signals right before a surface-street turn). */
+    /** A GPX track ride (TrackRide, nav.TrackGuide), every language overrides each. The turn card
+     *  and the voice before the rider has reached the line: EN "Go to the start of the route". */
+    fun toTrackStart(): String
+    /** The turn card after the rider has left the line: EN "Return to the route". */
+    fun backToTrack(): String
+    /** Said on reaching the line: EN "Route started." (on a drive begun on it, the first
+     *  instruction follows). */
+    fun trackStarted(): String
+    /** Said on leaving the line: EN "Left the route." */
+    fun trackLeft(): String
+    /** Said on getting back on it: EN "Following the route." */
+    fun trackFollowing(): String
+
+    /** Landmark lead-in EN "Go past this light", prepended to a turn ("Go past this light, then turn left onto
+     *  5th Ave"). Default "" = feature omitted for that language. Spoken for one light only
+     *  (`NavEngine.lightCue`); [count] is kept for the languages that word it by number. */
     fun passLights(count: Int): String = ""
 
     /** The lights lead-in joined to the turn: "Pass the traffic light, then turn left". A language
      *  with a [passLights] phrase joins it in its own words. */
     fun lightThen(lead: String, instruction: String): String = "$lead, then " + instruction.replaceFirstChar { it.lowercaseChar() }
+
+    /** A turn at a traffic light of its own: EN "At the light, turn left onto 5th Ave". Null = the
+     *  language has no such phrase and the turn is said alone. */
+    fun atLight(instruction: String): String? = null
+
+    /** A turn at a stop sign the car stops at: EN "At the stop sign, turn right onto 5th Ave".
+     *  Null = the language has no such phrase. */
+    fun atStop(instruction: String): String? = null
+
+    /** The same turn said further out, when no other stop sign comes first, in place of the
+     *  distance: EN "At the next stop sign, turn right onto 5th Ave". Null = no such phrase. */
+    fun atNextStop(instruction: String): String? = null
 
     /** The SPOKEN form of a sign instruction: the secondary sign destinations after a colon are
      *  dropped ("Take the ramp toward I 5 North: Vancouver British Columbia" -> "... toward I 5
@@ -55,6 +80,21 @@ interface NavStrings {
      *  report 2026-07-17). Default = unchanged (a language keeps full repeats until it overrides
      *  with its own destination marker, same English-first pattern as [passLights]). */
     fun repeatShort(instruction: String): String = instruction
+
+    /** [repeatShort] for a ramp, fork or keep, keeping the first route number on its sign: "Keep
+     *  slight right toward US 50 East". The voice then names the road the banner shows. Default =
+     *  [repeatShort]; a language overrides with its own sign marker. */
+    fun repeatWithRoute(instruction: String): String = repeatShort(instruction)
+
+    /** The primary sign destinations of [instruction] (before any ":"), each as written:
+     *  "toward I 80 West, Davis: San Francisco" gives ["I 80 West", "Davis"]. Empty when the
+     *  language does not mark the sign. */
+    fun signParts(instruction: String): List<String> = emptyList()
+
+    /** [instruction], a fork or keep whose sign heads for [route], the road the car is already
+     *  on, said as staying on it: "Keep left to stay on I 80 West". Null when the language has no
+     *  such line. */
+    fun stayOn(instruction: String, route: String): String? = null
 
     /** The sign destinations of a ramp, exit, fork or merge step: the text after the language's
      *  destination marker ("Take exit 164 toward I 5 S: Bellevue, Portland" -> "I 5 S: Bellevue,
@@ -78,6 +118,9 @@ interface NavStrings {
 
     /** Spoken when navigation begins — EN "Starting navigation. <first instruction>". */
     fun startNav(firstInstruction: String): String
+    /** The opener of a drive started while already rolling along its route, on [road]
+     *  (NavSession.rollingOpener). A language without its own says its "continue onto" phrase. */
+    fun continueOn(road: String): String = phrase("continue", null, road, null, null, null)
 
     /** Spoken as each intermediate stop is passed — EN "You've reached <label>" (blank → "your stop"). */
     fun reachedStop(label: String): String
@@ -155,6 +198,11 @@ interface NavStrings {
 /** English (source of truth) — byte-identical to the original `osrmPhrase`, so existing nav tests pass. */
 object EnNavStrings : NavStrings {
     override fun ferry() = "Take the ferry"
+    override fun toTrackStart() = "Go to the start of the route"
+    override fun backToTrack() = "Return to the route"
+    override fun trackStarted() = "Route started."
+    override fun trackLeft() = "Left the route."
+    override fun trackFollowing() = "Following the route."
     override val locale: Locale = Locale.US
 
     override fun phrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
@@ -222,7 +270,13 @@ object EnNavStrings : NavStrings {
 
     override fun inThen(distancePhrase: String, instruction: String): String = "In $distancePhrase, $instruction"
 
-    override fun passLights(count: Int): String = if (count <= 1) "Pass the traffic light" else "Pass $count traffic lights"
+    override fun passLights(count: Int): String = if (count <= 1) "Go past this light" else "Go past $count lights"
+
+    override fun atLight(instruction: String): String = "At the light, " + instruction.replaceFirstChar { it.lowercaseChar() }
+
+    override fun atStop(instruction: String): String = "At the stop sign, " + instruction.replaceFirstChar { it.lowercaseChar() }
+
+    override fun atNextStop(instruction: String): String = "At the next stop sign, " + instruction.replaceFirstChar { it.lowercaseChar() }
 
     // Trailing SEMICOLON on purpose (spoken-only string — NavEngine Speak, never displayed): bare text
     // gives the Piper voice no final prosody contour and the callout ended oddly; the user A/B'd
@@ -233,6 +287,7 @@ object EnNavStrings : NavStrings {
     override fun destinationWillBe(left: Boolean?): String = left?.let { if (it) "Your destination will be on the left" else "Your destination will be on the right" } ?: destinationAhead()
 
     override fun startNav(firstInstruction: String): String = "Starting navigation. $firstInstruction"
+    override fun continueOn(road: String) = "Continue on $road"
 
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "You've reached $label" else "You've reached your stop"
@@ -277,6 +332,20 @@ object EnNavStrings : NavStrings {
     // The exit number stays ("Take exit 172"); only the sign-destination tail drops. The " toward "
     // marker is exactly what osrmPhrase/ghPhrase emit for EN ramp/exit/fork steps.
     override fun repeatShort(instruction: String): String = instruction.substringBefore(" toward ")
+
+    override fun repeatWithRoute(instruction: String): String {
+        val head = repeatShort(instruction)
+        val route = signParts(instruction).firstOrNull { app.vela.core.nav.routeKey(it) != null } ?: return head
+        return "$head toward $route"
+    }
+
+    override fun signParts(instruction: String): List<String> {
+        val t = instruction.indexOf(" toward ")
+        if (t < 0) return emptyList()
+        return spokenSign(instruction).substring(t + " toward ".length).split(", ").map { it.trim() }.filter { it.isNotEmpty() }
+    }
+
+    override fun stayOn(instruction: String, route: String): String? = "${repeatShort(instruction)} to stay on $route"
 
     override fun signDestination(instruction: String): String? =
         instruction.indexOf(" toward ").takeIf { it >= 0 }?.let { instruction.substring(it + " toward ".length).trim().ifEmpty { null } }
@@ -355,6 +424,10 @@ private val EN_SPEECH_WORDS: List<Pair<Regex, String>> = listOf(
     Regex("\\bTrl\\b", RegexOption.IGNORE_CASE) to "Trail",
     Regex("\\bExpy\\b", RegexOption.IGNORE_CASE) to "Expressway",
     Regex("\\bFwy\\b", RegexOption.IGNORE_CASE) to "Freeway",
+    // Google's exit signs ("toward Bush Intercont'l Arpt").
+    Regex("\\bArpt\\b", RegexOption.IGNORE_CASE) to "Airport",
+    Regex("\\bInt'?l\\b", RegexOption.IGNORE_CASE) to "International",
+    Regex("\\bIntercont'?l\\b", RegexOption.IGNORE_CASE) to "Intercontinental",
     Regex("\\bNE\\b") to "Northeast",
     Regex("\\bNW\\b") to "Northwest",
     Regex("\\bSE\\b") to "Southeast",
@@ -372,6 +445,11 @@ private val EN_SPEECH_WORDS: List<Pair<Regex, String>> = listOf(
  */
 object FrNavStrings : NavStrings {
     override fun ferry() = "Prenez le ferry"
+    override fun toTrackStart() = "Rejoignez le début de l'itinéraire"
+    override fun backToTrack() = "Revenez sur l'itinéraire"
+    override fun trackStarted() = "Itinéraire commencé."
+    override fun trackLeft() = "Vous avez quitté l'itinéraire."
+    override fun trackFollowing() = "Vous suivez l'itinéraire."
     override val locale: Locale = Locale.FRANCE
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -482,6 +560,11 @@ object FrNavStrings : NavStrings {
 
 object DeNavStrings : NavStrings {
     override fun ferry() = "Nehmen Sie die Fähre"
+    override fun toTrackStart() = "Fahren Sie zum Start der Route"
+    override fun backToTrack() = "Kehren Sie zur Route zurück"
+    override fun trackStarted() = "Route gestartet."
+    override fun trackLeft() = "Route verlassen."
+    override fun trackFollowing() = "Sie folgen der Route."
     override val locale: Locale = Locale.GERMANY
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -611,6 +694,11 @@ object DeNavStrings : NavStrings {
 
 object EsNavStrings : NavStrings {
     override fun ferry() = "Tome el ferri"
+    override fun toTrackStart() = "Diríjase al inicio de la ruta"
+    override fun backToTrack() = "Vuelva a la ruta"
+    override fun trackStarted() = "Ruta iniciada."
+    override fun trackLeft() = "Ha salido de la ruta."
+    override fun trackFollowing() = "Siguiendo la ruta."
     override val locale: Locale = Locale("es", "ES")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -725,6 +813,11 @@ object EsNavStrings : NavStrings {
 
 object ItNavStrings : NavStrings {
     override fun ferry() = "Prendi il traghetto"
+    override fun toTrackStart() = "Raggiungi l'inizio del percorso"
+    override fun backToTrack() = "Torna sul percorso"
+    override fun trackStarted() = "Percorso iniziato."
+    override fun trackLeft() = "Hai lasciato il percorso."
+    override fun trackFollowing() = "Stai seguendo il percorso."
     override val locale: Locale = Locale.ITALY
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -847,6 +940,11 @@ object ItNavStrings : NavStrings {
  */
 object PtPtNavStrings : NavStrings {
     override fun ferry() = "Apanhe o ferry"
+    override fun toTrackStart() = "Dirija-se ao início do percurso"
+    override fun backToTrack() = "Volte ao percurso"
+    override fun trackStarted() = "Percurso iniciado."
+    override fun trackLeft() = "Saiu do percurso."
+    override fun trackFollowing() = "A seguir o percurso."
     override val locale: Locale = Locale("pt", "PT")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -955,6 +1053,11 @@ object PtPtNavStrings : NavStrings {
 
 object PtBrNavStrings : NavStrings {
     override fun ferry() = "Pegue a balsa"
+    override fun toTrackStart() = "Siga até o início do percurso"
+    override fun backToTrack() = "Volte ao percurso"
+    override fun trackStarted() = "Percurso iniciado."
+    override fun trackLeft() = "Você saiu do percurso."
+    override fun trackFollowing() = "Seguindo o percurso."
     override val locale: Locale = Locale("pt", "BR")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1063,6 +1166,11 @@ object PtBrNavStrings : NavStrings {
 
 object NlNavStrings : NavStrings {
     override fun ferry() = "Neem de veerboot"
+    override fun toTrackStart() = "Ga naar het begin van de route"
+    override fun backToTrack() = "Ga terug naar de route"
+    override fun trackStarted() = "Route gestart."
+    override fun trackLeft() = "Route verlaten."
+    override fun trackFollowing() = "U volgt de route."
     override val locale: Locale = Locale("nl", "NL")
 
     // Plain directional phrase — the verb is folded into each template (Dutch "afslaan" is separable),
@@ -1202,6 +1310,11 @@ object NlNavStrings : NavStrings {
 
 object RuNavStrings : NavStrings {
     override fun ferry() = "Сядьте на паром"
+    override fun toTrackStart() = "Двигайтесь к началу маршрута"
+    override fun backToTrack() = "Вернитесь на маршрут"
+    override fun trackStarted() = "Маршрут начат."
+    override fun trackLeft() = "Вы покинули маршрут."
+    override fun trackFollowing() = "Вы снова на маршруте."
     override val locale: Locale = Locale("ru", "RU")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1390,6 +1503,11 @@ object RuNavStrings : NavStrings {
  */
 object PlNavStrings : NavStrings {
     override fun ferry() = "Wsiądź na prom"
+    override fun toTrackStart() = "Jedź do początku trasy"
+    override fun backToTrack() = "Wróć na trasę"
+    override fun trackStarted() = "Trasa rozpoczęta."
+    override fun trackLeft() = "Opuszczono trasę."
+    override fun trackFollowing() = "Jedziesz trasą."
     override val locale: Locale = Locale("pl", "PL")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1516,6 +1634,11 @@ object PlNavStrings : NavStrings {
 
 object SvNavStrings : NavStrings {
     override fun ferry() = "Ta färjan"
+    override fun toTrackStart() = "Ta dig till början av rutten"
+    override fun backToTrack() = "Återvänd till rutten"
+    override fun trackStarted() = "Rutten har startat."
+    override fun trackLeft() = "Du har lämnat rutten."
+    override fun trackFollowing() = "Du följer rutten."
     override val locale: Locale = Locale("sv", "SE")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1647,6 +1770,11 @@ object SvNavStrings : NavStrings {
 
 object UkNavStrings : NavStrings {
     override fun ferry() = "Сядьте на пором"
+    override fun toTrackStart() = "Рухайтеся до початку маршруту"
+    override fun backToTrack() = "Поверніться на маршрут"
+    override fun trackStarted() = "Маршрут розпочато."
+    override fun trackLeft() = "Ви залишили маршрут."
+    override fun trackFollowing() = "Ви знову на маршруті."
     override val locale: Locale = Locale("uk", "UA")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1790,6 +1918,11 @@ object UkNavStrings : NavStrings {
  */
 object ZhNavStrings : NavStrings {
     override fun ferry() = "乘坐渡轮"
+    override fun toTrackStart() = "前往路线起点"
+    override fun backToTrack() = "返回路线"
+    override fun trackStarted() = "路线已开始。"
+    override fun trackLeft() = "已离开路线。"
+    override fun trackFollowing() = "正在沿路线行驶。"
     override val locale: Locale = Locale.SIMPLIFIED_CHINESE
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -1909,6 +2042,11 @@ object ZhNavStrings : NavStrings {
  */
 object ZhTwNavStrings : NavStrings {
     override fun ferry() = "搭乘渡輪"
+    override fun toTrackStart() = "前往路線起點"
+    override fun backToTrack() = "返回路線"
+    override fun trackStarted() = "路線已開始。"
+    override fun trackLeft() = "已離開路線。"
+    override fun trackFollowing() = "正在沿路線前進。"
     override val locale: Locale = Locale.TAIWAN
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -2029,6 +2167,11 @@ object ZhTwNavStrings : NavStrings {
  */
 object JaNavStrings : NavStrings {
     override fun ferry() = "フェリーに乗ります"
+    override fun toTrackStart() = "ルートの始点に向かってください"
+    override fun backToTrack() = "ルートに戻ってください"
+    override fun trackStarted() = "ルートを開始しました。"
+    override fun trackLeft() = "ルートから外れました。"
+    override fun trackFollowing() = "ルートに戻りました。"
     override val locale: Locale = Locale.JAPAN
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -2140,6 +2283,11 @@ object JaNavStrings : NavStrings {
  */
 object HeNavStrings : NavStrings {
     override fun ferry() = "עלה על המעבורת"
+    override fun toTrackStart() = "סע אל תחילת המסלול"
+    override fun backToTrack() = "חזור אל המסלול"
+    override fun trackStarted() = "המסלול התחיל."
+    override fun trackLeft() = "יצאת מהמסלול."
+    override fun trackFollowing() = "ממשיך במסלול."
     override val locale: Locale = Locale("he", "IL")
 
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
@@ -2262,6 +2410,11 @@ object HeNavStrings : NavStrings {
 /** Hungarian (Magyar): contributed by Zsolt Laszlo Kaiser (kaiser-app fork), ported 2026-09-13. */
 object HuNavStrings : NavStrings {
     override fun ferry() = "Szállj fel a kompra"
+    override fun toTrackStart() = "Menj az útvonal elejére"
+    override fun backToTrack() = "Térj vissza az útvonalra"
+    override fun trackStarted() = "Az útvonal elkezdődött."
+    override fun trackLeft() = "Letértél az útvonalról."
+    override fun trackFollowing() = "Követed az útvonalat."
     override val locale: Locale = Locale("hu", "HU")
 
     override fun passLights(count: Int): String =
@@ -2427,6 +2580,11 @@ object HuNavStrings : NavStrings {
  */
 object RoNavStrings : NavStrings {
     override fun ferry() = "Luați feribotul"
+    override fun toTrackStart() = "Mergeți la începutul traseului"
+    override fun backToTrack() = "Reveniți pe traseu"
+    override fun trackStarted() = "Traseul a început."
+    override fun trackLeft() = "Ați părăsit traseul."
+    override fun trackFollowing() = "Urmați traseul."
     override val locale: Locale = Locale("ro", "RO")
 
     override fun passLights(count: Int): String = if (count <= 1) "Treceți de semafor" else "Treceți de $count semafoare"
@@ -2590,6 +2748,274 @@ object RoNavStrings : NavStrings {
     }
 }
 
+/**
+ * Thai (ไทย). The register of Thai navigation apps ("เลี้ยวซ้ายเข้าสู่ <ถนน>", "อีก 300 เมตร
+ * เลี้ยวขวา", "ชิดซ้ายที่ทางแยก"). Thai writes no spaces between words; a space marks a clause or
+ * phrase break, so the templates put one before a road name or a sign destination and between
+ * the distance and the instruction. Road/dest NAMES are DATA and never translated.
+ */
+object ThNavStrings : NavStrings {
+    override fun toTrackStart() = "ไปที่จุดเริ่มต้นของเส้นทาง"
+    override fun backToTrack() = "กลับไปที่เส้นทาง"
+    override fun trackStarted() = "เริ่มเส้นทางแล้ว"
+    override fun trackLeft() = "ออกนอกเส้นทางแล้ว"
+    override fun trackFollowing() = "กำลังไปตามเส้นทาง"
+    override fun ferry() = "ขึ้นเรือข้ามฟาก"
+    override val locale: Locale = Locale("th", "TH")
+
+    private fun turnWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
+        "left" -> "เลี้ยวซ้าย"
+        "right" -> "เลี้ยวขวา"
+        "slight left" -> "เบี่ยงซ้าย"
+        "slight right" -> "เบี่ยงขวา"
+        "sharp left" -> "เลี้ยวซ้ายหักศอก"
+        "sharp right" -> "เลี้ยวขวาหักศอก"
+        "uturn" -> "กลับรถ"
+        else -> ""
+    }
+
+    private fun sideWord(mod: String?): String = when {
+        mod?.contains("left") == true -> "ซ้าย"
+        mod?.contains("right") == true -> "ขวา"
+        else -> ""
+    }
+
+    override fun phrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
+        val onto = if (road != null) "เข้าสู่ $road" else ""
+        val ontoSp = if (road != null) " เข้าสู่ $road" else ""
+        val toward = when {
+            dest != null -> " มุ่งหน้า $dest"
+            road != null -> " เข้าสู่ $road"
+            else -> ""
+        }
+        val t = turnWord(mod)
+        val side = sideWord(mod)
+        return when (type) {
+            "depart" -> if (road != null) "มุ่งหน้าไปตาม $road" else "เริ่มเส้นทาง"
+            "arrive" -> "ถึงจุดหมาย"
+            "turn", "end of road" -> if (t.isNotBlank()) "$t$onto" else "ตรงไป$ontoSp"
+            "continue", "new name" -> when {
+                side.isNotBlank() -> "เบี่ยง$side$onto"
+                road != null -> "ตรงต่อไปที่ $road"
+                else -> "ตรงต่อไป"
+            }
+            "merge" -> "ขับเข้าร่วมช่องทาง$toward"
+            "on ramp", "ramp" -> if (side.isNotBlank()) "ใช้ทางลาดด้าน$side$toward" else "ใช้ทางลาด$toward"
+            "off ramp" -> if (exitNo != null) "ใช้ทางออก $exitNo$toward" else "ใช้ทางออก$toward"
+            "fork" -> if (side.isNotBlank()) "ชิด${side}ที่ทางแยก$toward" else "ตรงไปที่ทางแยก$toward"
+            "roundabout", "rotary", "exit roundabout", "exit rotary" -> when {
+                rbExit == null -> "เข้าวงเวียน$ontoSp"
+                mod == "straight" -> "ที่วงเวียน ตรงไปทางออกที่ $rbExit$ontoSp"
+                else -> "ที่วงเวียน ใช้ทางออกที่ $rbExit$ontoSp"
+            }
+            "roundabout turn" -> if (t.isNotBlank()) "ที่วงเวียน $t$onto" else "ที่วงเวียน ตรงไป$ontoSp"
+            "uturn" -> "กลับรถ$onto"
+            else -> if (t.isNotBlank()) "$t$onto" else "ตรงไป$ontoSp"
+        }
+    }
+
+    override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
+        val feet = meters * 3.28084
+        if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} ฟุต"
+        else {
+            val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
+            if (miles == 1.0) "1 ไมล์" else "$miles ไมล์"
+        }
+    } else {
+        if (meters < 950) "${(meters / 10).roundToInt() * 10} เมตร"
+        else {
+            val km = (meters / 100).roundToInt() / 10.0
+            if (km == 1.0) "1 กิโลเมตร" else "$km กิโลเมตร"
+        }
+    }
+
+    override fun inThen(distancePhrase: String, instruction: String): String = "อีก $distancePhrase $instruction"
+
+    override fun arrived(): String = "คุณมาถึงจุดหมายแล้ว"
+
+    override fun destinationSide(left: Boolean): String = if (left) "จุดหมายของคุณอยู่ทางซ้าย" else "จุดหมายของคุณอยู่ทางขวา"
+    override fun destinationWillBe(left: Boolean?): String =
+        left?.let { if (it) "จุดหมายของคุณจะอยู่ทางซ้าย" else "จุดหมายของคุณจะอยู่ทางขวา" } ?: destinationAhead()
+
+    override fun startNav(firstInstruction: String): String = "เริ่มการนำทาง $firstInstruction"
+
+    override fun reachedStop(label: String): String =
+        if (label.isNotBlank()) "คุณมาถึง $label แล้ว" else "คุณมาถึงจุดแวะแล้ว"
+
+    override fun stopAhead(label: String, left: Boolean?): String {
+        val who = label.ifBlank { "จุดแวะของคุณ" }
+        return when (left) { true -> "$who จะอยู่ทางซ้าย"; false -> "$who จะอยู่ทางขวา"; null -> "$who จะอยู่ข้างหน้า" }
+    }
+
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String =
+        "$instruction จากนั้น " + stopAhead(label, left)
+
+    override fun intoLot(turnLeft: Boolean): String = "${if (turnLeft) "เลี้ยวซ้าย" else "เลี้ยวขวา"}เข้าที่จอดรถ"
+
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String {
+        val who = label.ifBlank { "จุดแวะของคุณ" }
+        val where = when (left) { true -> "อยู่ทางซ้าย"; false -> "อยู่ทางขวา"; null -> "อยู่ข้างหน้า" }
+        return intoLot(turnLeft) + " จากนั้น $who $where"
+    }
+
+    override fun thenNext(instruction: String, next: String): String = "$instruction จากนั้น$next"
+
+    override fun fasterRoute(firstInstruction: String): String = "เปลี่ยนไปใช้เส้นทางที่เร็วกว่า $firstInstruction"
+    override fun rerouting(): String = "กำลังคำนวณเส้นทางใหม่"
+    override fun fasterRouteAvailable(minutes: Int): String = "มีเส้นทางที่เร็วกว่า ประหยัดเวลาได้ประมาณ $minutes นาที"
+    override fun stopsNotIncluded(): String = "รวมจุดแวะของคุณไว้ในเส้นทางนี้ไม่ได้ จะลองต่อไป"
+    override fun leftYourRoute(): String = "คุณออกจากเส้นทางที่บันทึกไว้แล้ว จะนำทางด้วยเส้นทางที่เร็วที่สุด"
+    override fun destinationAhead(): String = "จุดหมายของคุณจะอยู่ข้างหน้า"
+
+    override fun voiceTest(): String = "เปิดเสียงนำทางแล้ว อีก 400 เมตร เลี้ยวขวา"
+
+    override fun useLanes(side: LaneSide, count: Int): String {
+        val where = when (side) { LaneSide.LEFT -> "ด้านซ้าย"; LaneSide.RIGHT -> "ด้านขวา"; LaneSide.CENTER -> "ตรงกลาง" }
+        return if (count > 1) "ใช้ $count ช่องทาง$where" else "ใช้ช่องทาง$where"
+    }
+
+    override fun useLanesToDo(side: LaneSide, count: Int, instruction: String): String =
+        useLanes(side, count) + " แล้ว$instruction"
+
+    // The sign destinations after a colon are dropped from speech; the colon only follows " มุ่งหน้า ".
+    override fun spokenSign(instruction: String): String {
+        val t = instruction.indexOf(" มุ่งหน้า ")
+        if (t < 0) return instruction
+        val colon = instruction.indexOf(':', startIndex = t)
+        return if (colon > 0) instruction.substring(0, colon) else instruction
+    }
+
+    override fun repeatShort(instruction: String): String = instruction.substringBefore(" มุ่งหน้า ")
+}
+
+/** Persian navigation prompts. Road and destination labels remain source data. */
+object FaNavStrings : NavStrings by EnNavStrings {
+    override val locale: Locale = Locale.forLanguageTag("fa-IR")
+    private fun digits(value: String): String = value
+        .replace('0', '۰').replace('1', '۱').replace('2', '۲').replace('3', '۳')
+        .replace('4', '۴').replace('5', '۵').replace('6', '۶').replace('7', '۷')
+        .replace('8', '۸').replace('9', '۹')
+    private fun side(mod: String?): String = when (mod?.lowercase()) {
+        "left", "slight left", "sharp left" -> "چپ"
+        "right", "slight right", "sharp right" -> "راست"
+        "straight" -> "مستقیم"
+        else -> ""
+    }
+    private fun exitOrdinal(number: Int): String = when (number) {
+        1 -> "اولین خروجی"
+        2 -> "دومین خروجی"
+        3 -> "سومین خروجی"
+        else -> "خروجی شماره " + digits(number.toString())
+    }
+    override fun ferry(): String = "با کشتی عبور کنید"
+    override fun phrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
+        val direction = side(mod)
+        val roadText = road?.takeIf { it.isNotBlank() }?.let { " و وارد مسیر «" + it + "» شوید" }.orEmpty()
+        val destination = dest?.takeIf { it.isNotBlank() }?.let { " به سمت «" + it + "»" }.orEmpty()
+        val exit = exitNo?.let { " شماره " + digits(it) }.orEmpty()
+        return when (type) {
+            "depart" -> road?.takeIf { it.isNotBlank() }?.let { "از مسیر «" + it + "» حرکت کنید" } ?: "مسیر را آغاز کنید"
+            "arrive" -> "به مقصد رسیدید"
+            "turn", "end of road" -> if (direction.isNotBlank()) "به سمت " + direction + " بپیچید" + roadText else "به مسیر ادامه دهید" + roadText
+            "continue", "new name" -> road?.takeIf { it.isNotBlank() }?.let { "در مسیر «" + it + "» به حرکت ادامه دهید" } ?: "به مسیر ادامه دهید"
+            "merge" -> road?.takeIf { it.isNotBlank() }?.let { "به مسیر «" + it + "» بپیوندید" } ?: "به مسیر اصلی بپیوندید"
+            "on ramp" -> "وارد رمپ" + exit + " شوید" + destination
+            "off ramp" -> "از خروجی" + exit + destination + " خارج شوید"
+            "fork" -> when {
+                direction.isNotBlank() && dest.isNullOrBlank() -> "در دوراهی، مسیر سمت " + direction + " را انتخاب کنید"
+                direction.isNotBlank() -> "در دوراهی، مسیر سمت " + direction + " را به‌سوی «" + dest + "» انتخاب کنید"
+                dest.isNullOrBlank() -> "در دوراهی مسیر را ادامه دهید"
+                else -> "در دوراهی مسیر به‌سوی «" + dest + "» را انتخاب کنید"
+            }
+            "roundabout", "rotary" -> "وارد میدان شوید" + (rbExit?.let { " و از " + exitOrdinal(it) + " خارج شوید" }.orEmpty())
+            "roundabout turn" -> "از میدان خارج شوید" + roadText
+            "notification" -> road?.takeIf { it.isNotBlank() }?.let { "در مسیر «" + it + "» به حرکت ادامه دهید" } ?: "به مسیر ادامه دهید"
+            "exit roundabout", "exit rotary" -> "از میدان خارج شوید" + roadText
+            "uturn" -> "دور بزنید" + roadText
+            else -> if (direction.isNotBlank()) "به سمت " + direction + " بروید" + roadText else "به مسیر ادامه دهید" + roadText
+        }
+    }
+    override fun spokenDistance(meters: Double, imperial: Boolean): String {
+        val amount: String
+        val unit: String
+        if (imperial) {
+            val feet = meters * 3.28084
+            if (feet >= 5280.0) {
+                amount = digits(String.format(Locale.US, "%.1f", feet / 5280.0).trimEnd('0').trimEnd('.'))
+                unit = "مایل"
+            } else {
+                amount = digits(feet.roundToInt().toString())
+                unit = "فوت"
+            }
+        } else if (meters >= 1000.0) {
+            amount = digits(String.format(Locale.US, "%.1f", meters / 1000.0).trimEnd('0').trimEnd('.'))
+            unit = "کیلومتر"
+        } else {
+            amount = digits(meters.roundToInt().toString())
+            unit = "متر"
+        }
+        return amount + " " + unit
+    }
+    override fun inThen(distancePhrase: String, instruction: String): String = distancePhrase + " دیگر، " + instruction
+    override fun arrived(): String = "به مقصد رسیدید"
+    override fun destinationSide(left: Boolean): String = if (left) "مقصد در سمت چپ شماست" else "مقصد در سمت راست شماست"
+    override fun destinationWillBe(left: Boolean?): String = when (left) {
+        true -> "مقصد در سمت چپ شما خواهد بود"
+        false -> "مقصد در سمت راست شما خواهد بود"
+        null -> "مقصد در پیش روی شماست"
+    }
+    override fun startNav(firstInstruction: String): String = "مسیریابی آغاز شد. " + firstInstruction
+    override fun reachedStop(label: String): String = if (label.isBlank()) "به ایستگاه رسیدید" else "به " + label + " رسیدید"
+    override fun stopAhead(label: String, left: Boolean?): String {
+        val name = label.ifBlank { "ایستگاه شما" }
+        return when (left) {
+            true -> name + " در سمت چپ شما خواهد بود"
+            false -> name + " در سمت راست شما خواهد بود"
+            null -> name + " در پیش روی شما خواهد بود"
+        }
+    }
+    override fun thenStop(instruction: String, label: String, left: Boolean?): String = instruction + "، سپس " + stopAhead(label, left)
+    override fun intoLot(turnLeft: Boolean): String = if (turnLeft) "به سمت چپ وارد پارکینگ شوید" else "به سمت راست وارد پارکینگ شوید"
+    override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String = intoLot(turnLeft) + "، سپس " + stopAhead(label, left)
+    override fun fasterRoute(firstInstruction: String): String = "مسیر سریع‌تر انتخاب شد. " + firstInstruction
+    override fun fasterRouteAvailable(minutes: Int): String = "مسیر سریع‌تری با حدود " + digits(minutes.toString()) + " دقیقه صرفه‌جویی در دسترس است"
+    override fun rerouting(): String = "در حال محاسبه دوباره مسیر"
+    override fun stopsNotIncluded(): String = "امکان افزودن توقف‌ها به این مسیر نبود. دوباره تلاش می‌کنم."
+    override fun leftYourRoute(): String = "از مسیر خارج شدید. مسیر سریع‌تر را دنبال می‌کنیم."
+    override fun destinationAhead(): String = "مقصد در پیش روی شماست"
+    override fun voiceTest(): String = "راهنمای صوتی فعال است. پس از چهارصد متر، به راست بپیچید."
+    override fun useLanes(side: LaneSide, count: Int): String {
+        val direction = when (side) { LaneSide.LEFT -> "چپ"; LaneSide.RIGHT -> "راست"; LaneSide.CENTER -> "میانی" }
+        val n = digits(count.toString())
+        return if (count > 1) "از " + n + " خط سمت " + direction + " استفاده کنید" else "از خط سمت " + direction + " استفاده کنید"
+    }
+    override fun passLights(count: Int): String =
+        if (count <= 1) "از چراغ راهنمایی عبور کنید"
+        else "از ${digits(count.toString())} چراغ راهنمایی عبور کنید"
+
+    override fun lightThen(lead: String, instruction: String): String =
+        if (lead.isBlank()) instruction else "$lead، سپس $instruction"
+
+    override fun thenNext(instruction: String, next: String): String = "$instruction، سپس $next"
+    // No Persian phrase yet for a turn at a light or a stop sign: the English ones would be
+    // spoken in English.
+    override fun atLight(instruction: String): String? = null
+    override fun atStop(instruction: String): String? = null
+    override fun atNextStop(instruction: String): String? = null
+
+    override fun spokenSign(instruction: String): String = instruction
+    override fun repeatShort(instruction: String): String = instruction
+    override fun repeatWithRoute(instruction: String): String = instruction
+    override fun signParts(instruction: String): List<String> = emptyList()
+    override fun stayOn(instruction: String, route: String): String? = null
+
+    override fun useLanesToDo(side: LaneSide, count: Int, instruction: String): String =
+        useLanes(side, count) + ". " + instruction
+
+    override fun expandForSpeech(text: String): String = text
+
+}
+
 object NavStringsRegistry {
     @Volatile
     private var active: NavStrings = EnNavStrings
@@ -2628,7 +3054,9 @@ object NavStringsRegistry {
         "zh" -> ZhNavStrings
         "zh-tw" -> ZhTwNavStrings
         "ja" -> JaNavStrings
+        "th" -> ThNavStrings
         "he", "iw" -> HeNavStrings // JDK 17+ normalizes the old code "iw" → "he"; accept both
+        "fa" -> FaNavStrings
         else -> EnNavStrings
     }
 }

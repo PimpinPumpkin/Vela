@@ -14,6 +14,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import app.vela.car.screen.CarDeps
 import app.vela.car.screen.MainCarScreen
+import app.vela.car.screen.MapReloadCarScreen
 import app.vela.core.model.LatLng
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,6 +46,8 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
     }
 
     override fun onCreate(owner: LifecycleOwner) {
+        CarBridge.live = true
+        ManeuverMapper.bannedNote = runCatching { carContext.getString(app.vela.R.string.nav_turn_may_be_banned_short) }.getOrDefault("")
         // Feed live GPS into NavSession while the car session is alive. Mirrors the phone's fix gate:
         // GPS fixes with accuracy ≤ 50 m drive guidance; coarser fixes are ignored for nav.
         // Cancel any prior collector first so a re-delivered onCreate can't leak a second one.
@@ -63,6 +66,11 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
                 if (on) showDriveScreen()
             }
         }
+        // A map surface left stuck by a dead Vela process: a moment off the map gets a new one.
+        val renderer = deps.mapRenderer(carContext)
+        renderer.onSurfaceStuck = {
+            carContext.getCarService(ScreenManager::class.java).push(MapReloadCarScreen(carContext, renderer))
+        }
         CarLocationAccess.check(carContext)
         feedJob = scope.launch {
             // Wait for the permission: the landing screen asks for it when the car connected
@@ -73,15 +81,51 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
                 // feeds those to the session itself.
                 val gps = loc.provider == android.location.LocationManager.GPS_PROVIDER ||
                     loc.provider == app.vela.core.location.SIM_PROVIDER
-                if (gps && (!loc.hasAccuracy() || loc.accuracy <= 50f)) {
-                    val speed = if (loc.hasSpeed()) loc.speed.toDouble() else null
-                    deps.navSession.onLocation(LatLng(loc.latitude, loc.longitude), app.vela.ui.Units.imperial.value, speed)
-                }
+                if (gps && (!loc.hasAccuracy() || loc.accuracy <= 50f)) carFix(loc)
             }
         }
     }
 
+    /**
+     * One fix from the car screen's own feed, steered like the phone's: through the shared
+     * position filter ([app.vela.core.location.GuidanceFix]) with the fix's accuracy, a course
+     * only while moving, and a crawl read as 0 on a wide fix or with the phone at rest. While the
+     * phone's feed runs it is the drive's, and this one stands down, so each fix reaches the
+     * engine once.
+     */
+    private fun carFix(loc: android.location.Location) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (loc.provider == android.location.LocationManager.GPS_PROVIDER && (!loc.hasAccuracy() || loc.accuracy <= 50f)) {
+            val t = (if (loc.elapsedRealtimeNanos != 0L) loc.elapsedRealtimeNanos else loc.time * 1_000_000L) / 1e9
+            app.vela.ui.AutoParking.onFix(t, LatLng(loc.latitude, loc.longitude), if (loc.hasSpeed()) loc.speed.toDouble() else null)
+        }
+        if (app.vela.core.location.GuidanceFix.phoneFeeding(now)) return
+        val acc = if (loc.hasAccuracy()) loc.accuracy.toDouble() else null
+        val sp = if (loc.hasSpeed()) loc.speed.toDouble() else null
+        val wide = (acc ?: 0.0) > app.vela.core.location.Stillness.ACC_TRUST_M
+        val slow = app.vela.core.location.Stillness.SLOW_MPS
+        val still = app.vela.core.location.Stillness.still
+        val course = if (loc.hasBearing() && sp != null && sp > 0.5 && (!wide || sp >= slow)) loc.bearing.toDouble() else null
+        val speed = sp?.let { if (it < slow && (wide || still)) 0.0 else it }
+        val tSec = (if (loc.elapsedRealtimeNanos != 0L) loc.elapsedRealtimeNanos else loc.time * 1_000_000L) / 1e9
+        val take = app.vela.core.location.GuidanceFix.take(
+            LatLng(loc.latitude, loc.longitude), tSec, acc, sp,
+            if (loc.hasSpeedAccuracy()) loc.speedAccuracyMetersPerSecond.toDouble() else null,
+            if (loc.hasBearing()) loc.bearing.toDouble() else null,
+            if (loc.hasBearingAccuracy()) loc.bearingAccuracyDegrees.toDouble() else null,
+            still,
+        )
+        if (!take.fresh) return
+        deps.navSession.onLocation(
+            take.out.position, app.vela.ui.Units.imperial.value, speed,
+            accuracyM = acc, bearingDeg = course, fromFix = take.out.accepted,
+        )
+    }
+
     override fun onDestroy(owner: LifecycleOwner) {
+        // The car's screen going away with the car stopped after a drive: the driver is leaving it.
+        app.vela.ui.AutoParking.leave("car screen disconnected")
+        CarBridge.live = false
         feedJob?.cancel()
         scope.cancel()
         deps.stopMapRenderer() // the shared map renderer lives for the session; stop its collector here
@@ -112,8 +156,13 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
         val screens = carContext.getCarService(ScreenManager::class.java)
         // Before the first screen exists, onCreateScreen decides.
         if (screens.stackSize == 0 || screens.top is ActiveNavCarScreen) return
-        screens.popToRoot()
-        screens.push(ActiveNavCarScreen(carContext, deps))
+        // A host that is already gone throws here (see ActiveNavCarScreen).
+        try {
+            screens.popToRoot()
+            screens.push(ActiveNavCarScreen(carContext, deps))
+        } catch (e: androidx.car.app.HostException) {
+            android.util.Log.i("VelaCar", "car host call failed: ${e.message}")
+        }
     }
 
     /** A navigation intent delivered while the app is already running (the host reuses the session). */

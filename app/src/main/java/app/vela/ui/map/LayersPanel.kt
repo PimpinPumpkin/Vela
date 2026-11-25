@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -83,6 +84,9 @@ internal fun BoxScope.LayersCorner(vm: MapViewModel, landscapeChrome: Boolean, d
         modifier = Modifier
             .align(Alignment.TopEnd)
             .statusBarsPadding()
+            // Beside a navigation bar on the side (landscape on Android 8 head units and older
+            // phones), the button sat half under it; the other map buttons already keep clear.
+            .navigationBarsPadding()
             // One-line landscape chrome: the chips sit beside the bar, so the button rises a
             // whole row (matches the compass margin in VelaMapView). 23 dp from the end puts
             // this 42 dp button's center on the line the other map buttons share (#778).
@@ -199,6 +203,8 @@ private fun LayersPanel(vm: MapViewModel, onClose: () -> Unit) {
         // Driving mode (issue #727): the map alone in the drive's layout, from the map's own
         // panel. Its bar's X comes back to this button.
         ActionRow(stringResource(R.string.driving_mode), Sym.DirectionsCar) { onClose(); vm.enterDrivingMode() }
+        // The ruler (issue #910): tap points, read the distance, nothing kept.
+        ActionRow(stringResource(R.string.measure_distance), Sym.Straighten) { onClose(); vm.startMeasure() }
     }
 }
 

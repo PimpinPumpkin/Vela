@@ -95,6 +95,215 @@ class LineNamerTest {
         }
     }
 
+    // Highway junctions at the Davis fixture. East along 2nd Street for 400 m, then north from
+    // (400, 0): straight onto the highway at grade, or onto a 250 m link that then becomes it.
+    private fun pt(e: Double, n: Double) = LatLng(o.lat + north(n), o.lng + east(e))
+    private fun path(vararg p: Pair<Double, Double>): List<LatLng> {
+        val out = ArrayList<LatLng>()
+        for ((a, b) in p.toList().zipWithNext()) {
+            val steps = (Math.hypot(b.first - a.first, b.second - a.second) / 20.0).toInt().coerceAtLeast(1)
+            for (k in 0 until steps) out += pt(a.first + (b.first - a.first) * k / steps, a.second + (b.second - a.second) * k / steps)
+        }
+        out += pt(p.last().first, p.last().second)
+        return out
+    }
+    private val second = NamedLine("2nd Street", null, "secondary", listOf(pt(-100.0, 0.0), pt(400.0, 0.0)))
+    private fun highway(fromN: Double) = NamedLine("Interstate 80", "I 80", "motorway", listOf(pt(400.0, fromN), pt(400.0, 1000.0)))
+    private val link = NamedLine("", null, "motorway", listOf(pt(400.0, 0.0), pt(400.0, 250.0)), link = true)
+    private fun drive(line: List<LatLng>, lines: List<NamedLine>) =
+        LineNamer.name(route(line), lines, TravelMode.DRIVE)!!.maneuvers.filter { it.type != ManeuverType.DEPART && it.type != ManeuverType.ARRIVE }
+
+    @Test fun aTurnStraightOntoAHighwayIsATurnNotARamp() {
+        val m = drive(path(0.0 to 0.0, 400.0 to 0.0, 400.0 to 900.0), listOf(second, highway(0.0))).single()
+        assertEquals(ManeuverType.TURN_LEFT, m.type)
+        assertEquals("Interstate 80", m.road)
+        assertTrue(m.instruction, m.instruction.startsWith("Turn left"))
+    }
+
+    @Test fun aTurnFromADrivewayOntoAHighwayIsATurn() {
+        // The driveway has no name in the tiles, so nothing names the line before the turn.
+        val m = drive(path(330.0 to 0.0, 400.0 to 0.0, 400.0 to 900.0), listOf(highway(0.0))).single()
+        assertEquals(ManeuverType.TURN_LEFT, m.type)
+    }
+
+    @Test fun aTurnOntoALinkRoadIsARamp() {
+        val m = drive(path(0.0 to 0.0, 400.0 to 0.0, 400.0 to 900.0), listOf(second, link, highway(250.0))).single()
+        assertEquals(ManeuverType.RAMP_LEFT, m.type)
+        assertEquals("Interstate 80", m.road)
+        assertTrue(m.instruction, m.instruction.contains("ramp"))
+    }
+
+    @Test fun aLinkWithARouteNumberStillMakesARamp() {
+        // The names layer carries a numbered link as a named line on top of the link itself.
+        val numbered = NamedLine("I 80", "I 80", "motorway", link.points)
+        val m = drive(path(0.0 to 0.0, 400.0 to 0.0, 400.0 to 900.0), listOf(second, link, numbered, highway(250.0))).single()
+        assertEquals(ManeuverType.RAMP_LEFT, m.type)
+    }
+
+    @Test fun leavingAHighwayAtGradeIsATurnAndByALinkAnExitThenATurn() {
+        // South down the highway, then west onto 2nd Street: the same junctions driven the other way.
+        val atGrade = drive(back, listOf(second, highway(0.0))).single()
+        assertEquals(ManeuverType.TURN_RIGHT, atGrade.type)
+        assertEquals("2nd Street", atGrade.road)
+        // By the link: the exit where the line leaves the highway, then the turn where the link
+        // meets the street, as Google says them ("Take exit 75", "Turn left onto Chiles Rd").
+        val (exit, turn) = drive(back, listOf(second, link, highway(250.0)))
+        assertTrue(exit.instruction, exit.instruction.startsWith("Take the exit"))
+        assertEquals("2nd Street", exit.road)
+        assertTrue(exit.location.lat > o.lat + north(200.0))
+        assertEquals(ManeuverType.TURN_RIGHT, turn.type)
+        assertEquals("2nd Street", turn.road)
+    }
+
+    // Google's exits (Route.exitSigns) on the same junctions, driven south.
+    private val back = path(400.0 to 900.0, 400.0 to 0.0, -100.0 to 0.0)
+    private fun signed(line: List<LatLng>, lines: List<NamedLine>, vararg signs: app.vela.core.model.ExitSign) =
+        LineNamer.name(route(line).copy(exitSigns = signs.toList()), lines, TravelMode.DRIVE)!!.maneuvers
+            .filter { it.type != ManeuverType.DEPART && it.type != ManeuverType.ARRIVE }
+
+    @Test fun googlesExitGivesTheTilesExitItsNumberSignsAndSide() {
+        // The tiles see a straight link and cannot tell the side; Google's icon says left.
+        val (exit, turn) = signed(back, listOf(second, link, highway(250.0)), app.vela.core.model.ExitSign(pt(400.0, 240.0), "75", "Mace Blvd", left = true))
+        assertEquals("Take exit 75 toward Mace Blvd", exit.instruction)
+        assertEquals(ManeuverType.RAMP_LEFT, exit.type)
+        assertEquals("Take exit 75 toward Mace Blvd", exit.instructionNoRoad)
+        assertEquals("2nd Street", exit.road)
+        assertEquals(ManeuverType.TURN_RIGHT, turn.type)
+    }
+
+    @Test fun aTilesExitFoundLateMovesBackToGooglesPoint() {
+        // Google's exit 300 m before the link the tiles have: the same exit, its lane hugging the highway.
+        val steps = signed(back, listOf(second, link, highway(250.0)), app.vela.core.model.ExitSign(pt(400.0, 550.0), "75", "Mace Blvd"))
+        val exit = steps.single { it.type == ManeuverType.RAMP_RIGHT || it.type == ManeuverType.RAMP_LEFT }
+        assertEquals("Take exit 75 toward Mace Blvd", exit.instruction)
+        assertTrue("${exit.location.lat}", kotlin.math.abs(exit.location.lat - (o.lat + north(550.0))) < north(20.0))
+        assertEquals(2, steps.size)
+    }
+
+    @Test fun anExitTheTilesMissIsSaidWhereGoogleHasIt() {
+        val straight = path(400.0 to 900.0, 400.0 to 0.0)
+        assertTrue(signed(straight, listOf(highway(-100.0))).isEmpty())
+        val exit = signed(straight, listOf(highway(-100.0)), app.vela.core.model.ExitSign(pt(400.0, 500.0), "75", "Mace Blvd", left = false)).single()
+        assertEquals(ManeuverType.RAMP_RIGHT, exit.type)
+        assertEquals("Take exit 75 toward Mace Blvd", exit.instruction)
+        // Off the line it is another road's exit.
+        assertTrue(signed(straight, listOf(highway(-100.0)), app.vela.core.model.ExitSign(pt(440.0, 500.0), "75", "Mace Blvd")).isEmpty())
+    }
+
+    @Test fun googlesExitNextToAnotherStepLeavesTheStepAlone() {
+        // An at-grade turn off the highway, and Google calling the same spot an exit: the turn stands.
+        val m = signed(back, listOf(second, highway(0.0)), app.vela.core.model.ExitSign(pt(400.0, 60.0), "75", "Mace Blvd")).single()
+        assertEquals(ManeuverType.TURN_RIGHT, m.type)
+        assertEquals("2nd Street", m.road)
+    }
+
+    @Test fun aCurveAlongARampSaysNothing() {
+        // The link runs north 120 m, bends east and merges onto the highway: one step, at its start.
+        val bent = NamedLine("", null, "motorway", listOf(pt(400.0, 0.0), pt(400.0, 120.0), pt(600.0, 120.0)), link = true)
+        val east = NamedLine("Interstate 80", "I 80", "motorway", listOf(pt(600.0, 120.0), pt(1400.0, 120.0)))
+        val m = drive(path(0.0 to 0.0, 400.0 to 0.0, 400.0 to 120.0, 1400.0 to 120.0), listOf(second, bent, east)).single()
+        assertEquals(ManeuverType.RAMP_LEFT, m.type)
+        assertEquals("Interstate 80", m.road)
+    }
+
+    @Test fun aLinkBackOntoTheSameHighwayIsAKeep() {
+        // Express to local lanes: off the highway at x 400 and onto its other lanes at x 440.
+        val express = NamedLine("Interstate 80", "I 80", "motorway", listOf(pt(400.0, -500.0), pt(400.0, 1000.0)))
+        val local = NamedLine("Interstate 80", "I 80", "motorway", listOf(pt(440.0, 400.0), pt(440.0, 1000.0)))
+        val lanes = NamedLine("", null, "motorway", listOf(pt(400.0, 0.0), pt(440.0, 100.0), pt(440.0, 400.0)), link = true)
+        val m = drive(path(400.0 to -500.0, 400.0 to 0.0, 440.0 to 100.0, 440.0 to 1000.0), listOf(express, local, lanes)).single()
+        assertEquals(ManeuverType.KEEP_RIGHT, m.type)
+        assertEquals("Interstate 80", m.road)
+    }
+
+    @Test fun aTurnOntoAStreetJustBeforeARampIsItsOwnStep() {
+        // Right onto the frontage road, whose on-ramp peels off 20 m later.
+        val frontage = NamedLine("Frontage Road", null, "minor", listOf(pt(400.0, 0.0), pt(400.0, -1000.0)))
+        val ramp = NamedLine("", null, "motorway", listOf(pt(400.0, -20.0), pt(440.0, -200.0)), link = true)
+        val south = NamedLine("Interstate 80", "I 80", "motorway", listOf(pt(440.0, -200.0), pt(440.0, -1000.0)))
+        val m = drive(path(0.0 to 0.0, 400.0 to 0.0, 400.0 to -20.0, 440.0 to -200.0, 440.0 to -1000.0), listOf(second, frontage, ramp, south))
+        assertEquals(listOf(ManeuverType.TURN_RIGHT, ManeuverType.RAMP_RIGHT), m.map { it.type })
+        assertEquals(listOf("Frontage Road", "Interstate 80"), m.map { it.road })
+    }
+
+    @Test fun twoTurnsOntoTheSameStreetWithinFiftyMetersAreOne() {
+        // Oak Street turns a corner 40 m after the line joins it: right, right is one U-turn.
+        val oak = NamedLine("Oak Street", null, "minor", listOf(pt(400.0, 0.0), pt(400.0, -40.0), pt(-100.0, -40.0)))
+        val m = drive(path(0.0 to 0.0, 400.0 to 0.0, 400.0 to -40.0, 0.0 to -40.0), listOf(second, oak)).single()
+        assertEquals(ManeuverType.UTURN, m.type)
+        assertEquals("Oak Street", m.road)
+    }
+
+    @Test fun aHairpinOnOneRoadIsNotAUTurn() {
+        // Two right bends 40 m apart, both on Oak Street: a switchback, said as the bends it is.
+        val oak = NamedLine("Oak Street", null, "minor", listOf(pt(0.0, 0.0), pt(400.0, 0.0), pt(400.0, -40.0), pt(-100.0, -40.0)))
+        val m = drive(path(0.0 to 0.0, 400.0 to 0.0, 400.0 to -40.0, 0.0 to -40.0), listOf(oak))
+        assertTrue(m.none { it.type == ManeuverType.UTURN })
+    }
+
+    // A grid jog: east on Main, left onto Short Ave for 70 m, right onto Oak St for 70 m, left
+    // onto Long Road. Strict naming wants 92 m of a street after a turn, so the middle two are bare.
+    private val jog = path(0.0 to 0.0, 400.0 to 0.0, 400.0 to 70.0, 470.0 to 70.0, 470.0 to 600.0)
+    private val jogLines = listOf(
+        NamedLine("Main Street", null, "minor", listOf(pt(-100.0, 0.0), pt(400.0, 0.0))),
+        NamedLine("Short Avenue", null, "minor", listOf(pt(400.0, -200.0), pt(400.0, 70.0))),
+        NamedLine("Oak Street", null, "minor", listOf(pt(300.0, 70.0), pt(600.0, 70.0))),
+        NamedLine("Long Road", null, "minor", listOf(pt(470.0, 70.0), pt(470.0, 800.0))),
+    )
+    private fun strict(line: List<LatLng>, lines: List<NamedLine>, vararg steps: app.vela.core.model.StepName) =
+        LineNamer.name(route(line).copy(stepNames = steps.toList()), lines, TravelMode.DRIVE, strict = true)!!.maneuvers
+            .filter { it.type != ManeuverType.DEPART && it.type != ManeuverType.ARRIVE }
+
+    @Test fun aJogsShortStreetsAreBareInStrictNaming() {
+        assertEquals(
+            listOf(ManeuverType.TURN_LEFT to null, ManeuverType.TURN_RIGHT to null, ManeuverType.TURN_LEFT to "Long Road"),
+            strict(jog, jogLines).map { it.type to it.road },
+        )
+    }
+
+    @Test fun aBareTurnTakesTheStreetOfGooglesStepAtItsCorner() {
+        val m = strict(
+            jog, jogLines,
+            app.vela.core.model.StepName(pt(402.0, 3.0), "Short Ave", left = true),
+            app.vela.core.model.StepName(pt(398.0, 72.0), "Oak St", left = false),
+            app.vela.core.model.StepName(pt(470.0, 70.0), "Long Rd", left = true),
+        )
+        // The tiles' own name stays where they have one.
+        assertEquals(listOf("Short Ave", "Oak St", "Long Road"), m.map { it.road })
+        assertEquals("Turn left onto Short Ave", m[0].instruction)
+    }
+
+    @Test fun googlesStepTurningTheOtherWayOrFarOffNamesNothing() {
+        val m = strict(
+            jog, jogLines,
+            app.vela.core.model.StepName(pt(400.0, 0.0), "Short Ave", left = false),
+            app.vela.core.model.StepName(pt(430.0, 110.0), "Oak St", left = false),
+        )
+        assertEquals(listOf(null, null, "Long Road"), m.map { it.road })
+    }
+
+    // North on Main Street, then the line bends 40 degrees right, the tiles' street going on for
+    // only 60 m past the bend: too short for strict naming, so the bend comes out bare.
+    private val bend = path(0.0 to 0.0, 0.0 to 400.0, 257.0 to 706.0)
+    private fun bendLines(after: String) = listOf(
+        NamedLine("Main Street", null, "minor", listOf(pt(0.0, -100.0), pt(0.0, 400.0))),
+        NamedLine(after, null, "minor", listOf(pt(0.0, 400.0), pt(38.6, 446.0))),
+    )
+    private val googleFarOff = app.vela.core.model.StepName(pt(0.0, 20.0), "Main St", null)
+
+    @Test fun aBareSlightBendOnTheSameStreetWithNoGoogleStepIsACurve() {
+        assertEquals(listOf(ManeuverType.SLIGHT_RIGHT to null), strict(bend, bendLines("Main Street")).map { it.type to it.road })
+        // Google has steps on this line, none at the bend: the road curves.
+        assertTrue(strict(bend, bendLines("Main Street"), googleFarOff).isEmpty())
+        // Google has a step at it: kept, bare (a keep with no street).
+        assertEquals(1, strict(bend, bendLines("Main Street"), app.vela.core.model.StepName(pt(2.0, 395.0), null, left = false)).size)
+    }
+
+    @Test fun aBareSlightBendOntoAnotherStreetStaysThoughGoogleIsSilent() {
+        // Google's keyless list can skip a real junction, so its silence alone drops nothing.
+        assertEquals(listOf(ManeuverType.SLIGHT_RIGHT), strict(bend, bendLines("Pall Mall"), googleFarOff).map { it.type })
+    }
+
     @Test fun anglesClassify() {
         assertEquals(ManeuverType.SLIGHT_LEFT, LineNamer.classify(-40.0).first)
         assertEquals(ManeuverType.TURN_RIGHT, LineNamer.classify(90.0).first)

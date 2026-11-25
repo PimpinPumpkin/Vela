@@ -9,6 +9,7 @@ import app.vela.core.model.Route
 import app.vela.core.model.RouteLeg
 import app.vela.core.model.RouteSource
 import app.vela.core.model.TravelMode
+import app.vela.core.model.distanceTo
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -19,8 +20,10 @@ import kotlin.math.hypot
  * keyless steps are abbreviated, and forcing the open router through points on Google's line adds
  * crossings and double-backs. Here the line is kept exactly, the turns come from its own bends and
  * each stretch takes the name of the map street it runs along ([NamedLine]s from the vector tiles).
- * Nothing is routed, so nothing can loop. What it cannot give is lane guidance or sign destinations:
- * those live on the router's junctions, not in the tiles.
+ * Nothing is routed, so nothing can loop. What it cannot give is lane guidance: that lives on the
+ * router's junctions, not in the tiles. An exit's number and signs come from Google's own exit at
+ * the same place ([Route.exitSigns]), and a turn the tiles cannot name takes the street of Google's
+ * own step at its corner ([Route.stepNames]).
  */
 object LineNamer {
     private const val STEP_M = 8.0
@@ -32,7 +35,40 @@ object LineNamer {
     private const val ALIGN_DEG = 35.0
     private const val SHORT_RUN_M = 40.0
     private const val LOOK_M = 400.0
+    /** Highway classes: joined by an on-ramp, left by an exit. */
+    private val FAST = setOf("motorway", "trunk")
+    /** A sample is on a link road when a link running its way is within [LINK_OFF_M] and no
+     *  named street is more than [LINK_TIE_M] nearer (a numbered link is in the names too). A
+     *  run of such samples, gaps of [LINK_GAP] samples bridged, is a ramp when it is
+     *  [RAMP_MIN_M] long and a highway is at one end; a shorter link is a slip lane at an
+     *  at-grade junction. The roads at its ends are looked for within twice [LINK_LOOK_M], and
+     *  the side of an exit with no bend is the heading change across [LINK_LOOK_M] either side. */
+    private const val LINK_OFF_M = 12.0
+    private const val LINK_TIE_M = 1.0
+    private const val LINK_LOOK_M = 64.0
+    private const val LINK_GAP = 2
+    private const val RAMP_MIN_M = 80.0
+    /** A bend under this on a highway with no other road after it is a curve, and a link that
+     *  merges onto a highway under this is a merge: both quiet (Organic Maps: one way out and
+     *  under 50 degrees says nothing). */
+    private const val CURVE_DEG = 50.0
+    /** Two same-way turns this close onto the same street are one turn (OsmAnd: 50 m). */
+    private const val SPLIT_TURN_M = 50.0
+    /** One of Google's exits ([Route.exitSigns]) is the tiles' exit when its point is this close
+     *  to the line and this close along it to where the line moves onto the link. */
+    private const val SIGN_OFF_M = 20.0
+    private const val SIGN_ALONG_M = 150.0
+    private const val SIGN_LATE_M = 400.0
+    /** One of Google's steps ([Route.stepNames]) is at a turn's corner when its point is this
+     *  close to the turn, and a slight bend with none of them this close is a curve. */
+    private const val STEP_NAME_M = 25.0
+    private const val CURVE_STEP_M = 40.0
+    /** The lenient matching distance in a car, for reading a bend loosely in strict mode. */
+    private const val LOOSE_OFF_M = 30.0
+    private val PLAIN = setOf("turn", "continue")
     private val ELEVATED_ROADS = setOf("motorway", "trunk", "primary", "secondary", "tertiary")
+    /** `transportation_name` classes a car does not drive on. */
+    private val NOT_DRIVEN = setOf("path", "rail", "transit", "aerialway", "pier", "raceway", "busway", "bus_guideway", "bridleway", "cycleway")
     /** Strict mode: a turn names its street only when the line stays on it this long after the
      *  turn, and a ramp or a rename only when the road it reaches runs this long. */
     // Vars, not consts, so the naming study (NamingStudyTest) can sweep them.
@@ -51,11 +87,13 @@ object LineNamer {
     const val MIN_NAMED_SHARE_WALK = 0.5
     /** Share of the last named line that matched a street, for the diagnostics line. */
     @Volatile var lastNamedShare = 0.0
+    /** Desk hook (NamingStudyTest): one line per bend with what decided it. Never set in the app. */
+    internal var onBend: ((String) -> Unit)? = null
 
     /**
      * [route] named from [lines], or null when too little of it lines up with a named street.
-     * Google's own step positions are not used: its keyless steps sit at the start of the stretch
-     * before the maneuver, a kilometer early on a highway ramp.
+     * Google's keyless step LIST is not used: it is short, and its steps are placed by their
+     * share of the trip, a kilometer off on a highway. Its exits are, at their own points.
      */
     /**
      * [strict] is for driving guidance stitched into a route (HybridRoute), where a wrong street
@@ -72,8 +110,14 @@ object LineNamer {
         if (s.size < 3) return null
         val total = s.last().m
         val maxOff = if (strict) STRICT_MAX_OFF_M else if (mode == TravelMode.WALK) 25.0 else 30.0
+        val (links, streets) = lines.partition { it.link }
         // On foot, a road flyover's name never labels the street underneath (issue #478, Dhaka).
-        val usable = if (mode == TravelMode.WALK) lines.filterNot { it.bridge && it.cls in ELEVATED_ROADS } else lines
+        // In a car, a footpath, track bed or busway beside the road never names it.
+        val usable = when (mode) {
+            TravelMode.WALK -> streets.filterNot { it.bridge && it.cls in ELEVATED_ROADS }
+            TravelMode.DRIVE -> streets.filterNot { it.cls in NOT_DRIVEN }
+            else -> streets
+        }
         val idx = SegIndex(usable)
 
         // 1. A name per sample: the nearest street within maxOff that runs the same way.
@@ -81,6 +125,15 @@ object LineNamer {
         val named = names.count { it != null }.toDouble() / names.size
         lastNamedShare = named
         if (!strict && named < (if (mode == TravelMode.WALK) MIN_NAMED_SHARE_WALK else MIN_NAMED_SHARE)) return null
+
+        // Samples on a link road, for telling a ramp from an at-grade turn onto a highway.
+        val onLink = if (mode != TravelMode.DRIVE || links.isEmpty()) BooleanArray(s.size) else SegIndex(links).let { li ->
+            BooleanArray(s.size) { k ->
+                val d = li.alignedDist(s[k].pt, s[k].brg)
+                // A link with a name or route number is in the names too, on the same line.
+                d < LINK_OFF_M && d <= idx.alignedDist(s[k].pt, s[k].brg) + LINK_TIE_M
+            }
+        }
 
         // 2. Runs of one name; short runs (a cross street at a junction) and gaps absorbed.
         val runName = smoothRuns(s, names)
@@ -113,18 +166,70 @@ object LineNamer {
 
         // 4. Events: a turn is announced when the name changes across it or it bends hard; a name
         // change with no turn is a rename folded into the step before (as the open router's are).
-        data class Ev(val i: Int, val type: ManeuverType, val mod: String?, val road: String?, val osrm: String)
+        data class Ev(val i: Int, val type: ManeuverType, val mod: String?, val road: String?, val osrm: String, val exitNo: String? = null, val dest: String? = null, val google: app.vela.core.model.StepName? = null)
         val events = ArrayList<Ev>()
         // The nearest named run within LOOK_M either side: a ramp or a link is unnamed in the
         // tiles, and the road it leads to is what the instruction should name.
-        fun runAround(i: Int, dir: Int): NameRun? {
+        fun runAroundAt(i: Int, dir: Int): Int? {
             var k = (i + dir * w).coerceIn(0, s.lastIndex)
             while (k in s.indices && abs(s[k].m - s[i].m) <= LOOK_M) {
-                (if (dir > 0) solid(k, STRICT_FAR_RUN_M) else runName[k])?.let { return it }
+                if ((if (dir > 0) solid(k, STRICT_FAR_RUN_M) else runName[k]) != null) return k
                 k += dir
             }
             return null
         }
+        fun runAround(i: Int, dir: Int): NameRun? = runAroundAt(i, dir)?.let { runName[it] }
+        val drive = mode == TravelMode.DRIVE
+        val near = (LINK_LOOK_M / STEP_M).toInt()
+        fun ramp(a: Double) = if (a > 0) ManeuverType.RAMP_RIGHT else ManeuverType.RAMP_LEFT
+        fun linkEvent(i: Int, a: Double, ls: LinkStretch) = when (ls.kind) {
+            LinkKind.ON -> Ev(i, ramp(a), classify(a).second, ls.road, "on ramp")
+            LinkKind.OFF -> Ev(i, ramp(a), classify(a).second, ls.road, "off ramp")
+            LinkKind.STAY -> Ev(i, if (a > 0) ManeuverType.KEEP_RIGHT else ManeuverType.KEEP_LEFT, if (a > 0) "slight right" else "slight left", ls.road, "fork")
+        }
+        // The named road the line is on just past a link's end in [dir], skipping the link's own
+        // name when it carries one.
+        fun beside(k: Int, dir: Int): NameRun? {
+            var m = k + dir
+            while (m in s.indices && abs(m - k) <= 2 * near) {
+                if (!onLink[m]) (if (dir > 0) solid(m, STRICT_RUN_M) else runName[m])?.let { return it }
+                m += dir
+            }
+            return null
+        }
+        fun linkStretches(): List<LinkStretch> {
+            val out = ArrayList<LinkStretch>()
+            var k = 0
+            while (k < s.size) {
+                if (!onLink[k]) { k++; continue }
+                var j = k; var g = k + 1
+                while (g < s.size) { if (onLink[g]) { j = g; g++ } else if (g - j <= LINK_GAP) g++ else break }
+                if (s[j].m - s[k].m >= RAMP_MIN_M) {
+                    val from = beside(k, -1); val to = beside(j, 1)
+                    val toFast = to?.cls in FAST
+                    when {
+                        // Off a highway and back onto it: a link between its express and local
+                        // lanes, a keep rather than an exit.
+                        from?.cls in FAST && to != null && to.name == from?.name -> out += LinkStretch(k, j, LinkKind.STAY, to.name, true)
+                        from?.cls in FAST -> out += LinkStretch(k, j, LinkKind.OFF, to?.name, toFast)
+                        toFast -> out += LinkStretch(k, j, LinkKind.ON, to?.name, true)
+                    }
+                }
+                k = j + 1
+            }
+            return out
+        }
+
+        // Link roads that join or leave a highway, said once each, as a router that reads the
+        // junctions says them: the exit where the line leaves the highway (bend or no bend), the
+        // ramp where it leaves the street, nothing along the link or where it merges, and a plain
+        // turn where it ends at a street.
+        val stretches = if (drive) linkStretches() else emptyList()
+        onBend?.let { cb -> stretches.forEach { cb("link ${it.kind} ${s[it.from].m.toInt()}..${s[it.to].m.toInt()} m to ${it.road} fast=${it.toFast}") } }
+        // A bend belongs to a link when the line is on it within a turn window either side.
+        fun stretchAt(i: Int) = stretches.firstOrNull { i + w >= it.from && i - w <= it.to }
+        val announced = HashSet<LinkStretch>()
+
         for (i in turns) {
             // Names come from right at the turn; the look-around only finds the highway a ramp joins
             // or leaves (an unnamed campus path must not borrow a street 300 m away).
@@ -133,24 +238,155 @@ object LineNamer {
             val beforeFar = runAround(i, -1)
             val afterFar = runAround(i, 1)
             val a = delta[i]
-            val same = before != null && before == after
+            val same = before != null && before.name == after?.name
+            val ls = stretchAt(i)
+            onBend?.invoke("bend ${s[i].m.toInt()} m ${a.toInt()} deg | before ${before?.name}/${before?.cls} after ${after?.name}/${after?.cls} | " +
+                "far ${beforeFar?.name}/${beforeFar?.cls} -> ${afterFar?.name}/${afterFar?.cls} | link ${ls?.kind} ${ls?.let { "${s[it.from].m.toInt()}..${s[it.to].m.toInt()}" }}")
+            if (ls != null) {
+                // A bend onto the link (off it a turn window before) is where it is said; a bend
+                // with the line on the link both sides is a curve of the ramp, and a bend off it
+                // at the far end is a plain turn onto the street it meets.
+                val atStart = ls !in announced && i - w < ls.from
+                // A turn onto a named street that the link then leaves is that turn; the link is
+                // said where the line moves onto it.
+                val ontoStreet = after != null && after.cls !in FAST && after.name != ls.road
+                if (atStart && !ontoStreet) {
+                    announced += ls
+                    events += linkEvent(i, a, ls)
+                    continue
+                }
+                if (!atStart) {
+                    // A merge onto a highway is quiet unless it bends like a turn (a ramp ending
+                    // at a junction on an at-grade highway).
+                    val atEnd = i + w > ls.to
+                    if (!atEnd || abs(a) < (if (ls.toFast) CURVE_DEG else TURN_MIN_DEG)) continue
+                    // A link onto a highway that ends in a turn is a turn lane: the turn is the step.
+                    if (ls.kind == LinkKind.ON) announced += ls
+                    val (type, mod) = classify(a)
+                    events += Ev(i, type, mod, after?.name ?: ls.road, osrmFor(type))
+                    continue
+                }
+            }
             if (same && abs(a) < TURN_SAME_NAME_DEG) continue
             if (before == null && after == null && abs(a) < 45.0) continue
+            val bIn = drive && beforeFar?.cls in FAST; val aIn = drive && afterFar?.cls in FAST
+            // A bend in a highway that leads onto no other road is a curve.
+            if (bIn && abs(a) < CURVE_DEG && (after == null || same)) continue
             val (type, mod) = classify(a)
-            // Highways from the tiles' road class: joining one is a ramp, leaving one an exit, and a
-            // gentle split between two is a keep. A bend that keeps the name is a "continue".
-            val fast = setOf("motorway", "trunk")
-            val drive = mode == TravelMode.DRIVE
-            val bIn = drive && beforeFar?.cls in fast; val aIn = drive && afterFar?.cls in fast
+            // A gentle split between two highways is a keep. A bend that keeps the name is a
+            // "continue". A bend onto or off a highway with no link road there is an at-grade
+            // junction and says "Turn left onto", as the open router does.
             events += when {
-                aIn && !bIn -> Ev(i, if (a > 0) ManeuverType.RAMP_RIGHT else ManeuverType.RAMP_LEFT, mod, afterFar?.name, "on ramp")
-                bIn && !aIn -> Ev(i, if (a > 0) ManeuverType.RAMP_RIGHT else ManeuverType.RAMP_LEFT, mod, after?.name ?: afterFar?.name, "off ramp")
                 bIn && aIn && abs(a) < 55.0 -> Ev(i, if (a > 0) ManeuverType.KEEP_RIGHT else ManeuverType.KEEP_LEFT, if (a > 0) "slight right" else "slight left", afterFar?.name, "fork")
                 same -> Ev(i, type, mod, after?.name, "continue")
                 else -> Ev(i, type, mod, after?.name, osrmFor(type))
             }
         }
+        // A link with no bend where it starts (an exit that peels off gently) is said where the
+        // line moves onto it, on the side it moves to.
+        for (ls in stretches) {
+            if (ls in announced || ls.from < w || ls.from + w > s.lastIndex) continue
+            val a = RouteGeometry.bearingDelta(s[(ls.from - near).coerceAtLeast(0)].brg, s[(ls.from + near).coerceAtMost(s.lastIndex)].brg)
+            events += linkEvent(ls.from, if (a == 0.0) 1.0 else a.coerceIn(-54.0, 54.0), ls)
+        }
         events.sortBy { it.i }
+        // A turn the tiles leave unnamed (strict mode wants the street to run on after the turn,
+        // and the short middle of a grid jog does not) takes the street of Google's own step at the
+        // same corner, when that step turns the same way. A slight bend left unnamed where Google
+        // has no step and the tiles, read loosely, have the same street both sides is the road
+        // curving, and is not said. Google's silence alone is not enough: its keyless list can
+        // skip a real junction (a kilometer of "Head toward" from Trafalgar Square).
+        val gs = if (drive) route.stepNames.filter { g -> s.any { it.pt.distanceTo(g.at) <= SIGN_OFF_M } } else emptyList()
+        if (gs.isNotEmpty()) {
+            val used = HashSet<app.vela.core.model.StepName>()
+            fun loose(k: Int) = idx.nearestAligned(s[k.coerceIn(0, s.lastIndex)].pt, s[k.coerceIn(0, s.lastIndex)].brg, LOOSE_OFF_M)?.name
+            var j = 0
+            while (j < events.size) {
+                val e = events[j]
+                if (e.road != null || e.osrm !in PLAIN || e.exitNo != null || e.dest != null) { j++; continue }
+                val p = s[e.i].pt
+                val right = delta[e.i] > 0
+                val g = gs.filter { it !in used && it.at.distanceTo(p) <= STEP_NAME_M && (it.left == null || it.left == !right) }
+                    .minByOrNull { it.at.distanceTo(p) }
+                val how = when {
+                    g?.road != null -> { used += g; events[j] = e.copy(road = g.road, google = g); j++; "named ${g.road}" }
+                    g == null && abs(delta[e.i]) < 55.0 && gs.none { it.at.distanceTo(p) <= CURVE_STEP_M } && loose(e.i - w) == loose(e.i + w) -> { events.removeAt(j); "curve, dropped" }
+                    else -> { j++; "left bare" }
+                }
+                onBend?.invoke("google step ${s[e.i].m.toInt()} m ${delta[e.i].toInt()} deg: $how")
+            }
+        }
+
+        // One turn read as two (a wide corner, a jog onto the same street): two plain turns the
+        // same way within [SPLIT_TURN_M] whose second goes onto the street the first did are one
+        // turn of their summed angle, as OsmAnd merges them. So are two where one took the street
+        // of Google's step and Google has no other step at the other (Google's "Mace Blvd" and the
+        // tiles' "Mace Boulevard" at one wide corner). Two bends that both keep the name are a
+        // hairpin, not a U-turn, and stay as they are.
+        fun oneCorner(e1: Ev, e2: Ev): Boolean {
+            val g = e1.google ?: e2.google ?: return false
+            val other = if (e1.google != null) e2 else e1
+            return other.google == null && other.road != null && gs.none { it != g && it.at.distanceTo(s[other.i].pt) <= STEP_NAME_M }
+        }
+        var k = 0
+        while (k + 1 < events.size) {
+            val e1 = events[k]; val e2 = events[k + 1]
+            val plain = e1.osrm in PLAIN && e2.osrm in PLAIN && (e1.osrm == "turn" || e2.osrm == "turn")
+            val a1 = delta[e1.i]; val a2 = delta[e2.i]
+            if (plain && a1 * a2 > 0 && s[e2.i].m - s[e1.i].m < SPLIT_TURN_M && e2.road != null && (e2.road == e1.road || oneCorner(e1, e2))) {
+                val (type, mod) = classify((a1 + a2).coerceIn(-180.0, 180.0))
+                events[k] = Ev(e1.i, type, mod, e2.road, osrmFor(type), google = e2.google)
+                events.removeAt(k + 1)
+            } else k++
+        }
+        // The tiles say where an exit is but not its number or signs; Google's exit at the same
+        // place does, and which side it leaves on. Each of Google's exits goes to the tiles' exit
+        // nearest it along the line. A tiles' exit found up to [SIGN_LATE_M] past it is the same
+        // exit seen late (a long exit lane hugs the highway) and moves back to Google's point.
+        // Where the tiles have no step near it at all, Google's exit is said as it is: the tiles
+        // missed the link road, and an exit nobody says is the worse miss.
+        if (drive && route.exitSigns.isNotEmpty()) {
+            val placed = route.exitSigns.mapNotNull { sg ->
+                val k = s.indices.minByOrNull { s[it].pt.distanceTo(sg.at) } ?: return@mapNotNull null
+                if (s[k].pt.distanceTo(sg.at) <= SIGN_OFF_M) k to sg else null
+            }.sortedBy { it.first }
+            fun signed(e: Ev, sg: app.vela.core.model.ExitSign, at: Int): Ev {
+                val right = sg.left?.not() ?: (e.type == ManeuverType.RAMP_RIGHT)
+                val agrees = (e.type == ManeuverType.RAMP_RIGHT) == right
+                return e.copy(
+                    i = at, type = if (right) ManeuverType.RAMP_RIGHT else ManeuverType.RAMP_LEFT,
+                    mod = if (agrees) e.mod else if (right) "slight right" else "slight left",
+                    exitNo = sg.number, dest = sg.dest,
+                )
+            }
+            val signedAt = HashSet<Int>()
+            for ((k, sg) in placed) {
+                val at = s[k].m
+                val same = events.indices.filter { it !in signedAt && events[it].osrm == "off ramp" && abs(s[events[it].i].m - at) <= SIGN_ALONG_M }
+                    .minByOrNull { abs(s[events[it].i].m - at) }
+                val how = when {
+                    same != null -> { events[same] = signed(events[same], sg, events[same].i); signedAt += same; "matched" }
+                    events.any { abs(s[it.i].m - at) <= SIGN_ALONG_M } -> "left alone, a step is here"
+                    // At an end of the line it may be the next piece's exit (a hybrid stretch is
+                    // a piece of Google's line, and the open router's steps go on from its ends).
+                    k < w || k > s.lastIndex - w -> "left alone, at an end of the line"
+                    else -> {
+                        val next = events.indices.firstOrNull { s[events[it].i].m > at }
+                        if (next != null && next !in signedAt && events[next].osrm == "off ramp" && s[events[next].i].m - at <= SIGN_LATE_M) {
+                            events[next] = signed(events[next], sg, k); signedAt += next; "moved back from ${s[events[next].i].m.toInt()} m"
+                        } else {
+                            val a = sg.left?.let { if (it) -1.0 else 1.0 }
+                                ?: RouteGeometry.bearingDelta(s[(k - near).coerceAtLeast(0)].brg, s[(k + near).coerceAtMost(s.lastIndex)].brg).let { if (it == 0.0) 1.0 else it }
+                            events += Ev(k, ramp(a), if (a > 0) "slight right" else "slight left", null, "off ramp", sg.number, sg.dest)
+                            events.sortBy { it.i }
+                            signedAt.clear(); events.indices.filterTo(signedAt) { events[it].exitNo != null || events[it].dest != null }
+                            "added"
+                        }
+                    }
+                }
+                onBend?.invoke("google exit ${at.toInt()} m ${sg.number} -> ${sg.dest} left=${sg.left}: $how")
+            }
+        }
 
         // 5. Maneuvers, with the renames between them.
         val dur = route.durationSeconds.takeIf { it > 0 } ?: 0.0
@@ -177,13 +413,16 @@ object LineNamer {
         )
         for ((k, e) in events.withIndex()) {
             val a = starts[k + 1]; val b = ends[k + 1]
-            val run = runName.getOrNull((e.i + w).coerceAtMost(s.lastIndex)) ?: if (e.osrm == "on ramp" || e.osrm == "fork") runAround(e.i, 1) else null
+            val run = (runName.getOrNull((e.i + w).coerceAtMost(s.lastIndex)) ?: if (e.osrm == "on ramp" || e.osrm == "fork") runAround(e.i, 1) else null)
+                // A street named from Google's step takes the tiles' route number only when the
+                // tiles have the same street there.
+                ?.takeUnless { e.google != null && it.name != e.road }
             out += Maneuver(
                 e.type,
-                RouteGeometry.osrmPhrase(e.osrm, e.mod, app.vela.core.nav.instructionRoad(e.road, run?.ref), null, null, null),
+                RouteGeometry.osrmPhrase(e.osrm, e.mod, app.vela.core.nav.instructionRoad(e.road, run?.ref), e.dest, e.exitNo, null),
                 s[e.i].pt, b - a, share(a, b), road = e.road, ref = run?.ref,
                 renames = renamesIn(a, b),
-                instructionNoRoad = RouteGeometry.osrmPhrase(e.osrm, e.mod, null, null, null, null),
+                instructionNoRoad = RouteGeometry.osrmPhrase(e.osrm, e.mod, null, e.dest, e.exitNo, null),
             )
         }
         out += Maneuver(ManeuverType.ARRIVE, RouteGeometry.osrmPhrase("arrive", null, null, null, null, null), poly.last(), 0.0, 0.0)
@@ -194,6 +433,12 @@ object LineNamer {
             source = RouteSource.GOOGLE_LINE_NAMED,
         )
     }
+
+    private enum class LinkKind { ON, OFF, STAY }
+    /** A link road the line runs on from sample [from] to [to], leaving a highway ([LinkKind.OFF])
+     *  or joining one ([LinkKind.ON]), or leaving one and coming back to it ([LinkKind.STAY]).
+     *  [road] is the road it leads to, [toFast] whether that is a highway. */
+    private data class LinkStretch(val from: Int, val to: Int, val kind: LinkKind, val road: String?, val toFast: Boolean)
 
     private fun osrmFor(t: ManeuverType) = when (t) {
         ManeuverType.UTURN -> "continue"
@@ -303,6 +548,16 @@ object LineNamer {
             if (bestD >= maxOff) return null
             if (strict && otherD - bestD < AMBIGUOUS_M) return null
             return best
+        }
+        /** Meters to the nearest line running [brg]'s way near [p], or infinity past one cell. */
+        fun alignedDist(p: LatLng, brg: Double): Double {
+            val gx = (p.lng * kx / cell).toInt(); val gy = (p.lat * 111_320.0 / cell).toInt()
+            var bestD = Double.POSITIVE_INFINITY
+            for (dx in -1..1) for (dy in -1..1) for (seg in grid[key(gx + dx, gy + dy)].orEmpty()) {
+                val diff = abs(RouteGeometry.bearingDelta(brg, seg.brg)).let { if (it > 90.0) 180.0 - it else it }
+                if (diff <= ALIGN_DEG) bestD = minOf(bestD, segDist(p, seg.a, seg.b))
+            }
+            return bestD
         }
         private fun segDist(p: LatLng, a: LatLng, b: LatLng): Double {
             val ax = a.lng * kx; val ay = a.lat * 111_320.0

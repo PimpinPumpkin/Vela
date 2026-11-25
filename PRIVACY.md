@@ -43,26 +43,27 @@ logged-out browser's. They are not tied to an account.
 | **google.com** (search) | every search you submit, and a tap on a place on the map | your IP, the query (for a tap, the place's name), the map view (for a tap, the tapped spot). When you search from inside the view, a second request over about 2.5 km around your position so nearby places rank first. The same short-lived cookie |
 | **google.com** (places on the map) | only with "Place icons on the map" on **Both** (one request after you stop panning) or **Google** (as you pan) | your IP, the map area |
 | **google.com** (place details, photos, reviews) | opening a place | your IP, the place's name and address or Google's id for it, and the Google session cookie (below) |
-| **google.com** (directions) | planning a driving route, a walking route once, and a cycling route when the bike-lanes setting is off or its routers have no answer | your IP, and the coordinates of the start, the end and any stops. When the end is a place found on Google, its name, address and Google id too. The start is your position when you route from "Your location". Google's answer is the route you drive |
+| **google.com** (directions) | planning a driving route, a walking route once, and a cycling route when the bike-lanes setting is off or its routers have no answer | your IP, and the coordinates of the start, the end and any stops. When the end is a place found on Google, its name, address and Google id too. The start is your position when you route from "Your location". Google's answer is the route you drive. A drive is asked twice, the second time with tolls avoided, to show a no-toll route beside a toll one; Settings > Navigation > "No-toll route option" turns the second off |
 | **google.com** (directions, during a drive) | when you leave the route, and every 2 minutes or so for traffic | your IP, your current position and the destination (with its name, address and Google id when it is a Google place). Settings > Navigation > "Live traffic re-checks while navigating" turns the periodic one off |
 | **google.com** (hidden pages) | the features only a browser engine gets, listed under "The hidden pages" | your IP, the page's address (the place, or a transit trip's endpoints), the Google session cookie, and whatever Google's own page script collects |
 | **google.com / googleapis.com** (Street View) | opening Street View, walking between panoramas, going back in time | your IP, the place's coordinate or a panorama id, then image tile coordinates |
 | **google.com/maps/vt** (traffic layer) | "Live traffic overlay" on (Settings > Map, off by default) | your IP, the tile coordinates in view |
 | **mt1.google.com** (satellite close-ups) | satellite view, zoomed in past where Esri has imagery | your IP, tile coordinates |
 | **maps.app.goo.gl** | opening a shared short Google Maps link | your IP and that link. No cookies |
-| **OpenFreeMap** | viewing the map | your IP, which map tiles you pan over |
+| **OpenFreeMap** | viewing the map; starting a drive with "Save the map along the route" on (Settings > Offline maps, on by default) | your IP, which map tiles you pan over; for a drive, the tiles along its route, all at once |
 | **Esri World Imagery** | satellite view (off by default) | your IP, tile coordinates, and the view's bounds (to label the imagery date) |
 | **Photon** (komoot's OpenStreetMap geocoder) | typing text that starts with a house number, and every search with "Use Vela without Google" on | your IP, the typed text, a bias point (the map center or your position) |
 | **OSM Nominatim** | long-pressing to drop a pin, tapping a house number, a building or an unnamed icon | your IP, that one coordinate |
-| **Transitous** (open transit data) | transit stops at street zoom, colored rail lines while "Highlight transit lines" is on, every departure board (refreshed every 30 s while open), and the real path of a transit trip you expand | your IP, the map area, a stop's id or coordinate, or the trip's two stops |
+| **Transitous** (open transit data) | transit stops at street zoom, colored rail lines while "Highlight transit lines" is on, every departure board (refreshed every 30 s while open), the real path of a transit trip you expand, and transit directions when Google is off or has only a walk for the trip | your IP, the map area, a stop's id or coordinate, the trip's two stops, or a transit trip's start and destination |
 | **AWS** (terrain tiles) | hillshade relief | your IP, tile coordinates |
-| **FOSSGIS OSRM** | every route you plan and every reroute | your IP, the start, end and stop coordinates, and during a reroute your position and heading. Its turn instructions are used wherever its roads match the route |
-| **FOSSGIS Valhalla** | a driving route where Google's path and OSRM's differ; a drive with an Avoid switch on when Google gives no route and no downloaded region does; bike routes with "Bike routes prefer bike lanes and quiet streets" on (the default) and no downloaded region | your IP. For a drive, the coordinates along the stretches that differ, to get their street names, or the start and end of an avoiding drive. For a bike route, the start, end and stops |
+| **FOSSGIS OSRM** | every route you plan and every reroute | your IP, the start, end and stop coordinates, and during a reroute your position and heading. For a search along a route, your position, points on the route and the places it found, to price the minutes each place adds. Its turn instructions are used wherever its roads match the route. Where Google's route turns at a junction OSRM's route leaves another way, two points 40 m either side of that turn, to check the turn is allowed |
+| **FOSSGIS Valhalla** | a driving route where Google's path and OSRM's differ; a drive with an Avoid switch on when Google gives no route and no downloaded region does; bike routes with "Bike routes prefer bike lanes and quiet streets" on (the default) and no downloaded region | your IP. For a drive, the coordinates along the stretches that differ, to get their street names, or the start and end of an avoiding drive, and two points either side of a turn OSRM finds banned. For a bike route, the start, end and stops. For a GPX track you open, the track's points, once per app session, to match it to the roads |
 | **NDW** (Dutch national road data) | a drive whose route enters the Netherlands, with "Bridge openings" on (the default), then every 5 minutes while a movable bridge is on the route | your IP. A plain file download, the same for everyone |
 | **Overpass** (OpenStreetMap) | only where no baked region file covers the spot: traffic lights and stop signs, the opt-in speed camera layer, and with "Traffic-light guidance" on the lights along a route when its drive starts | your IP, a bounding box |
 | **raw.githubusercontent.com, api.github.com, GitHub Pages** | at launch (settings file, map fonts), about once a day for the update check, once after an update for the What's new notes | your IP. A plain file download |
 | **velamaps.org** (Cloudflare Pages) | at launch, only when GitHub does not answer for the settings file | your IP. A plain file download, the same for everyone |
 | **GitHub release files** | downloading regions, voices and app updates, and streaming the place, building and house-number layers as you browse | your IP, and which file or byte range is fetched, which implies your rough map area |
+| **GitHub release files** (toll prices) | at launch, a small manifest, and the toll file when it has a newer version | your IP. The file is the same for everyone |
 | **GitHub release files** (UK fuel prices) | a gas station in the UK shows up in your results or on a place page without a price; at most every 3 hours after that | your IP. The file is the same one nationwide for everyone, so it says only that you looked at a UK gas station |
 
 None of these receives a Google account, a name, a device id or your contacts.
@@ -141,11 +142,10 @@ Settings > Performance > "Load all photos and reviews" (off by default) makes ev
 open walk its whole gallery and up to 50 reviews, which means more page loads.
 
 This is the one place Google's own JavaScript runs on your phone. It runs with no login, but
-like any browser visit to Google it can set cookies or fingerprint the browser, and it sends
-Google's usual page telemetry. That telemetry goes out by default, because a browser that never
-sends it looks less like a person, which feeds into whether a session gets the limited view.
-**Settings > Privacy > "Block Google's page telemetry"** answers those calls on the phone
-instead. Nothing Vela shows depends on them. If you never open a Google place, transit
+like any browser visit to Google it can set cookies or fingerprint the browser. The page's
+logging pings and ad and analytics requests are answered on the phone and never reach Google.
+The account bar's background calls go out by default; **Settings > Privacy > "Block Google's
+page telemetry"** answers those on the phone too. Nothing Vela shows depends on any of them. If you never open a Google place, transit
 directions, or a board outside Transitous's coverage, no hidden page loads.
 
 **You can see the numbers.** Settings > Privacy > "Requests to Google" counts every request
@@ -173,11 +173,21 @@ looked up as if you had typed it: it goes to Google's search, to Photon with "Us
 Google" on, or to the downloaded region's address index offline. The result opens under the
 contact's name on this phone only. The name is never sent anywhere.
 
+**Saving where you park (off by default).** With Settings > Map > "Save where I park" on, the
+phone works out where the car was left from the location fixes Vela already gets during a drive
+and keeps the spot on the phone, like the P button does. Nothing is sent anywhere. Its option
+"Also when the car's Bluetooth disconnects" asks for two more permissions when you turn it on:
+Nearby devices, to tell a car's Bluetooth from headphones, and location all the time, so that
+when the car's Bluetooth drops with Vela closed, Vela can take one location fix and save the
+spot. Vela uses location in the background for nothing else. Turning the option off stops it;
+Android's settings take the permissions back.
+
 ## No tracking
 
 Vela has no analytics, no advertising, no crash reporting, and no telemetry of its own that
-runs without you turning it on. The one telemetry that runs by default is Google's, from inside
-the Google pages Vela loads in hidden WebViews, and Settings > Privacy can block it. The app
+runs without you turning it on. The Google pages Vela loads in hidden WebViews never send their
+logging pings or ad requests. Their account bar's background calls go out by default, and
+Settings > Privacy can block them. The app
 makes network requests only to the services in the table, only when a feature needs them. It is
 GPLv3: every request is in
 [`core/data/google`](core/src/main/java/app/vela/core/data/google),

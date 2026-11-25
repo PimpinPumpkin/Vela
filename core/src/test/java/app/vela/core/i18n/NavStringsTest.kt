@@ -43,7 +43,7 @@ class NavStringsTest {
         assertEquals(EnNavStrings, NavStringsRegistry.current()) // default, locale-independent
         assertEquals(FrNavStrings, NavStringsRegistry.forLanguage("fr"))
         assertEquals(JaNavStrings, NavStringsRegistry.forLanguage("ja")) // now translated
-        assertEquals(EnNavStrings, NavStringsRegistry.forLanguage("th")) // untranslated → English fallback
+        assertEquals(EnNavStrings, NavStringsRegistry.forLanguage("ko")) // untranslated → English fallback
         // Portuguese splits by country: Portugal's table for pt and pt-PT, Brazil's for pt-BR (PR #825).
         assertEquals("pt", NavStringsRegistry.tagOf(java.util.Locale("pt")))
         assertEquals("pt", NavStringsRegistry.tagOf(java.util.Locale("pt", "PT")))
@@ -124,6 +124,9 @@ class NavStringsTest {
     @Test fun `expandForSpeech is English-only opt-in`() {
         assertEquals("Turn right onto Main Street", EnNavStrings.expandForSpeech("Turn right onto Main St"))
         assertEquals("one twenty eighth Street", EnNavStrings.expandForSpeech("128th St"))
+        // Google's exit signs.
+        assertEquals("take the 147 exit, toward Bush Intercontinental Airport, Denver International Airport",
+            EnNavStrings.expandForSpeech("Take exit 147 toward Bush Intercont'l Arpt, Denver Int'l Airport"))
         // French leaves the text — including a road abbreviation — untouched (interface default identity).
         assertEquals("Tournez sur Rue St", FrNavStrings.expandForSpeech("Tournez sur Rue St"))
         // Other languages also leave text untouched (they use the interface default).
@@ -156,8 +159,23 @@ class NavStringsTest {
         assertEquals("500 メートル先、右に曲がります", JaNavStrings.inThen("500 メートル", "右に曲がります"))
     }
 
+    @Test fun `thai phrases, distances and the registry`() {
+        val th = NavStringsRegistry.forLanguage("th")
+        assertEquals(ThNavStrings, th)
+        assertEquals(ThNavStrings, NavStringsRegistry.forLanguage(NavStringsRegistry.tagOf(java.util.Locale("th", "TH"))))
+        assertEquals("เลี้ยวซ้ายเข้าสู่ ถนนสายหลัก", th.phrase("turn", "left", "ถนนสายหลัก", null, null, null))
+        assertEquals("เลี้ยวขวา", th.phrase("turn", "right", null, null, null, null))
+        assertEquals("ใช้ทางออก 12 มุ่งหน้า Downtown", th.phrase("off ramp", null, null, "Downtown", "12", null))
+        assertEquals("ใช้ทางออก 12", th.repeatShort("ใช้ทางออก 12 มุ่งหน้า Downtown"))
+        assertEquals("ที่วงเวียน ใช้ทางออกที่ 2 เข้าสู่ Elm St", th.phrase("roundabout", null, "Elm St", null, null, 2))
+        assertEquals("150 เมตร", th.spokenDistance(150.0, false))
+        assertEquals("2.4 กิโลเมตร", th.spokenDistance(2400.0, false))
+        assertEquals("อีก 500 เมตร เลี้ยวขวา", th.inThen("500 เมตร", "เลี้ยวขวา"))
+        assertEquals("ใช้ 2 ช่องทางด้านขวา", th.useLanes(LaneSide.RIGHT, 2))
+    }
+
     @Test fun `every registered language produces non-blank nav strings and keeps road names`() {
-        val langs = listOf("fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "hu", "ro", "zh", "ja", "he")
+        val langs = listOf("fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "hu", "ro", "zh", "ja", "th", "he")
         for (code in langs) {
             val ns = NavStringsRegistry.forLanguage(code)
             assertEquals("$code should map to its own NavStrings", code, ns.locale.language)
@@ -195,7 +213,7 @@ class NavStringsTest {
             // Hebrew directional adverbs; the noun "ימין" ends in a FINAL nun (ן), which is NOT a
             // substring of the emitted "ימינה" (medial נ) — so match the emitted forms themselves.
             "sv" to ("vänster" to "höger"), "uk" to ("лів" to "прав"), "he" to ("שמאלה" to "ימינה"),
-            "ro" to ("stânga" to "dreapta"),
+            "ro" to ("stânga" to "dreapta"), "th" to ("ซ้าย" to "ขวา"),
         )
         for ((code, words) in sideWords) {
             val ns = NavStringsRegistry.forLanguage(code)
@@ -244,7 +262,9 @@ class NavStringsTest {
     }
 
     @Test fun `the lights lead-in joins the turn in the language's own words`() {
-        assertEquals("Pass the traffic light, then turn left", EnNavStrings.lightThen(EnNavStrings.passLights(1), "Turn left"))
+        assertEquals("Go past this light, then turn left", EnNavStrings.lightThen(EnNavStrings.passLights(1), "Turn left"))
+        assertEquals("At the light, turn right onto Main Street", EnNavStrings.atLight("Turn right onto Main Street"))
+        assertEquals("a language without the phrase says the turn alone", null, RoNavStrings.atLight("Virați la dreapta"))
         assertEquals("Treceți de semafor, apoi virați la stânga", RoNavStrings.lightThen(RoNavStrings.passLights(1), "Virați la stânga"))
         assertEquals("Menj el a közlekedési lámpa mellett, majd fordulj balra", HuNavStrings.lightThen(HuNavStrings.passLights(1), "Fordulj balra"))
     }

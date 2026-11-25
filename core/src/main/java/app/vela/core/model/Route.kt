@@ -41,6 +41,18 @@ data class Maneuver(
     // along the line (RouteGeometry.enrichWithLights; "Traffic-light guidance"). The voice says
     // "Pass the traffic light, then ..." for the ones still ahead of the car when it speaks.
     val lightsBeforeM: List<Double> = emptyList(),
+    // The turn's own junction has a traffic light (RouteGeometry.enrichWithLights): the voice says
+    // "At the light, turn left onto ..." near the turn and at it.
+    val lightAtTurn: Boolean = false,
+    // Stop signs the route stops at on the way to this maneuver, as meters before it, and whether
+    // the car stops at one at the turn itself (RouteGeometry.enrichWithLights): "At the stop sign,
+    // turn right onto ...", and further out "At the next stop sign" when none comes first.
+    val stopsBeforeM: List<Double> = emptyList(),
+    val stopAtTurn: Boolean = false,
+    // OpenStreetMap bans this turn and both open routers refused it, but the legal way round cost
+    // too much to replace Google's turn (TurnBans): the turn card and the step list say it may not
+    // be allowed.
+    val mayBeBanned: Boolean = false,
 ) {
     /** What the VOICE should say for this maneuver, honoring the spoken-street-names preference. */
     fun spokenInstruction(): String =
@@ -54,6 +66,15 @@ data class Maneuver(
         return name to r
     }
 }
+
+/** One of Google's exits: where it leaves the road ([at]), its [number] when it has one ("4A"),
+ *  the signs it is posted toward ([dest]) in the open router's form ("I-5 N: Redding"), and
+ *  which side it leaves on ([left]; null when Google's icon does not say). */
+data class ExitSign(val at: LatLng, val number: String?, val dest: String?, val left: Boolean? = null)
+
+/** One of Google's steps: its point ([at]), the street it goes onto ([road], as Google writes it,
+ *  "E 8th St"), and the side it turns ([left]; null when the step does not say). */
+data class StepName(val at: LatLng, val road: String?, val left: Boolean?)
 
 /** A name change along a maneuver's leg: [atMeters] past the maneuver the road becomes [road] / [ref]. */
 data class RoadRename(val atMeters: Double, val road: String?, val ref: String?)
@@ -182,7 +203,8 @@ enum class RouteSource {
      *  until it is picked and named. Never driven as is. */
     GOOGLE_PROVISIONAL,
     /** Google's line kept as is, turns taken from its bends and each stretch named from the map's
-     *  vector tiles (LineNamer). No lanes or sign destinations. */
+     *  vector tiles (LineNamer), with exit numbers and signs where Google's reply has the exit.
+     *  No lanes. */
     GOOGLE_LINE_NAMED,
     /** Google's line, with the open router's maneuvers where the two routes share the road and
      *  tile-named turns (LineNamer) where Google leaves it (HybridRoute). */
@@ -201,6 +223,10 @@ private val PLAIN_TURNS = setOf(
     ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.SLIGHT_LEFT, ManeuverType.SLIGHT_RIGHT,
     ManeuverType.SHARP_LEFT, ManeuverType.SHARP_RIGHT, ManeuverType.UTURN,
 )
+
+/** [Route.tolls]: the fastest route differs from the one Google gives with tolls avoided, so it
+ *  probably uses a toll road ([MAY_HAVE_TOLLS]); the avoiding route has none ([NO_TOLLS]). */
+enum class TollNote { MAY_HAVE_TOLLS, NO_TOLLS }
 
 data class Route(
     val polyline: List<LatLng>,
@@ -245,6 +271,9 @@ data class Route(
     val detourPlan: List<LatLng> = emptyList(),
     /** The name of the user's saved route this is (issue #622); shown on its row instead of the "via". */
     val savedName: String? = null,
+    /** What the chooser can say about tolls on this route, from asking Google for the same trip with
+     *  tolls avoided ([app.vela.core.nav.TollCompare]). Null when it says nothing. */
+    val tolls: TollNote? = null,
     // See [RouteSource]. Stamped by every constructor; UNKNOWN only for old trip files.
     val source: RouteSource = RouteSource.UNKNOWN,
     /** Local road name -> its Latin alias (OSM `name:en`, else a Latin `name:latin`) for the roads this
@@ -275,6 +304,14 @@ data class Route(
      *  (`NavEngine.legSecondsBeyond`). Empty for a direct trip and for a route whose router gave
      *  no per-leg times. */
     val legTimes: List<LegTime> = emptyList(),
+    /** Google's exits along [polyline], each at the point Google puts it, with its number and
+     *  signs (read by `DirectionsParser`). The steps of a route named from the map tiles take
+     *  them, since the tiles carry neither (`LineNamer`). Empty for every other router. */
+    val exitSigns: List<ExitSign> = emptyList(),
+    /** Google's steps along [polyline] that name a street or a side, each at its own point (read
+     *  by `DirectionsParser`). A turn the map tiles leave unnamed takes the street of the one at
+     *  its corner (`LineNamer`). Empty for every other router. */
+    val stepNames: List<StepName> = emptyList(),
 ) {
     val hasLiveTraffic: Boolean get() = durationInTrafficSeconds != null
 

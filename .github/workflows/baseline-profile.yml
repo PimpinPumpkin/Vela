@@ -1,5 +1,5 @@
 # Regenerates the committed baseline profile (app/src/release/generated/baselineProfiles/) on a
-# headless emulator and opens a PR with the diff. The profile itself is BAKED by every normal CI
+# headless emulator and commits it to canary when it changed. The profile itself is BAKED by every normal CI
 # release build - this workflow only refreshes WHICH methods are recorded, so it runs on demand
 # (and monthly) rather than per push: per-nightly regeneration would cost ~15 emulator-minutes a
 # day for a file that only drifts when the app's hot paths change shape.
@@ -16,7 +16,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   generate:
@@ -31,7 +30,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "17"
@@ -79,33 +78,48 @@ jobs:
             -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect
 
       - name: Keep the generated profile
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: baseline-profile
           path: app/src/release/generated/baselineProfiles/
 
-      - name: Open a PR if the profile changed
-        # main only: from another branch (a toolchain check on canary) the PR would carry every
-        # commit that branch has and main does not. There the artifact above is the result.
+      - name: Check the profile reached the map
+        # A journey stuck on a first-run page still writes a profile, of that page alone.
+        run: |
+          f=app/src/release/generated/baselineProfiles/baseline-prof.txt
+          for c in app/vela/ui/map/MapScreenKt org/maplibre/android/maps/MapView; do
+            grep -q "$c" "$f" || { echo "::error::The profile has no $c: the journey never reached the map."; exit 1; }
+          done
+
+      - name: Commit the profile to canary if it changed
+        # main only: from another branch (a toolchain check on canary) the result is the artifact
+        # above. The profile is generated from main's code and committed onto canary, the working
+        # branch, which reaches main with the next canary push to main. The repository does not let
+        # Actions open pull requests, and a branch left for one by hand went stale. A push with the
+        # job's own token starts no workflow, so the canary build takes the profile with the next
+        # push there.
         if: github.ref == 'refs/heads/main'
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           # git status, not git diff: the first profile is a new file, which a diff does not see.
           if [ -z "$(git status --porcelain app/src/release/generated/baselineProfiles/)" ]; then
             echo "Profile unchanged - nothing to do."
             exit 0
           fi
-          BRANCH="baseline-profile-refresh-$(date -u +%Y%m%d)"
+          keep="$(mktemp -d)"
+          cp -r app/src/release/generated/baselineProfiles "$keep/"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH"
-          git add app/src/release/generated/baselineProfiles/
-          git commit -m "Refresh the baseline profile"
-          git push origin "$BRANCH"
-          # The repository does not let Actions open pull requests (Settings > Actions > General).
-          # The branch is the result then: open the pull request from it by hand.
-          gh pr create --base main --head "$BRANCH" \
-            --title "Refresh the baseline profile" \
-            --body "Automated monthly regeneration on the emulator. The committed profile is what every release build bakes; merging ships the refreshed hot-path list with the next nightly." \
-            || echo "::warning::The refreshed profile is on branch $BRANCH. Open a pull request: https://github.com/${{ github.repository }}/compare/main...$BRANCH"
+          for attempt in 1 2 3; do
+            git fetch --depth=20 origin +refs/heads/canary:refs/remotes/origin/canary
+            git checkout -f -B profile-to-canary refs/remotes/origin/canary
+            rm -rf app/src/release/generated/baselineProfiles
+            mkdir -p app/src/release/generated
+            cp -r "$keep/baselineProfiles" app/src/release/generated/
+            git add -A app/src/release/generated/baselineProfiles/
+            if git diff --cached --quiet; then echo "canary already has this profile."; exit 0; fi
+            git commit -q -m "The startup profile is refreshed for the current code"
+            # canary can move while the job runs: fetch it again and redo the commit on top.
+            if git push origin HEAD:refs/heads/canary; then exit 0; fi
+            sleep $((attempt * 10))
+          done
+          echo "::warning::Could not push the refreshed profile to canary; it is in the artifact."

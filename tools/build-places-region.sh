@@ -86,7 +86,11 @@ if [ -n "${OSM_PBF:-}" ] && command -v osmium >/dev/null 2>&1 && command -v jq >
   OSM_SRC="$OSM_PBF"
   if [ "${OSM_PBF#http}" != "$OSM_PBF" ] || [ "${OSM_PBF#cut:}" != "$OSM_PBF" ]; then
     echo "osm: fetching $OSM_PBF"
-    if bash "$ROOT/scripts/fetch-pbf.sh" "$OSM_PBF" "$WORK/region.osm.pbf"; then OSM_SRC="$WORK/region.osm.pbf"; else OSM_SRC=""; echo "osm: download failed, baking without it"; fi
+    # A failed download fails the region rather than baking it without OSM's businesses: the
+    # release keeps the region's last archive, and the conductor retries it (on 2026-11-20, 34 of 64
+    # regions were published without them while Geofabrik moved its files).
+    if bash "$ROOT/scripts/fetch-pbf.sh" "$OSM_PBF" "$WORK/region.osm.pbf"; then OSM_SRC="$WORK/region.osm.pbf"
+    else echo "::error::osm: could not download $OSM_PBF; the region keeps its last archive and is retried" >&2; exit 1; fi
   fi
   if [ -n "$OSM_SRC" ]; then
     # Named NODES that are businesses. Ways/relations are the building, whose centroid is the same
@@ -259,7 +263,10 @@ ATP_SQL=""
 if [ -n "$ATP_NDJSON" ]; then
 read -r -d '' ATP_SQL <<ATPSQL || true
 CREATE TABLE atp_raw AS SELECT props, lng, lat FROM read_json('$ATP_NDJSON', format = 'newline_delimited', columns = {props: 'JSON', lng: 'DOUBLE', lat: 'DOUBLE'});
+-- DISTINCT ON (id): tippecanoe-decode writes a point on a tile edge once per tile it touches, and
+-- every copy kept its id to the end (100 repeated ids in the Delaware box, 218 extra features).
 CREATE TABLE atp AS
+SELECT DISTINCT ON (id) * FROM (
 SELECT 'atp:' || (json_extract_string(props, '@spider')) || ':' || COALESCE(json_extract_string(props, 'ref'), md5(CAST(lng AS VARCHAR) || ',' || CAST(lat AS VARCHAR))) AS id,
   -- Some locators name a branch after its town ("Davis", "Davis, CA"); the brand is the name then.
   CASE WHEN json_extract_string(props, 'brand') IS NOT NULL
@@ -275,11 +282,13 @@ SELECT 'atp:' || (json_extract_string(props, '@spider')) || ':' || COALESCE(json
   -- A locator's addr:full already names the town; only a split address gets the town appended.
   CASE WHEN json_extract_string(props, 'addr:full') IS NULL THEN fmtloc(json_extract_string(props, 'addr:city'),
     json_extract_string(props, 'addr:state'), json_extract_string(props, 'addr:postcode'),
-    coalesce(json_extract_string(props, 'addr:country'), (SELECT cc FROM regioncc))) END AS loc
+    coalesce(json_extract_string(props, 'addr:country'), (SELECT cc FROM regioncc))) END AS loc,
+  pckey(json_extract_string(props, 'addr:postcode')) AS pc
 FROM atp_raw
 WHERE json_extract_string(props, 'name') IS NOT NULL AND json_extract_string(props, 'name') <> ''
   AND lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N
-  AND isbiz(props);
+  AND isbiz(props)
+) ORDER BY id, lat, lng;
 
 CREATE TABLE rawkeys AS SELECT id, lat, lng, nkey(name) AS nk, lower(brand) AS bk, snapkey(name) AS sk FROM raw;
 CREATE TABLE atpkeys AS SELECT id, lat, lng, nkey(name) AS nk, lower(brand) AS bk, snapkey(name) AS sk FROM atp;
@@ -313,6 +322,7 @@ INSERT INTO raw
 SELECT a.id, a.name, a.category, a.confidence, a.brand, a.addr, a.website, a.phone, a.operating_status, a.lng, a.lat, a.hours
 FROM atp a WHERE a.id NOT IN (SELECT id FROM atpdupes);
 INSERT INTO locs SELECT id, loc FROM atp WHERE id NOT IN (SELECT id FROM atpdupes) AND loc IS NOT NULL;
+INSERT INTO pcs SELECT id, pc FROM atp WHERE id NOT IN (SELECT id FROM atpdupes) AND pc IS NOT NULL;
 SELECT (SELECT count(*) FROM atpfill WHERE hours IS NOT NULL) AS atp_hours_carried;
 -- arg_min, not row_number() ... WHERE rn = 1: DuckDB 1.5.6 dies on that window over this join
 -- and filter with "INTERNAL Error: Failed to cast expression to type" (1.5.4 ran it), and CI
@@ -332,8 +342,9 @@ ATPSQL
 fi
 if [ -n "$LOCAL" ]; then
   SRC="read_parquet('$LOCAL')"
-  SEL="id, name, category, confidence, brand, addr, website, phone, operating_status, lng, lat, CAST(NULL AS VARCHAR) AS loc, CAST(NULL AS VARCHAR) AS cc"
-  # The dev extract has plain lng/lat columns and no bbox struct.
+  SEL="id, name, category, confidence, brand, addr, website, phone, operating_status, lng, lat, CAST(NULL AS VARCHAR) AS loc, CAST(NULL AS VARCHAR) AS cc, CAST(NULL AS VARCHAR[]) AS sup, CAST(NULL AS VARCHAR) AS pc"
+  # The dev extract has plain lng/lat columns and no bbox struct. It has no suppliers either, so
+  # the one-supplier rule below never fires on it.
   BBOXPRED=""
 else
   SRC="read_parquet('s3://overturemaps-us-west-2/release/$RELEASE/theme=places/type=place/*', hive_partitioning=1)"
@@ -344,7 +355,10 @@ else
   else
     CATCOL="categories.primary"
   fi
-  SEL="id, names.primary AS name, $CATCOL AS category, confidence, brand.names.primary AS brand, addresses[1].freeform AS addr, websites[1] AS website, phones[1] AS phone, operating_status, ST_X(geometry) AS lng, ST_Y(geometry) AS lat, fmtloc(addresses[1].locality, addresses[1].region, addresses[1].postcode, addresses[1].country) AS loc, addresses[1].country AS cc"
+  # `sup` is who Overture took the place from: every dataset in `sources` except Overture's own
+  # ('Overture' carries the confidence, 'Overture-signals' an operating-status signal). A record
+  # has one supplier; a second dataset appears when another supplier confirms a property.
+  SEL="id, names.primary AS name, $CATCOL AS category, confidence, brand.names.primary AS brand, addresses[1].freeform AS addr, websites[1] AS website, phones[1] AS phone, operating_status, ST_X(geometry) AS lng, ST_Y(geometry) AS lat, fmtloc(addresses[1].locality, addresses[1].region, addresses[1].postcode, addresses[1].country) AS loc, addresses[1].country AS cc, list_sort(list_distinct(list_filter(list_transform(sources, lambda s: s.dataset), lambda d: lower(d) NOT IN ('overture', 'overture-signals')))) AS sup, addresses[1].postcode AS pc"
   # PRUNE ON bbox, NOT ON THE GEOMETRY (2026-09-18). The region filter below is on ST_X/ST_Y, which
   # DuckDB has to decode per row, so every place on earth was read for every region: 504 s of a
   # 570 s Kentucky bake, once per region, 414 times. Overture's own `bbox` struct is a plain column
@@ -419,17 +433,20 @@ SELECT (SELECT count(*) FROM fsqclosed) AS closed_in_foursquare,
   fi
 fi
 
-# Overture ADDRESSES for the unit-level snap above. Skipped on the local-parquet dev path (the
-# extract has places only), which leaves the table empty and every stacked row on the ring.
+# Overture ADDRESSES, one read for two rules: the points with a unit for the unit-level snap, and
+# the points whose house number an address-twin group needs (twinrows) for the twin rule. Skipped
+# on the local-parquet dev path (the extract has places only), which leaves the table empty: every
+# stacked row goes on the ring and every twin group falls through to its second rule.
 if [ -n "$LOCAL" ]; then
-  ADDR_SQL="CREATE TABLE addrpts (anum VARCHAR, aunit VARCHAR, alat DOUBLE, alng DOUBLE);"
+  ADDR_SQL="CREATE TABLE addrsrc (anum VARCHAR, aunit VARCHAR, hasunit BOOLEAN, asw VARCHAR, apc VARCHAR, alat DOUBLE, alng DOUBLE);"
 else
-  ADDR_SQL="CREATE TABLE addrpts AS
+  ADDR_SQL="CREATE TABLE addrsrc AS
 SELECT number AS anum,
        regexp_replace(upper(regexp_replace(coalesce(unit, ''), '(?i)^(ste|suite|unit|apt|apartment|rm|room|no|#)[ .]*', '')), '[^A-Za-z0-9]', '') AS aunit,
+       unit IS NOT NULL AS hasunit, stword(street) AS asw, pckey(postcode) AS apc,
        ST_Y(geometry) AS alat, ST_X(geometry) AS alng
 FROM read_parquet('s3://overturemaps-us-west-2/release/$RELEASE/theme=addresses/type=*/*', hive_partitioning=1)
-WHERE unit IS NOT NULL AND number IS NOT NULL
+WHERE number IS NOT NULL AND (unit IS NOT NULL OR number IN (SELECT num FROM twinrows))
   AND bbox.xmin BETWEEN $W AND $E AND bbox.ymin BETWEEN $S AND $N;"
 fi
 # OSM AS A SOURCE, not only a position (user 2026-09-18). Overture publishes monthly and neither
@@ -466,7 +483,8 @@ SELECT 'osm:' || id AS id, name, osmcat(props) AS category,
   coalesce(json_extract_string(props, 'phone'), json_extract_string(props, 'contact:phone')) AS phone,
   'open' AS operating_status, json_extract_string(props, 'opening_hours') AS hours, lng, lat,
   fmtloc(json_extract_string(props, 'addr:city'), json_extract_string(props, 'addr:state'),
-    json_extract_string(props, 'addr:postcode'), coalesce(json_extract_string(props, 'addr:country'), (SELECT cc FROM regioncc))) AS loc
+    json_extract_string(props, 'addr:postcode'), coalesce(json_extract_string(props, 'addr:country'), (SELECT cc FROM regioncc))) AS loc,
+  pckey(json_extract_string(props, 'addr:postcode')) AS pc
 FROM osm_src WHERE name IS NOT NULL AND name <> '' AND id <> '' AND isbiz(props);
 -- Keys are recomputed here, AFTER the AllThePlaces insert, so OSM dedupes against everything
 -- already in the table rather than against Overture alone.
@@ -501,6 +519,7 @@ INSERT INTO raw
 SELECT o.id, o.name, o.category, o.confidence, o.brand, o.addr, o.website, o.phone, o.operating_status, o.lng, o.lat, o.hours
 FROM osmbiz o WHERE o.id NOT IN (SELECT id FROM osmdupes) AND o.category IS NOT NULL;
 INSERT INTO locs SELECT id, loc FROM osmbiz WHERE id NOT IN (SELECT id FROM osmdupes) AND category IS NOT NULL AND loc IS NOT NULL;
+INSERT INTO pcs SELECT id, pc FROM osmbiz WHERE id NOT IN (SELECT id FROM osmdupes) AND category IS NOT NULL AND pc IS NOT NULL;
 INSERT INTO names_en SELECT 'osm:' || oid, en FROM osmen WHERE 'osm:' || oid IN (SELECT id FROM raw);
 SELECT (SELECT count(*) FROM osmbiz) AS osm_biz_in_box, (SELECT count(*) FROM raw WHERE id LIKE 'osm:%') AS osm_biz_added;
 OSMBIZSQL
@@ -700,6 +719,11 @@ SELECT (SELECT count(*) FROM osm_raw) AS osm_nodes, (SELECT count(*) FROM osm_sn
 OSMSQL
 fi
 
+# The one-supplier rule (#914, below) drops a row no second source backs, and OSM is most of the
+# backing: with no extract (no catalog pbf_url, or a failed download) it would drop every such row
+# for want of anyone to ask, so it runs only when the bake has OSM.
+ONESRC=false
+if [ -n "$OSM_NDJSON" ]; then ONESRC=true; else echo "osm: no extract, so the one-supplier rule is off"; fi
 TAXMAP="$(cd "$(dirname "$0")" && pwd)/overture-taxonomy-map.csv"
 # -bail: a failed statement used to leave every later table missing and still exit 0, which the
 # workflow read as "no places" (every nightly bake from 2026-09-24 to 2026-09-27).
@@ -730,6 +754,15 @@ CREATE TABLE taxmap AS SELECT * FROM read_csv('$TAXMAP', header = true, columns 
 UPDATE raw SET category = taxmap.old FROM taxmap WHERE raw.category = taxmap.new;
 CREATE TABLE regioncc AS SELECT coalesce(mode(cc), 'US') AS cc FROM raw;
 CREATE TABLE locs AS SELECT id, loc FROM raw WHERE loc IS NOT NULL;
+-- Two more side tables, for the address-twin and one-supplier rules below. The postcode as a key:
+-- spaces and punctuation out, a US ZIP+4 cut to the ZIP ("19901-1234" -> "19901").
+CREATE MACRO pckey(p) AS nullif(upper(regexp_replace(regexp_replace(trim(coalesce(p, '')), '^([0-9]{5})-[0-9]{4}\$', '\\1'), '[^A-Za-z0-9]', '', 'g')), '');
+CREATE TABLE pcs AS SELECT id, pckey(pc) AS pc FROM raw WHERE pckey(pc) IS NOT NULL;
+-- An Overture row's suppliers. A row that a fold below drops hands its entries to the row that
+-- stays, so a place Meta and Microsoft both list keeps both however the fold went.
+CREATE TABLE sups AS SELECT id, sup FROM raw WHERE sup IS NOT NULL;
+ALTER TABLE raw DROP COLUMN sup;
+ALTER TABLE raw DROP COLUMN pc;
 -- ENGLISH NAMES (2026-09-22, user: a map of Japan read in Japanese with the app set to English).
 -- Overture carries no English name for a Japanese place (0 of 14,718 rows in central Tokyo); OSM
 -- has name:en or a romanized name on over half of them. A row whose own name is NOT Latin gets
@@ -815,6 +848,13 @@ CREATE TABLE IF NOT EXISTS marksize (id VARCHAR, b DOUBLE);
 CREATE TABLE IF NOT EXISTS markfame (id VARCHAR, f DOUBLE);
 CREATE TABLE IF NOT EXISTS markdupes (id VARCHAR, rid VARCHAR, wiki BOOLEAN);
 CREATE TABLE IF NOT EXISTS markbest (id VARCHAR, rid VARCHAR, wiki BOOLEAN);
+-- CORRECTIONS (2026-11-18, #742): tools/places-corrections.csv lists rows Vela knows are wrong, by
+-- id (an Overture GERS id, or an atp: or osm: id) with a short reason. They go before any fold, so
+-- a wrong row never leads one.
+CREATE TABLE corrections AS SELECT id FROM read_csv('$ROOT/tools/places-corrections.csv', header = true,
+  columns = {'id': 'VARCHAR', 'reason': 'VARCHAR'});
+DELETE FROM raw WHERE id IN (SELECT id FROM corrections);
+SELECT (SELECT count(*) FROM corrections) AS corrections_listed;
 -- ONE ROW PER BUSINESS (user 2026-09-21, "two POIs that really should be one"). Overture itself
 -- carries the same business twice (a gas station under "Chevron" and "Chevron Station Davis", a
 -- shop under "SpeeDee" and "SpeeDee-Midas", a store and the counter inside it named after the
@@ -842,6 +882,7 @@ CREATE TABLE dupleader AS
 SELECT a.id, first(b.id ORDER BY b.mark DESC, b.kiosk, b.confidence DESC, b.fields DESC, b.id) AS leader
 FROM dupk a JOIN dupk b ON b.sk = a.sk AND abs(b.lat - a.lat) < 0.00055 AND abs(b.lng - a.lng) < 0.0007
 GROUP BY a.id;
+INSERT INTO sups SELECT d.leader, s.sup FROM dupleader d JOIN sups s ON s.id = d.id WHERE d.id <> d.leader;
 DELETE FROM raw WHERE id IN (SELECT id FROM dupleader WHERE id <> leader);
 SELECT (SELECT count(*) FROM dupleader WHERE id <> leader) AS same_business_rows_dropped;
 -- THE VARIANT FAMILY (2026-09-22): "Chevron Gas Station" beside "Chevron", "Walgreens Pharmacy"
@@ -877,6 +918,7 @@ SELECT a.id, first(b.id ORDER BY b.mark DESC, b.kiosk, b.confidence DESC, b.fiel
 FROM corek a JOIN corek b ON b.ck = a.ck AND abs(b.lat - a.lat) < 0.00055 AND abs(b.lng - a.lng) < 0.0007
   AND (list_has_all(a.tl, b.tl) OR list_has_all(b.tl, a.tl))
 GROUP BY a.id;
+INSERT INTO sups SELECT c.leader, s.sup FROM coreleader c JOIN sups s ON s.id = c.id WHERE c.id <> c.leader;
 DELETE FROM raw WHERE id IN (SELECT id FROM coreleader WHERE id <> leader);
 SELECT (SELECT count(*) FROM coreleader WHERE id <> leader) AS same_business_variant_rows_dropped;
 $FSQ_SQL
@@ -925,6 +967,136 @@ WHERE name IS NOT NULL AND name <> ''
   AND COALESCE(confidence, 0.5) >= 0.4
   AND (category IS NULL OR id LIKE 'osm:%' OR category NOT IN ('park','campus_building','apartments','housing_development','real_estate','transportation','bus_station','train_station','public_transportation','school','elementary_school','middle_school','high_school'))
   AND NOT (category IS NULL AND website IS NULL);
+-- The second sources are paired here, ahead of the tenant and position rules, because the
+-- address-twin and one-supplier rules below ask whether a second source backs a row.
+-- The chain-locator coordinate wins over Overture's parcel point (atp_snap), before the stack
+-- test: moving a row off the shared parcel point is exactly what takes it out of the stack.
+CREATE TABLE IF NOT EXISTS atp_snap (id VARCHAR, alat DOUBLE, alng DOUBLE);
+$OSM_SQL
+CREATE TABLE IF NOT EXISTS osm_snap (id VARCHAR, olat DOUBLE, olng DOUBLE);
+-- RANKING WITHOUT REVIEWS (user 2026-09-22). The density cap below needs a consistent order among
+-- the places competing for one cell, not a universal score, so agreement is the signal: a place
+-- that a second source ALSO lists (OSM's node pairs with it by name, or a chain's own locator
+-- matched it) is more likely real, current and worth the icon; one that OSM links to Wikidata is
+-- known. Added to prominence before the cells are ranked.
+CREATE TABLE IF NOT EXISTS osmpairs (id VARCHAR, oid VARCHAR, olat DOUBLE, olng DOUBLE, tier INTEGER, chain BOOLEAN, d DOUBLE);
+CREATE TABLE IF NOT EXISTS osmwiki (oid VARCHAR);
+CREATE TABLE IF NOT EXISTS atpfill (rid VARCHAR);
+CREATE TABLE IF NOT EXISTS markwiki (id VARCHAR);
+CREATE TABLE IF NOT EXISTS marksize (id VARCHAR, b DOUBLE);
+CREATE TABLE IF NOT EXISTS markfame (id VARCHAR, f DOUBLE);
+CREATE TABLE srcbonus AS
+SELECT id, 0.6 * max(osm) + 0.6 * max(atp) + 0.8 * max(wiki) AS b FROM (
+  SELECT id, 1 AS osm, 0 AS atp, 0 AS wiki FROM osmpairs WHERE d <= 120 OR NOT chain
+  UNION ALL SELECT p.id, 0, 0, 1 FROM osmpairs p JOIN osmwiki w ON w.oid = p.oid
+  UNION ALL SELECT s.id, 0, 0, 1 FROM scored s JOIN osmwiki w ON s.id = 'osm:' || w.oid
+  -- A landmark OSM links to Wikidata (Bryant Park, Grand Central, a city hall) is exactly what a
+  -- crowded view should keep: without this Midtown's shops took every slot and those arrived at z17.
+  UNION ALL SELECT id, 0, 0, 2.5 FROM markwiki
+  UNION ALL SELECT rid, 0, 1, 0 FROM atpfill
+  UNION ALL SELECT id, 0, 1, 0 FROM atp_snap
+) GROUP BY id;
+-- Address as a JOIN KEY: lowercased, with the unit part dropped ("2121 Cowell Blvd Ste B" and
+-- "2121 Cowell Blvd, Suite B" both become "2121 cowell blvd"). Exact string equality missed a
+-- department whose row carried the suite and the store's did not, which is how a Safeway Pharmacy
+-- kept outranking its own Safeway (user 2026-09-16).
+CREATE MACRO anorm(a) AS nullif(trim(regexp_replace(regexp_replace(lower(coalesce(a, '')), '[,#].*$', ''), '[ ]+(ste|suite|unit|apt|bldg|rm|room|no|fl|floor)[ .]*[a-z0-9-]*$', '')), '');
+-- BACKED (2026-11-18): a row a second source lists. An OSM business node or a chain locator point
+-- with the same leading name words (nkey) or the same brand within about 150 m, the pairs and snaps
+-- above (srcbonus), an OSM landmark of the same name (markdupes), or a row that is itself an OSM
+-- node or a locator point. Computed on the rows as they stand after the folds, so a fold cannot
+-- strand it on a dropped row. almanac_backed is the hook for register evidence in the US (an
+-- inspection or a license that saw the place open, from Vela Almanac); nothing fills it yet.
+CREATE TABLE IF NOT EXISTS atpkeys (id VARCHAR, lat DOUBLE, lng DOUBLE, nk VARCHAR, bk VARCHAR, sk VARCHAR);
+CREATE TABLE IF NOT EXISTS osmbizkeys (id VARCHAR, lat DOUBLE, lng DOUBLE, nk VARCHAR, bk VARCHAR);
+CREATE TABLE almanac_backed (id VARCHAR);
+CREATE TABLE seconds AS SELECT lat, lng, nk, bk FROM atpkeys UNION ALL SELECT lat, lng, nk, bk FROM osmbizkeys;
+CREATE TABLE scoredkeys AS SELECT id, lat, lng, nkey(name) AS nk, lower(brand) AS bk FROM scored;
+CREATE TABLE backed AS SELECT id FROM (
+  SELECT id FROM scored WHERE id LIKE 'atp:%' OR id LIKE 'osm:%'
+  UNION SELECT s.id FROM scoredkeys s JOIN seconds k ON k.nk = s.nk
+    WHERE s.nk <> '' AND abs(k.lat - s.lat) < 0.0015 AND abs(k.lng - s.lng) < 0.002
+  UNION SELECT s.id FROM scoredkeys s JOIN seconds k ON k.bk = s.bk
+    WHERE abs(k.lat - s.lat) < 0.0015 AND abs(k.lng - s.lng) < 0.002
+  UNION SELECT id FROM srcbonus WHERE b > 0
+  UNION SELECT id FROM marksize
+  UNION SELECT rid FROM markdupes
+  UNION SELECT id FROM almanac_backed
+) WHERE id IS NOT NULL;
+-- ONE ROW PER BUSINESS ADDRESS (2026-11-18, #742). Overture carries one business at several points
+-- under one name and one street address, often kilometers apart and from different suppliers, and
+-- the folds above reach only about 60 m. Rows with the same snap key, the same street line (unit
+-- dropped, starting with a house number) and the same postcode are one business at any distance.
+-- A name alone is never enough: chains, churches and state police troops repeat a name for real.
+-- The row kept is the one standing for a landmark, then not a kiosk (as in the folds above), then
+-- the one nearest Overture's address point for its house number, street and postcode when one is
+-- within 250 m, then the one a second source backs, then the most confident. It takes its twins'
+-- suppliers and backing into the one-supplier rule below. A row with no postcode is left alone,
+-- since "100 Main St" repeats from town to town.
+CREATE MACRO akey(a) AS CASE WHEN regexp_matches(coalesce(a, ''), '^[0-9]') THEN nullif(regexp_replace(anorm(a), '[^\\p{L}\\p{N}]+', '', 'g'), '') END;
+-- The street's first word that is not a direction ("N. Bancroft Pkwy" and "North BANCROFT Parkway"
+-- both give "bancroft"): the places and the addresses theme spell street types differently.
+CREATE MACRO stword(s) AS list_filter(string_split(regexp_replace(lower(coalesce(s, '')), '[^a-z0-9 ]', ' ', 'g'), ' '),
+  lambda w: length(w) >= 2 AND w NOT IN ('north', 'south', 'east', 'west', 'ne', 'nw', 'se', 'sw'))[1];
+CREATE TABLE twinrows AS
+SELECT * FROM (
+  SELECT s.id, s.lat, s.lng, s.confidence, snapkey(s.name) AS sk, akey(s.addr) AS ak, p.pc,
+    regexp_extract(s.addr, '^([0-9]+)', 1) AS num, stword(regexp_replace(anorm(s.addr), '^[0-9]+[a-z]?[ ,]*', '')) AS sw,
+    (s.id IN (SELECT id FROM backed))::INT AS bk, (s.id IN (SELECT rid FROM markbest))::INT AS mark,
+    (CASE WHEN s.category IN ('rental_kiosks','bank_equipment_service','money_transfer_services','atms','key_and_locksmith','vending_machine','photo_booth') THEN 1 ELSE 0 END) AS kiosk,
+    ((s.addr IS NOT NULL)::INT + (s.phone IS NOT NULL)::INT + (s.website IS NOT NULL)::INT + (s.hours IS NOT NULL)::INT) AS fields,
+    count(*) OVER (PARTITION BY snapkey(s.name), akey(s.addr), p.pc) AS n
+  FROM scored s JOIN (SELECT id, any_value(pc) AS pc FROM pcs GROUP BY id) p USING (id)
+  WHERE s.id NOT IN (SELECT id FROM marks) AND snapkey(s.name) IS NOT NULL AND akey(s.addr) IS NOT NULL
+) WHERE n > 1;
+$ADDR_SQL
+CREATE TABLE addrpts AS SELECT anum, aunit, alat, alng FROM addrsrc WHERE hasunit;
+CREATE TABLE twindist AS
+SELECT t.id, min(111320 * sqrt(pow(a.alat - t.lat, 2) + pow((a.alng - t.lng) * cos(radians(t.lat)), 2))) AS d
+FROM twinrows t JOIN addrsrc a ON a.anum = t.num AND a.apc = t.pc AND a.asw = t.sw
+GROUP BY t.id;
+CREATE TABLE twinlead AS
+SELECT t.sk, t.ak, t.pc, max(t.bk) AS bk,
+  first(t.id ORDER BY t.mark DESC, t.kiosk, CASE WHEN d.d <= 250 THEN d.d END ASC NULLS LAST, t.bk DESC, t.confidence DESC, t.fields DESC, t.id) AS leader
+FROM twinrows t LEFT JOIN twindist d USING (id) GROUP BY t.sk, t.ak, t.pc;
+CREATE TABLE twindrop AS SELECT t.id, l.leader FROM twinrows t JOIN twinlead l USING (sk, ak, pc) WHERE t.id <> l.leader;
+INSERT INTO sups SELECT d.leader, s.sup FROM twindrop d JOIN sups s ON s.id = d.id;
+INSERT INTO backed SELECT leader FROM twinlead WHERE bk = 1;
+-- A dropped twin still knows things (a locator twin carries the hours): the kept row takes its
+-- hours, phone and website wherever it has none, as osmfill and atpfill do.
+UPDATE scored SET hours = coalesce(scored.hours, f.hours), phone = coalesce(scored.phone, f.phone),
+  website = coalesce(scored.website, f.website)
+FROM (SELECT d.leader, max(s.hours) AS hours, max(s.phone) AS phone, max(s.website) AS website
+      FROM twindrop d JOIN scored s ON s.id = d.id GROUP BY d.leader) f
+WHERE scored.id = f.leader;
+DELETE FROM scored WHERE id IN (SELECT id FROM twindrop);
+-- ONE SUPPLIER, NO SECOND SOURCE (2026-11-18, #914). Overture's confidence does not tell a phantom
+-- from a place: on the Delaware box 99% of the rows Microsoft or Foursquare alone supplies score
+-- 0.75 or more. The supplier does. Checked against health inspections and license registers (Vela
+-- Almanac), a restaurant that only BrightQuery, Microsoft or Foursquare lists is found about a
+-- tenth as often as one a mapper confirmed. Such a row goes unless a second source backs it.
+-- KEPT ALONE (2026-11-18): a missing hospital, emergency room or gas station costs more than a
+-- phantom one, so these kinds stay even with one supplier and no backing. The old category names
+-- (tools/overture-taxonomy-map.csv). medical_center is not here: on the Delaware box 19 of its 469
+-- single-supplier rows read as a hospital, the rest as practices; nor emergency_medicine (named
+-- doctors) or specialty_hospital (practices). This list is the one place to change.
+CREATE MACRO lonekeep(c) AS c IN ('gas_station', 'truck_gas_station', 'truck_stop', 'ev_charging_station',
+  'hospital', 'childrens_hospital', 'psychiatric_hospital', 'emergency_room', 'urgent_care_clinic',
+  'pharmacy', 'drugstore', 'post_office', 'college_university', 'university', 'library',
+  'fire_department', 'fire_station', 'police_department', 'police_station', 'courthouse',
+  'town_hall', 'city_hall', 'airport', 'airport_terminal');
+CREATE TABLE onecand AS
+SELECT s.id, s.category FROM scored s JOIN (SELECT id, list_distinct(flatten(list(sup))) AS sup FROM sups GROUP BY id) u USING (id)
+WHERE $ONESRC AND s.id NOT LIKE 'atp:%' AND s.id NOT LIKE 'osm:%'
+  AND len(u.sup) = 1 AND lower(u.sup[1]) IN ('brightquery', 'microsoft', 'foursquare')
+  AND s.id NOT IN (SELECT id FROM backed);
+CREATE TABLE onesource AS SELECT id FROM onecand WHERE NOT coalesce(lonekeep(category), false);
+DELETE FROM scored WHERE id IN (SELECT id FROM onesource);
+SELECT (SELECT count(*) FROM twindrop) AS address_twin_rows_dropped, (SELECT count(*) FROM onesource) AS one_supplier_rows_dropped,
+  (SELECT count(*) FROM onecand) - (SELECT count(*) FROM onesource) AS one_supplier_rows_kept_alone, (SELECT count(*) FROM scored) AS rows_left;
+.mode list
+SELECT 'KEPTALONE', category, count(*) FROM onecand WHERE lonekeep(category) GROUP BY category ORDER BY count(*) DESC;
+.mode duckbox
 -- Rank by prominence inside a fine (~400 m) and a coarse (~1.6 km) cell. Longitude cells are
 -- widened by 1/cos(lat) so the cells stay roughly square away from the equator.
 -- A third, ~6.5 km cell (xrank) picks the landmarks Google still draws zoomed out to z11/z12:
@@ -936,11 +1108,6 @@ WHERE name IS NOT NULL AND name <> ''
 -- drawn where the Safeway should be). A row at an anchor category's address, within ~200 m of
 -- it and not an anchor itself, loses 2 points, so the store wins the cell and the tenant fills in
 -- as you zoom.
--- Address as a JOIN KEY: lowercased, with the unit part dropped ("2121 Cowell Blvd Ste B" and
--- "2121 Cowell Blvd, Suite B" both become "2121 cowell blvd"). Exact string equality missed a
--- department whose row carried the suite and the store's did not, which is how a Safeway Pharmacy
--- kept outranking its own Safeway (user 2026-09-16).
-CREATE MACRO anorm(a) AS nullif(trim(regexp_replace(regexp_replace(lower(coalesce(a, '')), '[,#].*$', ''), '[ ]+(ste|suite|unit|apt|bldg|rm|room|no|fl|floor)[ .]*[a-z0-9-]*$', '')), '');
 -- The first word of a name, for the department test below.
 -- The anchor's first WORD, store number dropped: "Safeway", "SAFEWAY #1561" and "Safeway Store
 -- 1561" all key to "safeway", so a "Safeway Pharmacy" next door reads as its department however
@@ -1030,34 +1197,6 @@ FROM scored s LEFT JOIN tenants t ON t.id = s.id LEFT JOIN brandsame b ON b.id =
 -- 2026-09-16: Overture and AllThePlaces agree to a median 7.4 m on Davis chains).
 CREATE MACRO unitkey(a) AS nullif(upper(regexp_replace(regexp_extract(coalesce(a, ''), '(?i)(ste|suite|unit|apt|apartment|rm|room|no|#)[ .]*([a-z0-9-]+)[ ]*$', 2), '[^A-Za-z0-9]', '')), '');
 CREATE MACRO numkey(a) AS nullif(regexp_extract(coalesce(a, ''), '^[0-9]+'), '');
-$ADDR_SQL
--- The chain-locator coordinate wins over Overture's parcel point (atp_snap), before the stack
--- test: moving a row off the shared parcel point is exactly what takes it out of the stack.
-CREATE TABLE IF NOT EXISTS atp_snap (id VARCHAR, alat DOUBLE, alng DOUBLE);
-$OSM_SQL
-CREATE TABLE IF NOT EXISTS osm_snap (id VARCHAR, olat DOUBLE, olng DOUBLE);
--- RANKING WITHOUT REVIEWS (user 2026-09-22). The density cap below needs a consistent order among
--- the places competing for one cell, not a universal score, so agreement is the signal: a place
--- that a second source ALSO lists (OSM's node pairs with it by name, or a chain's own locator
--- matched it) is more likely real, current and worth the icon; one that OSM links to Wikidata is
--- known. Added to prominence before the cells are ranked.
-CREATE TABLE IF NOT EXISTS osmpairs (id VARCHAR, oid VARCHAR, olat DOUBLE, olng DOUBLE, tier INTEGER, chain BOOLEAN, d DOUBLE);
-CREATE TABLE IF NOT EXISTS osmwiki (oid VARCHAR);
-CREATE TABLE IF NOT EXISTS atpfill (rid VARCHAR);
-CREATE TABLE IF NOT EXISTS markwiki (id VARCHAR);
-CREATE TABLE IF NOT EXISTS marksize (id VARCHAR, b DOUBLE);
-CREATE TABLE IF NOT EXISTS markfame (id VARCHAR, f DOUBLE);
-CREATE TABLE srcbonus AS
-SELECT id, 0.6 * max(osm) + 0.6 * max(atp) + 0.8 * max(wiki) AS b FROM (
-  SELECT id, 1 AS osm, 0 AS atp, 0 AS wiki FROM osmpairs WHERE d <= 120 OR NOT chain
-  UNION ALL SELECT p.id, 0, 0, 1 FROM osmpairs p JOIN osmwiki w ON w.oid = p.oid
-  UNION ALL SELECT s.id, 0, 0, 1 FROM scored s JOIN osmwiki w ON s.id = 'osm:' || w.oid
-  -- A landmark OSM links to Wikidata (Bryant Park, Grand Central, a city hall) is exactly what a
-  -- crowded view should keep: without this Midtown's shops took every slot and those arrived at z17.
-  UNION ALL SELECT id, 0, 0, 2.5 FROM markwiki
-  UNION ALL SELECT rid, 0, 1, 0 FROM atpfill
-  UNION ALL SELECT id, 0, 1, 0 FROM atp_snap
-) GROUP BY id;
 -- OSM first, then the chain locator, then Overture's own point.
 CREATE TABLE located AS
 SELECT a.* REPLACE (

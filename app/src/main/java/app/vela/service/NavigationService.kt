@@ -28,6 +28,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import java.text.DateFormat
@@ -61,6 +64,7 @@ class NavigationService : Service() {
 
     /** The live update's tracker puck, drawn once per process. */
     private var cachedPuck: android.graphics.Bitmap? = null
+    private var cachedPuckKey = "" // PuckStyle.key(): the icon can change mid-drive (PuckPicker)
     // One-entry glyph cache (state ticks ~1 Hz; the type changes only at each turn).
     // Keyed on the accent too, so flipping Material You mid-drive recolors the arrow.
     private var cachedGlyph: Bitmap? = null
@@ -96,18 +100,36 @@ class NavigationService : Service() {
             return START_NOT_STICKY
         }
 
-        // Backgrounded turn alerts (user 2026-07-24): the ongoing notification is deliberately
-        // silent/minimized, but when guidance SPEAKS while the app isn't visible, the shade
-        // should show the turn the voice just said. Post-mute hook, so a muted drive stays
-        // quiet in the shade too; foreground drives already show the banner card.
+        // A turn the voice says while the app is not on screen drops down as a banner. The banner is
+        // the drive's own card, moved to the turn channel (HIGH) for [ALERT_HOLD_MS] and posted to
+        // alert again, then moved back: one notification, never a second card beside it. Held
+        // that long because the system takes a heads-up down as soon as its channel drops below
+        // HIGH. Post-mute hook, so a muted drive pops nothing.
         voice.onPromptAlert = {
-            if (!app.vela.ui.AppVisibility.foreground.value) {
-                runCatching { notificationManager().notify(TURN_ALERT_ID, buildTurnAlert()) }
+            if (!app.vela.ui.AppVisibility.foreground.value && turnChannelOn()) {
+                alertUntilMs = android.os.SystemClock.elapsedRealtime() + ALERT_HOLD_MS
+                runCatching { notificationManager().notify(NOTIF_ID, buildNotification(alert = true)) }
+                alertEnd?.cancel()
+                alertEnd = scope.launch {
+                    kotlinx.coroutines.delay(ALERT_HOLD_MS)
+                    val st = navSession.state.value
+                    if (st.navigating && !st.arrived) runCatching { notificationManager().notify(NOTIF_ID, buildNotification()) }
+                }
             }
         }
+        // The per-turn second card older builds posted, in case one is still up.
+        runCatching { notificationManager().cancel(OLD_TURN_ALERT_ID) }
 
         if (!observing) {
             observing = true
+            // The step sensor only while the session is parked near its destination (WalkAwayArrival):
+            // getting out and walking off ends the drive as arrived, the screen off and the phone in
+            // a pocket included. Off again the moment the car drives or the drive ends.
+            @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+            navSession.walkWatch
+                .flatMapLatest { on -> if (on) app.vela.core.location.WalkSense.steps(this) else emptyFlow() }
+                .onEach { navSession.onWalkStep(it.tSec) }
+                .launchIn(scope)
             navSession.state
                 .onEach { s ->
                     when {
@@ -163,7 +185,18 @@ class NavigationService : Service() {
         ).joinToString("|")
     }
 
-    private fun buildNotification(): Notification {
+    /** Off when the user turned the turn channel off: the drive's card would vanish while on it. */
+    private fun turnChannelOn(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+            (notificationManager().getNotificationChannel(TURN_CHANNEL_ID)?.importance ?: NotificationManager.IMPORTANCE_NONE) >=
+            NotificationManager.IMPORTANCE_HIGH
+
+    private var alertUntilMs = 0L
+    private var alertEnd: kotlinx.coroutines.Job? = null
+
+    /** The drive's card. [alert] posts it to drop down as a banner (a spoken turn in the
+     *  background); while [alertUntilMs] runs, updates stay on the turn channel without alerting. */
+    private fun buildNotification(alert: Boolean = false): Notification {
         ensureChannel()
         val s = navSession.state.value
         // Google-style: lead with the distance to the next turn ("In 500 ft · Turn right
@@ -240,14 +273,15 @@ class NavigationService : Service() {
                 background = accent,
             ).also { cachedGlyph = it; cachedGlyphType = t; cachedGlyphAccent = accent }
         }
-        val b = NotificationCompat.Builder(this, CHANNEL_ID)
+        val turnChannel = alert || android.os.SystemClock.elapsedRealtime() < alertUntilMs
+        val b = NotificationCompat.Builder(this, if (turnChannel) TURN_CHANNEL_ID else CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_nav)
             .setContentTitle(title)
             .setContentText(text)
             .setLargeIcon(largeIcon)
             .setColor(accent) // dynamic accent when Material You is on, VelaTeal otherwise
             .setOngoing(true)
-            .setOnlyAlertOnce(true)
+            .setOnlyAlertOnce(!alert)
             .setShowWhen(false) // the post time is noise on a continuously-updating nav card
             .setContentIntent(open)
             .addAction(
@@ -263,7 +297,9 @@ class NavigationService : Service() {
         // card draws its blue arrow dot there and keeps the turn glyph as the large icon on the
         // right, user 2026-09-22); it used to be the maneuver glyph, which changed shape at every
         // turn and read as the next action rather than the car.
-        val puck = cachedPuck ?: app.vela.ui.map.navPuckBitmap(scale = 1f).also { cachedPuck = it }
+        val puckKey = app.vela.ui.PuckStyle.key()
+        val puck = cachedPuck?.takeIf { cachedPuckKey == puckKey }
+            ?: app.vela.ui.map.navPuckBitmap(scale = 1f).also { cachedPuck = it; cachedPuckKey = puckKey }
         promoteToLiveUpdate(b, s, puck)
         return b.build()
     }
@@ -337,34 +373,6 @@ class NavigationService : Service() {
     }
 
 
-    /** The transient heads-up posted when guidance speaks in the background: same title/text as
-     *  the ongoing card, but on the HIGH channel (visual pop, no sound - the voice IS the sound),
-     *  its own id (a posted notification can never change channel, so the FGS card can't just be
-     *  re-posted louder), self-expiring so the shade doesn't collect two nav rows. */
-    private fun buildTurnAlert(): Notification {
-        ensureChannel()
-        val base = buildNotification()
-        return NotificationCompat.Builder(this, TURN_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_nav)
-            .setContentTitle(base.extras.getCharSequence(Notification.EXTRA_TITLE))
-            .setContentText(base.extras.getCharSequence(Notification.EXTRA_TEXT))
-            .setLargeIcon(cachedGlyph)
-            .setColor(base.color)
-            .setAutoCancel(true)
-            .setTimeoutAfter(TURN_ALERT_TIMEOUT_MS)
-            .setShowWhen(false)
-            .setContentIntent(
-                PendingIntent.getActivity(
-                    this, 0, Intent(this, MainActivity::class.java),
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-                ),
-            )
-            .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .build()
-    }
-
     private fun startForegroundCompat(notification: Notification) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
@@ -379,7 +387,6 @@ class NavigationService : Service() {
         // Also clear a DETACHED arrival notification (the arrived branch posts one dismissable —
         // tapping Done in-app must not leave it stranded in the shade).
         runCatching { notificationManager().cancel(NOTIF_ID) }
-        runCatching { notificationManager().cancel(TURN_ALERT_ID) }
         stopSelf()
     }
 
@@ -415,9 +422,8 @@ class NavigationService : Service() {
                         enableVibration(false)
                     },
                 )
-                // HIGH so it pops as a heads-up, but explicitly soundless and buzz-free: the spoken
-                // guidance is the audio channel, and a system ding on top of "turn right onto..."
-                // would double-announce every turn.
+                // HIGH so a spoken turn's card drops down as a banner (and transit's "get off at the
+                // next stop"), but soundless and buzz-free: the voice is the sound.
                 nm.createNotificationChannel(
                     NotificationChannel(
                         TURN_CHANNEL_ID,
@@ -443,8 +449,11 @@ class NavigationService : Service() {
         /** The live-update bar's color for road that is not congested: the route line's own blue,
          *  so the notification and the map agree about what the drive looks like. */
         private const val TRAFFIC_CLEAR = 0xFF1F6FEB.toInt()
-        private const val TURN_ALERT_ID = 43
-        private const val TURN_ALERT_TIMEOUT_MS = 9_000L
+        /** The per-turn second card older builds posted beside this one. */
+        private const val OLD_TURN_ALERT_ID = 43
+        /** How long a turn's banner keeps the card on the turn channel. The system's heads-up
+         *  lasts about 5 s; moving back sooner takes it down early. */
+        private const val ALERT_HOLD_MS = 8_000L
 
         /** Best-effort: start the background nav service. A failure here (background
          *  start not allowed, OEM restriction) is swallowed — foreground nav, driven

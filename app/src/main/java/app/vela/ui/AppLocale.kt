@@ -2,6 +2,7 @@ package app.vela.ui
 
 import android.content.Context
 import android.content.res.Configuration
+import android.content.res.Resources
 import androidx.compose.runtime.mutableStateOf
 import app.vela.core.i18n.NavStringsRegistry
 import java.util.Locale
@@ -32,13 +33,13 @@ object AppLocale {
     // "he" is the modern Hebrew code the picker + NavStrings use; the Android RESOURCES live in the
     // legacy-qualifier folder res/values-iw (AAPT's Hebrew qualifier), and the platform maps a "he"
     // locale onto values-iw, so the two agree. (Same legacy-pair handling as id/in, yi/ji.)
-    val SUPPORTED = listOf("en", "fr", "de", "es", "it", "pt", "pt-BR", "nl", "ru", "pl", "sv", "uk", "hu", "ro", "et", "zh", "zh-TW", "ja", "he")
+    val SUPPORTED = listOf("en", "fr", "de", "es", "it", "pt", "pt-BR", "nl", "ru", "pl", "sv", "uk", "hu", "ro", "et", "zh", "zh-TW", "ja", "th", "he", "fa")
 
     private val ENDONYMS = mapOf(
         "en" to "English", "fr" to "Français", "de" to "Deutsch", "es" to "Español",
         "it" to "Italiano", "pt" to "Português (Portugal)", "pt-BR" to "Português (Brasil)", "nl" to "Nederlands", "ru" to "Русский",
         "pl" to "Polski", "sv" to "Svenska", "uk" to "Українська", "hu" to "Magyar", "ro" to "Română", "et" to "Eesti",
-        "zh" to "简体中文", "zh-TW" to "繁體中文（台灣）", "ja" to "日本語", "he" to "עברית",
+        "zh" to "简体中文", "zh-TW" to "繁體中文（台灣）", "ja" to "日本語", "th" to "ไทย", "he" to "עברית", "fa" to "فارسی",
     )
 
     /** The language's own name (endonym) — what a speaker of it expects to see in a language list. */
@@ -96,6 +97,38 @@ object AppLocale {
     fun effective(): Locale = language.value.takeIf { it.isNotBlank() }
         ?.let { Locale.forLanguageTag(it) } ?: Locale.getDefault()
 
+    /** The locale a calendar is drawn in (issue #934): the app language for month and day names,
+     *  the device's region for the first day of the week. A picked language has no region, and a
+     *  calendar in it alone takes the language's home region ("en" is the US, Sunday first). */
+    fun calendarLocale(): Locale {
+        val device = Resources.getSystem().configuration.locales.get(0) ?: return effective()
+        return calendarLocale(language.value, device)
+    }
+
+    /** [calendarLocale] for a language pref and a device locale. Following the system, the device
+     *  locale as it is. Otherwise the language gets the device's region; a language that names its
+     *  own region (pt-BR, zh-TW) keeps it for the names and takes the device's as `rg`. The device's
+     *  `fw` (Android 14's first day of week) and `rg` keywords come along. */
+    internal fun calendarLocale(appLanguage: String, device: Locale): Locale {
+        if (appLanguage.isBlank()) return device
+        val app = Locale.forLanguageTag(appLanguage)
+        val b = Locale.Builder().setLocale(app)
+        val region = device.country
+        if (app.country.isEmpty()) runCatching { b.setRegion(region) }
+        else if (region.isNotEmpty() && region != app.country) {
+            runCatching { b.setUnicodeLocaleKeyword("rg", region.lowercase(Locale.ROOT) + "zzzz") }
+        }
+        for (key in CALENDAR_KEYS) {
+            val value = device.getUnicodeLocaleType(key) ?: continue
+            runCatching { b.setUnicodeLocaleKeyword(key, value) }
+        }
+        return b.build()
+    }
+
+    /** Device keywords that decide a calendar's week: first day, and region override. Not `nu`:
+     *  the device language's digits do not belong in another language's calendar. */
+    private val CALENDAR_KEYS = listOf("fw", "rg")
+
     /** The device's own locale, captured on the first [wrap] BEFORE any override touches the JVM
      *  default - the value to restore when the user goes back to following the system. */
     private var systemDefault: Locale? = null
@@ -122,7 +155,7 @@ object AppLocale {
         // Force the RTL/LTR direction from the chosen locale. setLocale only auto-updates
         // layoutDirection when the config's direction wasn't already set, but AdaptiveDensity.wrap
         // runs first and hands over a config with an explicit (LTR) direction, so Hebrew never
-        // flipped the layout without this (found + fixed in the vela-dpad fork).
+        // flipped the layout without this. MainActivity also provides the same direction to Compose.
         config.setLayoutDirection(locale)
         return base.createConfigurationContext(config)
     }

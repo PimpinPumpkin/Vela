@@ -67,4 +67,46 @@ class NavEngineWrongTurnTest {
         val (_, e2) = drive(s1, southOf(36.0, 6.0), 160.0)
         assertTrue(e2.none { it is NavEvent.RerouteNeeded })
     }
+
+    /** East 300 m, then north 300 m: a left turn at 300 m. */
+    private val turning: Route by lazy {
+        val poly = (0..30).map { east(it * 10.0) } + (1..30).map { LatLng(lat + it * 10.0 / mPerDegLat, lng0 + 300.0 / mPerDegLng) }
+        Route(
+            poly,
+            listOf(RouteLeg(600.0, 60.0, null, listOf(
+                Maneuver(ManeuverType.DEPART, "Head east", poly.first(), 300.0, 30.0),
+                Maneuver(ManeuverType.TURN_LEFT, "Turn left onto Oak Avenue", east(300.0), 300.0, 30.0),
+                Maneuver(ManeuverType.ARRIVE, "Arrive", poly.last(), 0.0, 0.0),
+            ))),
+            600.0, 60.0, null,
+        )
+    }
+
+    @Test fun `straight on where the route turns reroutes about two fixes past the corner`() {
+        var st = NavState()
+        var m = 0.0
+        while (m <= 290.0) { st = NavEngine.update(turning, st, east(m), speedMps = 11.0, bearingDeg = 90.0).first; m += 11.0 }
+        assertFalse(st.offRoute)
+        // On east past the corner at 11 m/s.
+        var firedAt = -1.0
+        while (m <= 360.0 && firedAt < 0) {
+            val (s, ev) = NavEngine.update(turning, st, east(m), speedMps = 11.0, bearingDeg = 90.0)
+            st = s; if (ev.any { it is NavEvent.RerouteNeeded }) firedAt = m; m += 11.0
+        }
+        assertTrue("rerouted at $firedAt m, 300 is the corner", firedAt in 300.0..330.0)
+    }
+
+    @Test fun `taking the turn is not straight on`() {
+        var st = NavState()
+        var m = 0.0
+        while (m <= 290.0) { st = NavEngine.update(turning, st, east(m), speedMps = 11.0, bearingDeg = 90.0).first; m += 11.0 }
+        // Rounding the corner: the course swings through north-east, then runs north.
+        st = NavEngine.update(turning, st, east(298.0), speedMps = 8.0, bearingDeg = 60.0).first
+        st = NavEngine.update(turning, st, LatLng(lat + 5.0 / mPerDegLat, lng0 + 301.0 / mPerDegLng), speedMps = 8.0, bearingDeg = 20.0).first
+        for (n in 1..6) {
+            val (s, ev) = NavEngine.update(turning, st, LatLng(lat + (5.0 + n * 9.0) / mPerDegLat, lng0 + 300.0 / mPerDegLng), speedMps = 9.0, bearingDeg = 0.0)
+            assertTrue(ev.none { it is NavEvent.RerouteNeeded }); st = s
+        }
+        assertFalse(st.offRoute)
+    }
 }

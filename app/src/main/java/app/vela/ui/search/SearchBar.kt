@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import app.vela.ui.dpadHighlight
+import app.vela.ui.map.coversMap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -90,6 +91,11 @@ fun SearchBar(
     // on-device as the "can't get out of search" trap. Hiding it lets BACK reach the app
     // and close the overlay in one press.
     var fieldArmed by remember { mutableStateOf(false) }
+    // Android 8.x (API 26 and 27) hands focus to the first focusable view when the window opens and
+    // whenever focus is cleared, in touch mode too, and on the map this field is the only one: every
+    // way out of search refocused it, so search could not be closed (#744, #956). There a tap arms
+    // the field first, as a D-pad OK does, and it cannot take focus until then.
+    val armFirst = dpadMode || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.P
     val fieldFocus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -117,7 +123,7 @@ fun SearchBar(
     // shadow reads as a smear on a dark map.
     val dark = app.vela.ui.theme.isAppInDarkTheme()
     Card(
-        modifier.fillMaxWidth(),
+        modifier.coversMap(withOthersOnly = true).fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = if (dark) MaterialTheme.colorScheme.surfaceContainerLow else MaterialTheme.colorScheme.surfaceContainerLowest),
         elevation = CardDefaults.cardElevation(defaultElevation = if (dark) 0.dp else 6.dp),
@@ -161,6 +167,14 @@ fun SearchBar(
                                 // letter started at the Box edge and the 2dp ring stroke drew
                                 // straight through it (keypad phones see this on every search).
                                 .padding(horizontal = 10.dp)
+                        } else if (armFirst) {
+                            // Touch on Android 8.x: the tap arms the field (see [armFirst]). No
+                            // inset, so the bar looks as it does everywhere else; the ring shows
+                            // only if keys are used later.
+                            Modifier.dpadHighlight(DpadRoundedCornerShape(20.dp)).clickable(
+                                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                indication = null,
+                            ) { fieldArmed = true }
                         } else {
                             Modifier
                         },
@@ -197,7 +211,7 @@ fun SearchBar(
                     // search bar" bug on hybrid touch+keypad phones, Qin F21). Disabled lets the tap
                     // reach the Box's arm-clickable, which arms it; the field stays MOUNTED (only the
                     // enabled flag flips), so arming focuses it cleanly with no remount race.
-                    enabled = !dpadMode || fieldArmed,
+                    enabled = !armFirst || fieldArmed,
                     singleLine = true,
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -206,8 +220,8 @@ fun SearchBar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(fieldFocus)
-                        // Unfocusable until armed in dpadMode; untouched otherwise.
-                        .focusProperties { canFocus = !dpadMode || fieldArmed }
+                        // Unfocusable until armed in dpadMode and on Android 8.x; untouched otherwise.
+                        .focusProperties { canFocus = !armFirst || fieldArmed }
                         // Deterministic escape (docs/dpad.md): catch BACK on the focused
                         // field via onPreviewKeyEvent (root→leaf) + KeyDown, so it fires
                         // BEFORE BasicTextField's built-in "BACK clears focus" — which

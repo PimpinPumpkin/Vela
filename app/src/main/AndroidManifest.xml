@@ -4,6 +4,12 @@
     <!-- Location is AOSP-only (LocationManager); no Play Services needed. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- "Save where I park" > "Also when the car's Bluetooth disconnects" (AutoParking), off by
+         default; both are asked only when that switch is turned on. Nearby devices tells a car's
+         Bluetooth from headphones; location all the time takes the fix when Vela is closed. -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
@@ -24,6 +30,8 @@
 
     <!-- Haptic turn cues during navigation (normal permission, auto-granted). -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Settings > Navigation "Wake the screen before each turn" (LockScreenNav). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Voice search, tier-1 ONLY: recording the mic for the on-device Whisper model. Requested
          at point of use, and never needed for tier-2 (the RECOGNIZE_SPEECH provider records). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -90,11 +98,17 @@
              rename an app per COMPONENT, so the "call it just Maps" option (issue #226) swaps which
              alias is enabled via PackageManager. MainActivity keeps every functional intent filter
              (geo:, share, maps links) so deep links never depend on the cosmetic choice. NB the one-time
-             cost of moving the filter: pinned home-screen icons re-pin after this update. -->
+             cost of moving the filter: pinned home-screen icons re-pin after this update.
+             singleTask keeps one map: a link or a share from another app reaches the running map
+             instead of stacking a second one in the sender's task. allowEmbedded and
+             resizeableActivity let Android Automotive 10 and 11 embed Vela in the home screen's map
+             pane (ActivityView); without them the car starts it full screen. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:allowEmbedded="true"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode"
             android:supportsPictureInPicture="true"
             android:theme="@style/Theme.Vela">
@@ -109,6 +123,38 @@
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
+            </intent-filter>
+
+            <!-- A GPX file opened or shared from a file manager, a browser download or another app:
+                 Vela rides its track (TrackRide). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/gpx+xml" />
+                <data android:mimeType="application/gpx" />
+            </intent-filter>
+            <!-- File managers often label .gpx as octet-stream. Only a path that ends in .gpx, so
+                 Vela is not offered for every other binary file. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:host="*" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:pathPattern=".*\\.gpx" />
+                <data android:pathPattern=".*\\..*\\.gpx" />
+                <data android:pathPattern=".*\\..*\\..*\\.gpx" />
+                <data android:pathPattern=".*\\.GPX" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/gpx+xml" />
+                <data android:mimeType="application/gpx" />
             </intent-filter>
 
             <!-- geo: links from other apps → Vela can be your default maps handler. -->
@@ -166,16 +212,6 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- "The maps app" to the system (issue #683): Android Automotive starts whatever
-                 answers MAIN + APP_MAPS in its map panel, and "open maps" requests resolve by it
-                 on a phone. A filter of its own WITH the DEFAULT category: the car launcher starts
-                 it by an implicit intent, which only matches a filter that declares DEFAULT (with
-                 the category on the launcher filter alone the start came back "not resolved"). -->
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.APP_MAPS" />
-            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -192,11 +228,34 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- "The maps app" to the system (issue #683): Android Automotive starts whatever
-                 answers MAIN + APP_MAPS in its map panel, and "open maps" requests resolve by it
-                 on a phone. A filter of its own WITH the DEFAULT category: the car launcher starts
-                 it by an implicit intent, which only matches a filter that declares DEFAULT (with
-                 the category on the launcher filter alone the start came back "not resolved"). -->
+        </activity-alias>
+
+        <!-- "The maps app" to the system: Android Automotive starts whatever answers MAIN +
+             DEFAULT + APP_MAPS in the map pane of its home screen, and "open maps" requests
+             resolve by it on a phone. The start is an implicit intent, which only matches a filter
+             that declares DEFAULT. These entries are kept off the launcher icons, and
+             AppNameAlias switches the pair with the "call it just Maps" name. -->
+        <activity-alias
+            android:name=".MapsPanel"
+            android:targetActivity=".MainActivity"
+            android:label="@string/app_name"
+            android:exported="true"
+            android:enabled="true">
+            <meta-data android:name="distractionOptimized" android:value="true" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.APP_MAPS" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MapsPanelGeneric"
+            android:targetActivity=".MainActivity"
+            android:label="@string/app_name_generic"
+            android:exported="true"
+            android:enabled="false">
+            <meta-data android:name="distractionOptimized" android:value="true" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -258,6 +317,15 @@
             android:name="android.telephony.PROPERTY_SATELLITE_DATA_OPTIMIZED"
             android:value="${applicationId}" />
 
+        <!-- The car's Bluetooth disconnecting, for "Save where I park" (CarBluetoothReceiver). The
+             broadcast is protected: only the system sends it. -->
+        <receiver
+            android:name=".ui.CarBluetoothReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

@@ -334,7 +334,7 @@ class NamingStudyTest {
         val changed = java.util.Collections.synchronizedList(ArrayList<String>())
         app.vela.core.data.ValhallaRouter.onChanged = { stated, len, runs, out -> if (stated.isNotEmpty()) changed += "'$stated' (step ${len.toInt()} m) -> '$out' | $runs" }
         RouteGeometry.onTurnLane = { a, b, peel, whole, fold -> if (fold) changed += "turn lane folded: ${a.distanceMeters.toInt()} m bend ${peel.toInt()} whole ${whole.toInt()} | ${a.instruction} | ${b.instruction} @${"%.5f,%.5f".format(a.location.lat, a.location.lng)}" }
-        val src = IntArray(3); val audit = IntArray(5); val names = IntArray(3); var suspects = 0; var steps = 0; var lanes = 0; var turnsOnStretch = 0
+        val src = IntArray(3); val audit = IntArray(5); val fitTotals = IntArray(3); val names = IntArray(3); var suspects = 0; var steps = 0; var lanes = 0; var turnsOnStretch = 0
         val notes = ArrayList<String>()
         for (f in dir.listFiles { x -> x.name.endsWith(".txt") }!!.sortedBy { it.name }) {
             val line = app.vela.core.data.google.PolylineCodec.decode(f.readText().trim())
@@ -379,6 +379,16 @@ class NamingStudyTest {
             steps += hybrid.maneuvers.size; lanes += hybrid.maneuvers.count { it.lanes.isNotEmpty() }
             val a = app.vela.core.nav.StepAudit.check(hybrid)
             audit[0] += a.turns; audit[1] += a.agree; audit[2] += a.otherWay; audit[3] += a.noBend; audit[4] += a.unsaid
+            // What the final pass on a driving route (StepFit, in directions) would change here.
+            val fit = app.vela.core.nav.StepFit.fit(hybrid)
+            val offBefore = app.vela.core.nav.StepFit.turnsOffBend(hybrid); val offAfter = app.vela.core.nav.StepFit.turnsOffBend(fit.route)
+            fitTotals[0] += offBefore; fitTotals[1] += offAfter; if (fit.changed) { fitTotals[2]++; notes += "$tag: steps on the line ${fit.note}, off their bend $offBefore -> $offAfter" }
+            if (fit.changed && System.getProperty("velaOne") != null) {
+                val gc = app.vela.core.nav.RouteProjection.cumulative(hybrid.polyline)
+                val pb = app.vela.core.nav.NavEngine.placeSteps(hybrid, gc); val pa = app.vela.core.nav.NavEngine.placeSteps(fit.route, gc)
+                hybrid.maneuvers.forEachIndexed { i, m -> println("LINES    FIT before ${pb[i].toInt()} ${m.type} | ${m.instruction}") }
+                fit.route.maneuvers.forEachIndexed { i, m -> println("LINES    FIT after  ${pa[i].toInt()} ${m.type} | ${m.instruction}") }
+            }
             a.findings.forEach { notes += "$tag: AUDIT ${it.atM.toInt()} m ${it.what}" }
             // Names, against the road pieces under the whole line.
             if (len <= 180_000.0) {
@@ -405,6 +415,7 @@ class NamingStudyTest {
             if (System.getProperty("velaOne") != null) hybrid.maneuvers.forEach { println("LINES    ${at.toInt()} ${it.type} lanes=${it.lanes.size} | ${it.instruction}"); at += it.distanceMeters }
         }
         println("LINES trips=$trips sameWay=$noStretch notPlaced=$notPlaced | stretches matched ${src[0]} tiles ${src[1]} bare ${src[2]} | matched turn names kept ${names[0]} renamed ${names[1]} bare ${names[2]}")
+        println("LINES steps on the line: ${fitTotals[2]} routes changed, turns off their bend ${fitTotals[0]} -> ${fitTotals[1]}")
         println("LINES audit: ${audit[0]} turns, ${audit[1]} agree, ${audit[2]} other way, ${audit[3]} no bend, ${audit[4]} bends unsaid | drive suspects $suspects (the open router's own routes: $baseline) | steps $steps, with lanes $lanes")
         notes.filterNot { " STRAIGHT " in it && "DRIVE" in it }.forEach { println("LINES $it") }
         app.vela.core.data.ValhallaRouter.onChanged = null
@@ -506,5 +517,88 @@ class NamingStudyTest {
         println("LANES stretch steps $steps | the open router has lanes at $withLanes | none at $none | could not tell at $cannotTell (its path there is not the line)")
         println("LANES for scale, the open router's own routes: $openLanes of $openSteps steps carry lanes")
         byType.toSortedMap().forEach { (k, v) -> println("LANES   $k: lanes ${v[0]}, none ${v[1]}, not told ${v[2]}") }
+    }
+
+    /**
+     * The tile-named steps of every captured line, written to a file so two builds can be
+     * diffed: `-DvelaCensus=<out file>`. Each line is named whole, in both modes, from the live
+     * tiles, which are kept beside the file (`<out>.tiles`) so a second run reads the same bytes.
+     * One row per step: `<file> s=<strict> <meters> <type> | <instruction>`. `-DvelaLines=<folder>`
+     * names the `.txt` lines in that folder instead (a trip's `RP` line; mask what it prints). With
+     * `-DvelaOne=<file name>` only that line is named, and each bend's inputs are written too. A
+     * `<name>.exits` beside a line holds Google's exits from the same reply, which the steps take,
+     * and a `<name>.names` Google's step names, which bare turns take (written from a `<name>.raw`
+     * reply kept beside the line; `-DvelaNoSteps` leaves them out).
+     */
+    @Test fun tileStepCensus() = runBlocking {
+        val out = System.getProperty("velaCensus")
+        Assume.assumeTrue("set -DvelaCensus=<out file>", !out.isNullOrBlank())
+        val dir = System.getProperty("velaLines")?.let { java.io.File(it) } ?: java.io.File(javaClass.getResource("/google_lines")!!.toURI())
+        val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
+        fun get(url: String): ByteArray? = runCatching {
+            http.newCall(Request.Builder().url(url).header("User-Agent", "VelaMaps-naming-study (github.com/PimpinPumpkin/Vela)").build())
+                .execute().use { r -> if (r.isSuccessful) r.body?.bytes() else null }
+        }.getOrNull()
+        val keep = java.io.File("$out.tiles").apply { mkdirs() }
+        val template by lazy { Regex("\"tiles\"\\s*:\\s*\\[\\s*\"([^\"]+)\"").find(String(get("https://tiles.openfreemap.org/planet")!!))!!.groupValues[1] }
+        val before = RoadNameTiles.fetch
+        val sb = StringBuilder()
+        try {
+            RoadNameTiles.clearCache()
+            RoadNameTiles.fetch = { z, x, y ->
+                val f = java.io.File(keep, "$z-$x-$y.pbf")
+                if (f.exists()) f.readBytes() else get(template.replace("{z}", "$z").replace("{x}", "$x").replace("{y}", "$y"))?.also { f.writeBytes(it) }
+            }
+            val one = System.getProperty("velaOne")
+            if (one != null) LineNamer.onBend = { sb.append("  $it\n") }
+            for (f in dir.listFiles { x -> x.name.endsWith(".txt") && (one == null || x.name == one) }!!.sortedBy { it.name }) {
+                val text = f.readText().trim()
+                // A trip's RP line can be at 6 decimals.
+                val line = app.vela.core.data.google.PolylineCodec.decode(text).takeIf { l -> l.all { kotlin.math.abs(it.lat) <= 90.0 && kotlin.math.abs(it.lng) <= 180.0 } }
+                    ?: app.vela.core.data.google.PolylineCodec.decode(text, 6)
+                if (line.size < 5) continue
+                val len = app.vela.core.nav.RouteProjection.cumulative(line).last()
+                val lines = RoadNameTiles.linesAlong(line) ?: run { sb.append("${f.name} no tiles\n"); null } ?: continue
+                // Google's exits for the line, where its reply was kept (`<name>.exits`: lat,lng|number|signs|L or R).
+                val exits = java.io.File(f.parentFile, f.name.removeSuffix(".txt") + ".exits").takeIf { it.exists() }?.readLines().orEmpty().mapNotNull { row ->
+                    val c = row.split("|").takeIf { it.size == 4 } ?: return@mapNotNull null
+                    val (la, lo) = c[0].split(",").map { it.toDouble() }
+                    app.vela.core.model.ExitSign(LatLng(la, lo), c[1].ifBlank { null }, c[2].ifBlank { null }, when (c[3]) { "L" -> true; "R" -> false; else -> null })
+                }
+                // Google's step names for the line (`<name>.names`: lat,lng|road|L or R), else read
+                // from the reply itself (`<name>.raw`, its top route), which writes the `.names`
+                // file beside it; -DvelaNoSteps leaves them out, for the before side of a diff.
+                val base = f.name.removeSuffix(".txt")
+                val stepsFile = java.io.File(f.parentFile, "$base.names")
+                val raw = java.io.File(f.parentFile, "$base.raw")
+                val steps = when {
+                    System.getProperty("velaNoSteps") != null -> emptyList()
+                    stepsFile.exists() -> stepsFile.readLines().mapNotNull { row ->
+                        val c = row.split("|").takeIf { it.size == 3 } ?: return@mapNotNull null
+                        val (la, lo) = c[0].split(",").map { it.toDouble() }
+                        app.vela.core.model.StepName(LatLng(la, lo), c[1].ifBlank { null }, when (c[2]) { "L" -> true; "R" -> false; else -> null })
+                    }
+                    raw.exists() -> raw.readText().let { t ->
+                        val d = kotlinx.serialization.json.Json.parseToJsonElement(if (t.trimStart().startsWith(")]}'")) t.substringAfter('\n') else t)
+                        app.vela.core.data.google.parse.DirectionsParser.stepNames((((d as kotlinx.serialization.json.JsonArray)[0] as kotlinx.serialization.json.JsonArray)[1] as kotlinx.serialization.json.JsonArray)[0])
+                    }.also { list ->
+                        stepsFile.writeText(list.joinToString("\n", postfix = "\n") { "${it.at.lat},${it.at.lng}|${it.road.orEmpty()}|${when (it.left) { true -> "L"; false -> "R"; null -> "" }}" })
+                    }
+                    else -> emptyList()
+                }
+                val r = app.vela.core.model.Route(polyline = line, legs = emptyList(), distanceMeters = len, durationSeconds = len / 13.0, durationInTrafficSeconds = null, exitSigns = exits, stepNames = steps)
+                for (strict in listOf(false, true)) {
+                    val named = LineNamer.name(r, lines, TravelMode.DRIVE, strict = strict) ?: run { sb.append("${f.name} s=$strict null\n"); null } ?: continue
+                    var at = 0.0
+                    for (m in named.maneuvers) { sb.append("${f.name} s=$strict ${at.toInt()} ${m.type} | ${m.instruction}\n"); at += m.distanceMeters }
+                }
+            }
+        } finally {
+            LineNamer.onBend = null
+            RoadNameTiles.fetch = before
+            RoadNameTiles.clearCache()
+        }
+        java.io.File(out!!).writeText(sb.toString())
+        println("CENSUS ${sb.lines().size - 1} steps written to $out")
     }
 }

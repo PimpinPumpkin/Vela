@@ -234,6 +234,7 @@ class CalibrationStore @Inject constructor(
                 statusOpenWords = wordMap("statusOpenWords"),
                 transitCategoryWords = wordList("transitCategoryWords"),
                 transitExcludeWords = wordList("transitExcludeWords"),
+                nameFilterFoodWords = wordList("nameFilterFoodWords"),
                 stopBoardIndices = stopBoardIndices,
                 directionsPaths = Calibration.DEFAULT_DIRECTIONS_PATHS + remoteDirPaths,
                 suggestEndpoint = str("suggestEndpoint", d.suggestEndpoint),

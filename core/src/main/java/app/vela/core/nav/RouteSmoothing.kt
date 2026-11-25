@@ -81,22 +81,38 @@ object RouteSmoothing {
         return cum[j - 1] + (cum[j] - cum[j - 1]) * t
     }
 
-    /** Gentle bends only: a vertex turning less than this is rounded off, a sharper one (a real
-     *  corner at a junction) is kept exactly. */
+    /** Gentle bends: a vertex turning less than this is cut by [roundBends]' passes; a sharper one
+     *  is a corner, rounded by [roundCorners]. */
     const val ROUND_MAX_TURN_DEG = 45.0
     /** How far along each side a rounded vertex is cut, at most (and never more than a quarter of
      *  the shorter side). */
     const val ROUND_MAX_CUT_M = 8.0
 
+    /** A corner turns at least [ROUND_MAX_TURN_DEG] between chords this long either side of it. */
+    const val CORNER_LEG_M = 12.0
+    /** Corner vertices this close together are one corner, rounded at the sharpest. */
+    const val CORNER_MERGE_M = 15.0
+    /** A corner's curve starts and ends this far along the line either side of it, at most. */
+    const val CORNER_CUT_M = 10.0
+    /** ...and no further than this share of the way to the next corner, or to the line's end. */
+    const val CORNER_CUT_SHARE = 0.45
+    /** A corner that leaves less than this either side to curve over keeps its point. */
+    const val CORNER_MIN_CUT_M = 2.0
+    /** A turn sharper than this (the line doubling back on itself) keeps its point. */
+    const val CORNER_MAX_TURN_DEG = 160.0
+    /** Points on a corner's curve, at most this far apart. */
+    const val CORNER_STEP_M = 1.5
+
     /**
-     * Rounds the drawn line's gentle bends (2026-10-03, "too jagged"): OpenStreetMap draws a curve as
-     * straight pieces 30 to 50 m long, which a road-width stripe shows as a row of corners. Two
-     * passes of corner cutting (Chaikin's, bounded): each vertex under [ROUND_MAX_TURN_DEG] becomes
-     * two points [ROUND_MAX_CUT_M] (or a quarter of the shorter side) along its two sides. A 15
-     * degree bend between 40 m sides moves the line about a meter. Ends and sharp corners stay.
+     * Rounds the drawn line's bends. Junction corners first ([roundCorners]), then the gentle bends
+     * (2026-10-03, "too jagged"): OpenStreetMap draws a curve as straight pieces 30 to 50 m long,
+     * which a road-width stripe shows as a row of corners. Two passes of corner cutting (Chaikin's,
+     * bounded): each vertex under [ROUND_MAX_TURN_DEG] becomes two points [ROUND_MAX_CUT_M] (or a
+     * quarter of the shorter side) along its two sides. A 15 degree bend between 40 m sides moves
+     * the line about a meter. The ends stay.
      */
     fun roundBends(poly: List<LatLng>, passes: Int = 2): List<LatLng> {
-        var cur = poly
+        var cur = roundCorners(poly)
         repeat(passes) {
             if (cur.size < 3) return cur
             val out = ArrayList<LatLng>(cur.size * 2)
@@ -117,6 +133,65 @@ object RouteSmoothing {
 
     private fun lerp(from: LatLng, to: LatLng, f: Double) =
         LatLng(from.lat + (to.lat - from.lat) * f, from.lng + (to.lng - from.lng) * f)
+
+    /**
+     * Rounds each junction corner of the drawn line into a curve, the path a car takes through
+     * the turn, where the line has the two roads' centers meeting at a point. A corner is a vertex
+     * whose chords [CORNER_LEG_M] long either side turn at least [ROUND_MAX_TURN_DEG] and at most
+     * [CORNER_MAX_TURN_DEG], one per [CORNER_MERGE_M] (the sharpest). The line from [CORNER_CUT_M]
+     * before it to [CORNER_CUT_M] after it (less near another corner or an end) becomes a
+     * quadratic Bezier with the corner as its control point. A right angle's curve passes 0.35
+     * times the cut, 3.5 m, inside the corner, inside the 8.5 m stripe's half width.
+     */
+    fun roundCorners(poly: List<LatLng>): List<LatLng> {
+        if (poly.size < 3) return poly
+        val cum = RouteProjection.cumulative(poly)
+        val total = cum.last()
+        // The corner vertices, a run turning one way merged to its sharpest. A jog (one way, then
+        // back) is two corners.
+        val corners = ArrayList<Pair<Int, Double>>() // vertex, signed turn
+        for (i in 1 until poly.size - 1) {
+            val m = cum[i]
+            if (m < CORNER_LEG_M || total - m < CORNER_LEG_M) continue
+            val a = RouteProjection.pointAt(poly, cum, m - CORNER_LEG_M)
+            val c = RouteProjection.pointAt(poly, cum, m + CORNER_LEG_M)
+            if (a.distanceTo(poly[i]) < 1.0 || poly[i].distanceTo(c) < 1.0) continue
+            val t = turn(a, poly[i], c)
+            if (abs(t) < ROUND_MAX_TURN_DEG) continue
+            val prev = corners.lastOrNull()
+            if (prev != null && m - cum[prev.first] <= CORNER_MERGE_M && t * prev.second > 0) {
+                if (abs(t) > abs(prev.second)) corners[corners.size - 1] = i to t
+            } else corners += i to t
+        }
+        if (corners.isEmpty()) return poly
+        val out = ArrayList<LatLng>(poly.size + corners.size * 16)
+        var k = 0 // next vertex of poly to copy
+        for ((ci, pair) in corners.withIndex()) {
+            val i = pair.first
+            val t = abs(pair.second)
+            val m = cum[i]
+            val before = if (ci == 0) m else m - cum[corners[ci - 1].first]
+            val after = if (ci == corners.size - 1) total - m else cum[corners[ci + 1].first] - m
+            val cut = minOf(CORNER_CUT_M, CORNER_CUT_SHARE * before, CORNER_CUT_SHARE * after)
+            if (t > CORNER_MAX_TURN_DEG || cut < CORNER_MIN_CUT_M) continue
+            val m0 = m - cut
+            val m1 = m + cut
+            // Copy the line up to the curve's start (the previous curve ended before it).
+            while (k < poly.size && cum[k] < m0) { if (out.isEmpty() || out.last() != poly[k]) out += poly[k]; k++ }
+            val p0 = RouteProjection.pointAt(poly, cum, m0)
+            val p2 = RouteProjection.pointAt(poly, cum, m1)
+            val v = poly[i]
+            val steps = maxOf(4, kotlin.math.ceil(2 * cut / CORNER_STEP_M).toInt())
+            for (s in 0..steps) {
+                val u = s.toDouble() / steps
+                val w0 = (1 - u) * (1 - u); val w1 = 2 * u * (1 - u); val w2 = u * u
+                out += LatLng(w0 * p0.lat + w1 * v.lat + w2 * p2.lat, w0 * p0.lng + w1 * v.lng + w2 * p2.lng)
+            }
+            while (k < poly.size && cum[k] <= m1) k++
+        }
+        while (k < poly.size) { out += poly[k]; k++ }
+        return out
+    }
 
     fun removeZigzags(poly: List<LatLng>): List<LatLng> {
         if (poly.size < 4) return poly

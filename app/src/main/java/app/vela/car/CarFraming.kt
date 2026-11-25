@@ -72,6 +72,29 @@ internal object CarFraming {
         val d = cameraDistancePx(heightPx)
         return d * tan(p - atan((d * sin(p) - aheadPx) / (d * cos(p))))
     }
+
+    /**
+     * The zoom that fits a north-up box into a [visW] by [visH] pixel area with [FIT_MARGIN] to
+     * spare, on MapLibre's 512 px tiles. The zoom used to come from the box's span alone, the same
+     * on every screen: an 800 by 480 unit's preview put most of the route under the card, and a
+     * wide one showed it small.
+     */
+    fun fitZoom(minLat: Double, maxLat: Double, minLng: Double, maxLng: Double, visW: Double, visH: Double): Double {
+        fun mercY(lat: Double): Double {
+            val r = Math.toRadians(lat.coerceIn(-85.0, 85.0))
+            return kotlin.math.ln(kotlin.math.tan(Math.PI / 4 + r / 2)) / (2 * Math.PI)
+        }
+        val dx = ((maxLng - minLng) / 360.0).coerceAtLeast(MIN_FRACTION)
+        val dy = kotlin.math.abs(mercY(maxLat) - mercY(minLat)).coerceAtLeast(MIN_FRACTION)
+        val zx = kotlin.math.log2(visW * FIT_MARGIN / (512.0 * dx))
+        val zy = kotlin.math.log2(visH * FIT_MARGIN / (512.0 * dy))
+        return minOf(zx, zy).coerceIn(3.0, 16.0)
+    }
+
+    /** The share of the visible area the fitted box may take. */
+    const val FIT_MARGIN = 0.8
+    /** A box narrower than this share of the world (about 30 m) fits as if it were this wide. */
+    private const val MIN_FRACTION = 7.5e-7
 }
 
 /**
@@ -103,6 +126,7 @@ internal class FrontClip(private val lat: Double, private val lng: Double, beari
         val b = behindM(bLat, bLng) - limitM
         return if (a == b) 0.0 else (a / (a - b)).coerceIn(0.0, 1.0)
     }
+
 
     private companion object { const val M_PER_DEG = 111_320.0 }
 }

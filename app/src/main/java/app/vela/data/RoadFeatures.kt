@@ -309,9 +309,9 @@ object RoadFeatures {
         return out
     }
 
-    /** Traffic signals on the route, for the "pass the light, then turn" enrichment. */
-    fun signalsAlong(polyline: List<LatLng>, meters: Double = 40.0): List<LatLng> =
-        controlsAlong(polyline, meters).filter { it.kind == TrafficControl.Kind.SIGNAL }.map { it.loc }
+    /** The corridor the light and stop-sign cues read controls from (`RouteGeometry.enrichWithLights`
+     *  then keeps the ones on the line). */
+    const val SIGNALS_ALONG_M = 40.0
 
     /** The polyline's segments bucketed into [FINE] degree cells (about 1.1 km), each segment
      *  registered in every cell its padded bounding box touches, so a point-to-line test reads

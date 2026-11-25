@@ -81,3 +81,7 @@ Every release on every channel is signed with one key. Its SHA-256 certificate f
 is in the README under "Check you got the real thing"; `apksigner verify --print-certs`
 prints it for any APK.
 
+Each APK that CI publishes to the canary and nightly channels also carries a build provenance
+attestation, and a stable is its nightly's file. `gh attestation verify vela-maps-*.apk -R
+PimpinPumpkin/Vela` names the workflow run and the commit that built it. Older releases have none.
+

@@ -9,6 +9,29 @@ says so.
 
 ## Shipped
 
+### November 2026
+
+- Turn arrows on the car screen (#804), the phone's shape for the next three turns, over the
+  light badges. Seen on the Desktop Head Unit at 1280 by 720 on a demo drive: the arrow bent
+  round the right turn on the route line, above the corner's light.
+- The scale bar rides over the free-drive speed box instead of hiding (#848). Seen on a Pixel 4a
+  on a mock drive at 13 m/s with no route: with Show speed on, the bar and the credit sat above
+  the box; with it off, both stayed in the low corner and nothing was held for the box.
+- An area tap that would make the outline cross itself goes into a side (#846). Drawn on a Pixel
+  4a: a triangle with a point tapped under its base became a kite, and Back took the point out.
+- The map's own "Day and night" (#874): a dark app over a map that goes by the sun. Checked on a
+  Pixel 4a with the simulated location moved to London by day: the map drew light under the dark
+  app.
+- One list exported on its own (#822), from the list editor's title row. Checked on a Pixel 4a:
+  a list's exported file, imported after the list was deleted, brought it back with its place.
+- Riding a GPX track: open or share a `.gpx` file and the trip follows the track with spoken
+  turns. Ridden on release builds on tracks of 1.5 to 12 km, started away from the track, and
+  left and rejoined. The track is matched with one-way streets ridden either way, a walking match
+  spliced in only where the bike match leaves it, and out-and-backs, crossing jogs and turns the
+  road does not make dropped. The voice says "Go to the start of the route", "Route started",
+  "Left the route" and "Following the route", and the prompts come at a cyclist's distances.
+  The 18 non-English phrasings have not been read by a native speaker.
+
 ### October 2026
 
 - Driving mode on the phone (#727): the map alone in the drive's layout with no route, with the
@@ -51,6 +74,11 @@ says so.
   drive. Its level is the long-run average of what the voice has said, kept between drives.
 - Spoken directions can be brief (each turn once, no street name) or only for highway exits.
 - "Keep north up" stops the map from turning, and a north-up drive keeps the car in the middle.
+- Map keypad controls (SPEC 10.3): pan, rotation, zoom and selection use assigned keys and the
+  keypad layout. On an Android 16 emulator and an Android 14 keypad phone, the detached simulated
+  drive showed the crosshair and Re-center control after a key pan; recentering and touch panning
+  behaved as expected. Keypad pan, rotation and zoom round trips also passed on the phone. A real
+  drive and phone selection of an along-route result were not tested.
 - With a large display size or large text, the drive keeps the road ahead in view and the turn
   card fits (`NavFraming`).
 - Ramps, forks and keeps show an arrow that points only the way to go.
@@ -444,7 +472,13 @@ Once listed as dead and since fixed. Do not trust older notes that say otherwise
   doubtful places and 16% for confident ones, so a dead site says nothing.
 - Overture's `update_time` or confidence as a sign of life. `update_time` is the import
   date: a rule that spared recently updated rows spared 1,473 of 1,527 closed ones in the
-  District of Columbia. Closed restaurants sit at confidence 0.92 to 0.99.
+  District of Columbia. Closed restaurants sit at confidence 0.92 to 0.99. A higher confidence
+  floor (#914) would keep the phantoms: 99% of the Delaware box's Microsoft-only and
+  Foursquare-only rows score 0.75 or more. The bake drops by supplier instead (SPEC 5.2).
+- One row per unbranded name in a region (#742). Overture gives many chains no brand: with the
+  address-twin and single-supplier rules applied, 816 unbranded names still repeat across
+  Delaware at points over 150 m apart (2,297 rows), Walgreens, LabCorp and USPS among them.
+  The bake folds by name, street address and postcode instead.
 - Merging Microsoft's footprints into the basemap archive. Only 12% of Delaware's Microsoft
   footprints are in OSM, and the merged archive is 42.4 MB against 42.5 MB for the two
   apart. The render-time coverage gate also has to stay while the online basemap is

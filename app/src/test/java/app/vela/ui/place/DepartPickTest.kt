@@ -43,4 +43,20 @@ class DepartPickTest {
         DepartPick.keep(null, 3, day, LocalTime.of(1, 0))
         assertEquals(3, DepartPick.restore(null, now)!!.mode)
     }
+
+    @Test fun `the time a toll is priced at follows the pick and goes with it`() {
+        val at = day.atTime(14, 30).atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
+        DepartPick.keep("via F St", 2, day, LocalTime.of(14, 30))
+        assertEquals(2 to at, DepartPick.timed.value)
+        DepartPick.keep("via F St", 0, day, LocalTime.of(14, 30))
+        assertNull(DepartPick.timed.value)
+        DepartPick.keep("via F St", 3, day, LocalTime.of(14, 30))
+        assertNull(DepartPick.timed.value)
+        DepartPick.keep("via F St", 1, day, LocalTime.of(14, 30))
+        assertEquals(1 to at, DepartPick.timed.value)
+        assertNull(DepartPick.restore("via Covell Blvd", now))
+        assertEquals(1 to at, DepartPick.timed.value)
+        assertTrue(DepartPick.dropped())
+        assertNull(DepartPick.timed.value)
+    }
 }

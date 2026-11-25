@@ -16,6 +16,8 @@ import app.vela.ui.theme.VelaTheme
 import app.vela.ui.theme.isAppInDarkTheme
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -74,6 +76,34 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        // Over the lock screen while a drive runs and is not paused (Settings > Navigation, on by
+        // default): the power button wakes the phone to the route, not the PIN prompt.
+        lifecycleScope.launch {
+            kotlinx.coroutines.flow.combine(
+                vm.state.map { it.navigating && !it.navPaused }.distinctUntilChanged(),
+                androidx.compose.runtime.snapshotFlow { app.vela.ui.LockScreenNav.on.value },
+            ) { driving, on -> driving && on }.distinctUntilChanged().collect { show ->
+                runCatching { app.vela.ui.LockScreenNav.show(this@MainActivity, show) }
+                    .onFailure { android.util.Log.w("VelaLock", "show when locked failed", it) }
+                if (!show) app.vela.ui.LockScreenNav.driveStopped()
+            }
+        }
+        // Wake the screen before each turn (Settings > Navigation, on by default): the drive's
+        // step whose turn is near, or -1.
+        lifecycleScope.launch {
+            vm.state.map { s ->
+                if (s.navigating && !s.navPaused && s.travelMode == app.vela.core.model.TravelMode.DRIVE &&
+                    app.vela.ui.LockScreenNav.turnNear(s.nav.distanceToNextManeuver, s.nav.remainingDistance, s.nav.remainingDuration)
+                ) s.nav.stepIndex else -1
+            }.distinctUntilChanged().collect { step ->
+                runCatching { app.vela.ui.LockScreenNav.turnStep(this@MainActivity, step) }
+                    .onFailure { android.util.Log.w("VelaLock", "turn wake failed", it) }
+            }
+        }
+        androidx.core.content.ContextCompat.registerReceiver(
+            this, screenOn, android.content.IntentFilter(Intent.ACTION_SCREEN_ON),
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
         handleIntent(intent)
         // After the intent, before the map exists: a link keeps the camera, anything else opens
         // on the view chosen in Settings > Map.
@@ -83,6 +113,14 @@ class MainActivity : ComponentActivity() {
             // — reading it inside VelaTheme's default arg didn't reliably invalidate
             // VelaTheme, so MaterialTheme never flipped when the user changed it.
             val dark = isAppInDarkTheme()
+            // Keep Compose's layout direction explicit as well as the wrapped Android
+            // Configuration. This prevents a pre-existing LTR CompositionLocal from masking
+            // an RTL app locale (notably Persian and Hebrew).
+            val layoutDirection =
+                if (android.text.TextUtils.getLayoutDirectionFromLocale(AppLocale.effective()) ==
+                    android.view.View.LAYOUT_DIRECTION_RTL
+                ) androidx.compose.ui.unit.LayoutDirection.Rtl
+                else androidx.compose.ui.unit.LayoutDirection.Ltr
             // The system status/nav bar ICONS (clock, wifi, battery) must contrast with the
             // MAP under them, which follows Vela's own theme — not the system's. In light mode
             // the map is white, so the icons must go DARK; edge-to-edge alone left them light
@@ -95,6 +133,7 @@ class MainActivity : ComponentActivity() {
             androidx.compose.runtime.CompositionLocalProvider(
                 androidx.compose.ui.platform.LocalConfiguration provides
                     (liveConfig.value ?: androidx.compose.ui.platform.LocalConfiguration.current),
+                androidx.compose.ui.platform.LocalLayoutDirection provides layoutDirection,
             ) {
                 VelaTheme(darkTheme = dark) {
                     VelaRoot(vm = vm)
@@ -121,13 +160,18 @@ class MainActivity : ComponentActivity() {
     }
 
     @Deprecated("Deprecated in Java")
-    /** The assigned zoom keys (Settings > Navigation, issue #694). A key that types is offered
-     *  only after nothing else took it, so a digit still types in a text field. */
+    /** The map keys (Settings > Navigation, issue #694). A key that types is offered only after
+     *  nothing else took it, so a digit still types in a text field. */
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        // Any key but volume ends a turn wake's glance screen, as a touch does.
+        if (event.action == android.view.KeyEvent.ACTION_DOWN && !event.isVolumeKey()) {
+            val s = vm.state.value
+            app.vela.ui.LockScreenNav.userActive(this, s.navigating && !s.navPaused)
+        }
         val typing = event.isPrintingKey
-        if (!typing && app.vela.ui.ZoomKeys.handle(event)) return true
+        if (!typing && app.vela.ui.MapKeys.handle(event)) return true
         if (super.dispatchKeyEvent(event)) return true
-        return typing && app.vela.ui.ZoomKeys.handle(event)
+        return typing && app.vela.ui.MapKeys.handle(event)
     }
 
     override fun onUserLeaveHint() {
@@ -156,6 +200,30 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
     }
 
+    /** The screen came on: the power button gives a drive its keep-awake back after a turn wake. */
+    private val screenOn = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val s = vm.state.value
+            app.vela.ui.LockScreenNav.userActive(this@MainActivity, s.navigating && !s.navPaused, screenOn = true)
+        }
+    }
+
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        if (ev.actionMasked == android.view.MotionEvent.ACTION_DOWN) {
+            val s = vm.state.value
+            app.vela.ui.LockScreenNav.userActive(this, s.navigating && !s.navPaused)
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
+    private fun android.view.KeyEvent.isVolumeKey() = keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP ||
+        keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == android.view.KeyEvent.KEYCODE_VOLUME_MUTE
+
+    override fun onDestroy() {
+        runCatching { unregisterReceiver(screenOn) }
+        super.onDestroy()
+    }
+
     override fun onStart() {
         super.onStart()
         app.vela.ui.AppVisibility.foreground.value = true
@@ -167,9 +235,26 @@ class MainActivity : ComponentActivity() {
         app.vela.ui.StartView.saveLast(this) // the view the map was left on, for the next launch
     }
 
+    /** The file of a GPX open or share: a content or file URI typed as GPX or binary (geo: and web
+     *  links, and shared text, go on to the link parser). */
+    private fun gpxUri(intent: Intent?): android.net.Uri? {
+        if (intent == null || intent.resolveType(contentResolver) !in GPX_TYPES) return null
+        val u = when (intent.action) {
+            Intent.ACTION_VIEW -> intent.data
+            Intent.ACTION_SEND -> if (android.os.Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(Intent.EXTRA_STREAM, android.net.Uri::class.java)
+                else @Suppress("DEPRECATION") intent.getParcelableExtra(Intent.EXTRA_STREAM)
+            else -> null
+        } ?: return null
+        return u.takeIf { it.scheme == "content" || it.scheme == "file" }
+    }
+
+    private val GPX_TYPES = setOf("application/gpx+xml", "application/gpx", "application/octet-stream")
+
     /** Vela registers for `geo:` URIs and Google-Maps web links so it can be the
      *  system maps handler; turn whichever we got into a search or a dropped pin. */
     private fun handleIntent(intent: Intent?) {
+        // A GPX file opened or shared with Vela: ride its track (TrackRide).
+        gpxUri(intent)?.let { vm.openGpxFile(it); return }
         when (intent?.action) {
             // A trip pinned to the home screen from the route picker (issue #675).
             app.vela.ui.TripShortcut.ACTION -> app.vela.ui.TripShortcut.read(intent)?.let { (points, mode) -> vm.openTripShortcut(points, mode) }

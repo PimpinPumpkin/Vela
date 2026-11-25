@@ -2,6 +2,7 @@ package app.vela.ui
 
 import android.content.Context
 import androidx.compose.runtime.mutableStateOf
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -85,6 +86,11 @@ fun formatDuration(seconds: Double): String {
     return if (m == 0) "$h h" else "$h h $m min"
 }
 
+/** [cents] as Canadian dollars in the app language: "$4.40", or "4,40 $" in French. */
+fun formatCad(cents: Int): String {
+    val locale = if (AppLocale.effective().language == "fr") Locale.CANADA_FRENCH else Locale.CANADA
+    return java.text.NumberFormat.getCurrencyInstance(locale).format(cents / 100.0)
+}
 /** Current speed as a (value, unit) pair for the speedometer, e.g. (65, "mph") —
  *  imperial vs metric follows the [Units] preference. */
 fun formatSpeed(metersPerSecond: Float): Pair<Int, String> =
@@ -121,6 +127,8 @@ object Clock24 {
         }
         on.value = v
         app.vela.core.data.ClockFormat.use24h = v
+        // The in-app language once AppLocale.wrap has run; refreshed on every resume.
+        app.vela.core.data.ClockFormat.locale = Locale.getDefault()
     }
 
     fun set(context: Context, value: String) {
@@ -129,12 +137,19 @@ object Clock24 {
     }
 }
 
+/** The 12 or 24 hour clock chosen ([Clock24]) in [locale]'s own pattern
+ *  ([app.vela.core.data.ClockFormat.pattern]), so the day period sits where the language puts it:
+ *  "7:30 PM", "下午7:30". */
+internal fun clockTimeFormatter(
+    use24h: Boolean = Clock24.on.value,
+    locale: Locale = Locale.getDefault(),
+): DateTimeFormatter = app.vela.core.data.ClockFormat.formatter(use24h, locale)
+
 /** Wall-clock arrival time for a trip [remainingSeconds] from now, e.g. "7:42 PM" or "19:42",
  *  following the device's 12/24-hour setting, the way Google shows ETA during navigation. */
 fun formatArrivalClock(remainingSeconds: Double): String {
     val arrival = (DemoClock.now()?.toLocalTime() ?: java.time.LocalTime.now()).plusSeconds(remainingSeconds.toLong())
-    val fmt = if (Clock24.on.value) java.time.format.DateTimeFormatter.ofPattern("HH:mm")
-        else java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
+    val fmt = clockTimeFormatter()
     return arrival.format(fmt)
 }
 
@@ -142,15 +157,13 @@ fun formatArrivalClock(remainingSeconds: Double): String {
  *  setting, like [formatArrivalClock]. */
 fun formatClock(epochMs: Long): String {
     val t = java.time.Instant.ofEpochMilli(epochMs).atZone(java.time.ZoneId.systemDefault()).toLocalTime()
-    val fmt = if (Clock24.on.value) java.time.format.DateTimeFormatter.ofPattern("HH:mm")
-        else java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
+    val fmt = clockTimeFormatter()
     return t.format(fmt)
 }
 
-/** "Sep 7, 7:42 PM" / "7 Sep, 19:42": a saved trip's or log's timestamp in the device's own date
- *  and time formats. */
-fun formatDateTime(context: Context, epochMs: Long): String {
-    val d = java.util.Date(epochMs)
-    return android.text.format.DateFormat.getMediumDateFormat(context).format(d) + ", " +
-        android.text.format.DateFormat.getTimeFormat(context).format(d)
-}
+/** "Sep 7, 2026, 7:42 PM" / "7 Sep 2026, 19:42": a saved trip's or log's timestamp in the
+ *  language's own date and time pattern, on the clock chosen ([Clock24]). [withYear] false drops
+ *  the year. */
+fun formatDateTime(@Suppress("UNUSED_PARAMETER") context: Context, epochMs: Long, withYear: Boolean = true): String =
+    java.time.Instant.ofEpochMilli(epochMs).atZone(java.time.ZoneId.systemDefault())
+        .format(app.vela.core.data.ClockFormat.formatter(Clock24.on.value, Locale.getDefault(), if (withYear) "yMMMd" else "MMMd"))

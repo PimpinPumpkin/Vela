@@ -27,7 +27,7 @@ by one developer.
 | Status | Beta |
 | Started | June 2026 |
 | Who makes it | One developer, who goes by PimpinPumpkin. Outside contributors send fixes and volunteers translate it. |
-| Languages | 15 |
+| Languages | 19 |
 | Where to get it | GitHub releases, Obtainium, or Vela's own F-Droid repository. Not on Google Play. |
 | Source | https://github.com/PimpinPumpkin/Vela |
 | Website | https://velamaps.org/ |

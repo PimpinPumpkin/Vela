@@ -41,7 +41,7 @@ import okhttp3.Request
  * profile.) Point it at a self-hosted OSRM/Valhalla before any real release.
  */
 object RouteGeometry {
-    private const val OSRM_BASE = "https://routing.openstreetmap.de"
+    internal const val OSRM_BASE = "https://routing.openstreetmap.de"
     /** We ask OSRM for `geometries=polyline6`. The default `polyline` is 1e5-scaled, i.e. a
      *  1.11 m latitude grid — every vertex of a physically straight road snapped to a meter-ish
      *  step, which the nav puck then has to smooth back out (issue #251). Verified supported by
@@ -51,13 +51,19 @@ object RouteGeometry {
     // Max gap (m) between an exit ramp and a following fork/merge for them to count as ONE exit complex
     // (consolidateExits). Generous enough for a long ramp, short enough that a genuine km-away fork isn't folded.
     private const val EXIT_COMPLEX_GAP_M = 500.0
-    // Traffic-light landmark guidance (enrichWithLights): a light must be within this far BEFORE the turn (a
-    // block or two — "pass the light, then turn"), and within this far of the driven line to count as on-route.
-    private const val LIGHT_APPROACH_M = 400.0
+    // Traffic-light landmark guidance (enrichWithLights): lights are marked this far back from the turn, the
+    // furthest out a cue is spoken (NavEngine.LIGHT_SPEAK_MAX_M), and must be within LIGHT_SNAP_M of the driven
+    // line to count as on-route.
+    internal const val LIGHT_APPROACH_M = 800.0
     private const val LIGHT_SNAP_M = 25.0
     // One physical junction is often several OSM nodes (one traffic_signals node per approach/carriageway,
     // ~15-30 m apart) — cluster matched signals within this radius so we count INTERSECTIONS, not nodes.
     private const val LIGHT_CLUSTER_M = 30.0
+    // A stop sign the route stops at this far before a turn, or this far past it (a sign on the
+    // junction's own node lands either side of the vertex), is the turn's own: a stop line sits
+    // a few meters to a lane's width short of the junction's middle.
+    internal const val STOP_AT_TURN_M = 30.0
+    internal const val STOP_PAST_TURN_M = 5.0
     private val json = Json { ignoreUnknownKeys = true }
 
     /** The FOSSGIS OSRM backend for each mode. Transit has none → null geometry. */
@@ -210,6 +216,31 @@ object RouteGeometry {
             departBearingDeg = departBearingDeg, strictVias = strictVias, looseVias = looseVias,
             callTimeoutMs = callTimeoutMs, budget = budget, onFailure = onFailure, waypointBearings = waypointBearings,
         )
+
+    /** OSRM's car route for just one turn ([app.vela.core.data.naming.TurnBans]): from [a] heading [ha] to [b] heading
+     *  [hb], each end snapped no farther than [app.vela.core.data.naming.TurnBans.PROBE_RADIUS_M]. Null on any failure,
+     *  and when no road lies there (OSRM answers NoSegment). */
+    internal fun probeTurn(http: OkHttpClient, a: LatLng, ha: Double, b: LatLng, hb: Double, timeoutMs: Long): app.vela.core.data.naming.TurnBans.Probe? = runCatching {
+        fun deg(h: Double) = (((h % 360.0) + 360.0) % 360.0).toInt()
+        val tol = app.vela.core.data.naming.TurnBans.PROBE_HEADING_TOL_DEG
+        val r = app.vela.core.data.naming.TurnBans.PROBE_RADIUS_M.toInt()
+        val url = "$OSRM_BASE/routed-car/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}" +
+            "?overview=full&geometries=polyline$OSRM_PRECISION&steps=false&alternatives=false" +
+            "&bearings=${deg(ha)},$tol;${deg(hb)},$tol&radiuses=$r;$r"
+        val client = http.newBuilder().callTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS).build()
+        client.newCall(Request.Builder().url(url).header("User-Agent", VelaConfig.VELA_UA).build()).execute().use { resp ->
+            if (!resp.isSuccessful) return@use null
+            val root = json.parseToJsonElement(resp.body?.string().orEmpty()).jsonObject
+            val route = root["routes"]?.jsonArray?.firstOrNull()?.jsonObject ?: return@use null
+            val line = route["geometry"]?.jsonPrimitive?.contentOrNull?.let { PolylineCodec.decode(it, OSRM_PRECISION) }
+                ?.takeIf { it.size >= 2 } ?: return@use null
+            val snap = root["waypoints"]?.jsonArray?.maxOfOrNull { it.jsonObject["distance"]?.jsonPrimitive?.doubleOrNull ?: 999.0 } ?: 999.0
+            app.vela.core.data.naming.TurnBans.Probe(
+                line, route["distance"]?.jsonPrimitive?.doubleOrNull ?: return@use null,
+                route["duration"]?.jsonPrimitive?.doubleOrNull ?: 0.0, snap,
+            )
+        }
+    }.getOrNull()
 
     /** OSRM `bearings=` with one entry per waypoint: "<deg>,<tolerance>" where a heading is given,
      *  empty where not. The count must equal the waypoint count or OSRM rejects the request. */
@@ -407,7 +438,7 @@ object RouteGeometry {
                 maneuvers += prev.copy(distanceMeters = prev.distanceMeters + m.distanceMeters, durationSeconds = prev.durationSeconds + m.durationSeconds)
             }
         }
-        val consolidated = foldTurnLanes(poly, rampTurns(foldSameRoadMerges(foldRenames(consolidateExits(maneuvers)))))
+        val consolidated = stayOnForks(foldTurnLanes(poly, rampTurns(foldSameRoadMerges(foldRenames(consolidateExits(bentRenames(poly, maneuvers)))))))
         maneuvers.clear(); maneuvers.addAll(consolidated)
         if (maneuvers.size < 2) return null
         return Route(
@@ -444,7 +475,9 @@ object RouteGeometry {
      * A turn split in two by a turn lane mapped as its own way: a short unnamed slight turn where
      * the lane peels off the road, then the turn onto the street, the same way. A real drive heard
      * "Turn slight right, then turn slight right onto" a street for one right turn at a divided
-     * corner, four times on the way in. The pair becomes one turn at the first step's place, where
+     * corner, four times on the way in. A slip lane that joins the street going straight ("Turn
+     * slight right", then "Continue onto" the street 80 m on) is the same turn, and its lane may
+     * leave the road at any angle. The pair becomes one turn at the first step's place, where
      * the lane is taken, onto the second step's road, worded "Turn left" or "Turn right" by how far
      * the line turns across both. Only when the first step bends the line [TURN_LANE_PEEL_DEG] or
      * less and runs at most [TURN_LANE_MAX_M], and the line turns [TURN_LANE_MIN_DEG] to
@@ -472,8 +505,10 @@ object RouteGeometry {
             else -> return null
         }
         val sameSide = if (right) b.type in RIGHT_TURNS else b.type in LEFT_TURNS
+        // A slip lane that joins the street running straight on: the whole turn is in the lane.
+        val joins = b.type == ManeuverType.STRAIGHT || b.type == ManeuverType.CONTINUE
         val road = b.road ?: b.ref
-        if (!sameSide || road.isNullOrBlank() || !a.road.isNullOrBlank() || !a.ref.isNullOrBlank()) return null
+        if (!(sameSide || joins) || road.isNullOrBlank() || !a.road.isNullOrBlank() || !a.ref.isNullOrBlank()) return null
         if (a.distanceMeters > TURN_LANE_MAX_M || atA < TURN_LANE_LOOK_M || atB + TURN_LANE_LOOK_M > cum.last()) return null
         fun heading(from: Double, to: Double): Double {
             val p = app.vela.core.nav.RouteProjection.pointAt(poly, cum, from)
@@ -487,7 +522,7 @@ object RouteGeometry {
         val sign = if (right) 1.0 else -1.0
         val peel = turn(before, lane) * sign
         val whole = turn(before, after) * sign
-        val fold = peel <= TURN_LANE_PEEL_DEG && peel >= -TURN_LANE_PEEL_DEG / 2 && whole >= TURN_LANE_MIN_DEG && whole <= TURN_LANE_MAX_DEG
+        val fold = (joins || peel <= TURN_LANE_PEEL_DEG && peel >= -TURN_LANE_PEEL_DEG / 2) && whole >= TURN_LANE_MIN_DEG && whole <= TURN_LANE_MAX_DEG
         onTurnLane?.invoke(a, b, peel, whole, fold)
         if (!fold) return null
         val mod = if (right) "right" else "left"
@@ -505,6 +540,52 @@ object RouteGeometry {
             lightsBeforeM = a.lightsBeforeM,
         )
     }
+
+    /**
+     * A rename where the line turns [RENAME_TURN_DEG] or more is a turn. OSRM marks a rename with a
+     * straight or slight modifier read at the node, so a street that curves into another ("L Street
+     * becomes 2nd Street" round a 90 degree corner) came out as a silent rename while Google says
+     * "Turn left onto 2nd St", and a left from one street onto another read "straight" and went
+     * unsaid. Measured on [poly], which the steps tile, as the most the line turns within
+     * [RENAME_TURN_REACH_M] of the step. A curve that keeps its name stays silent.
+     */
+    internal fun bentRenames(poly: List<LatLng>, list: List<Maneuver>): List<Maneuver> {
+        if (poly.size < 2 || list.size < 3) return list
+        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+        val total = cum.last()
+        var along = 0.0
+        return list.mapIndexed { i, m ->
+            val here = along
+            along += m.distanceMeters
+            val prev = list.getOrNull(i - 1)
+            val road = m.road ?: m.ref
+            if (i == 0 || i == list.lastIndex || m.type != ManeuverType.CONTINUE || road.isNullOrBlank() || prev == null ||
+                app.vela.core.model.continueHasGenuineFork(m.lanes) || here < RENAME_TURN_REACH_M || here > total - RENAME_TURN_REACH_M ||
+                road.equals(prev.road ?: prev.ref, ignoreCase = true)) return@mapIndexed m
+            var bend = 0.0
+            var o = -RENAME_TURN_REACH_M
+            while (o <= RENAME_TURN_REACH_M) {
+                val b = app.vela.core.nav.StepAudit.bendAt(poly, cum, here + o)
+                if (kotlin.math.abs(b) > kotlin.math.abs(bend)) bend = b
+                o += 10.0
+            }
+            if (kotlin.math.abs(bend) < RENAME_TURN_DEG) return@mapIndexed m
+            val sharp = kotlin.math.abs(bend) >= RENAME_SHARP_DEG
+            val mod = (if (sharp) "sharp " else "") + if (bend > 0) "right" else "left"
+            m.copy(
+                type = osrmType("turn", mod),
+                instruction = osrmPhrase("turn", mod, road, null, null, null),
+                instructionNoRoad = osrmPhrase("turn", mod, null, null, null, null),
+            )
+        }
+    }
+
+    /** How far a rename's corner must turn the line to be said as a turn (degrees). */
+    const val RENAME_TURN_DEG = 60.0
+    private const val RENAME_SHARP_DEG = 135.0
+    /** The corner is read this close to the rename's node. A road that changes its name and then
+     *  curves (an underpass ramping onto a parkway, the bend 30 m on) is not a turn. */
+    private const val RENAME_TURN_REACH_M = 10.0
 
     private val RIGHT_TURNS = setOf(ManeuverType.TURN_RIGHT, ManeuverType.SLIGHT_RIGHT, ManeuverType.SHARP_RIGHT)
     private val LEFT_TURNS = setOf(ManeuverType.TURN_LEFT, ManeuverType.SLIGHT_LEFT, ManeuverType.SHARP_LEFT)
@@ -694,6 +775,28 @@ object RouteGeometry {
      *  distances). A CONTINUE that is a GENUINE fork (lanes show an off-lane that also goes straight, "use the
      *  left 2 lanes to stay on I-80") is KEPT — it's a real decision and IS spoken. Never folds the first
      *  maneuver, and STRAIGHT (a junction straight-through, a real intersection) is intentionally left alone. */
+    /** A fork or keep whose sign's first route is the road the car is already on says so: "Keep
+     *  left to stay on I 80 West". Read as "toward I 80 West" it sounded like a road to join, not
+     *  the one being driven. The road the car is on is the one the step before it ends on (its last
+     *  rename). Languages without a "stay on" line keep their text. */
+    internal fun stayOnForks(list: List<Maneuver>): List<Maneuver> {
+        val nav = app.vela.core.i18n.NavStringsRegistry.current()
+        return list.mapIndexed { i, m ->
+            if (i == 0 || m.type !in STAY_ON_TYPES) return@mapIndexed m
+            val prev = list[i - 1]
+            val (name, ref) = prev.roadAt(prev.distanceMeters)
+            val on = listOfNotNull(ref, name).flatMap { it.split(';', '/') }
+                .mapNotNull { app.vela.core.nav.routeKey(it) }.toSet()
+            if (on.isEmpty()) return@mapIndexed m
+            val first = nav.signParts(m.instruction).firstOrNull { app.vela.core.nav.routeKey(it) != null } ?: return@mapIndexed m
+            if (app.vela.core.nav.routeKey(first) !in on) return@mapIndexed m
+            nav.stayOn(m.instruction, first)?.let { m.copy(instruction = it) } ?: m
+        }
+    }
+    private val STAY_ON_TYPES = setOf(
+        ManeuverType.FORK_LEFT, ManeuverType.FORK_RIGHT, ManeuverType.KEEP_LEFT, ManeuverType.KEEP_RIGHT,
+    )
+
     internal fun foldRenames(list: List<Maneuver>): List<Maneuver> {
         val out = mutableListOf<Maneuver>()
         for (m in list) {
@@ -719,29 +822,44 @@ object RouteGeometry {
         return out
     }
 
+    /** The turns a traffic-light or stop-sign cue is for: plain and sharp lefts and rights. */
+    private val LIGHT_TURNS = setOf(ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.SHARP_LEFT, ManeuverType.SHARP_RIGHT)
+
     /**
-     * Mark the traffic lights on the approach to each plain turn (`Maneuver.lightsBeforeM`), for
-     * the spoken landmark cue "Pass the traffic light, then turn left onto 5th Avenue". Only
-     * surface-street left and right turns (not ramps, merges, roundabouts or continues), only
-     * signals within [LIGHT_APPROACH_M] before the turn and within [LIGHT_SNAP_M] of the driven
-     * line (a light on a parallel street does not count), and never the turn's own junction.
-     * Signals at one junction count once. The instruction text is left alone: the engine adds
-     * the clause when it speaks, for the lights still ahead of the car (`NavEngine.lightLead`).
-     * The route itself comes back when no turn gains a light.
+     * Mark the traffic lights and stop signs on the approach to each plain turn, for the spoken
+     * landmark cues ("Go past this light, then turn left onto 5th Avenue", "At the light, ...",
+     * "At the stop sign, ..."). Only surface-street left and right turns, sharp ones too (not
+     * ramps, forks, merges, roundabouts or continues), and only what is within [LIGHT_APPROACH_M]
+     * before the turn.
+     *
+     * Lights: [signals] within [LIGHT_SNAP_M] of the driven line (a light on a parallel street does
+     * not count), one per junction ([LIGHT_CLUSTER_M]), as `Maneuver.lightsBeforeM`. A signal
+     * within [LIGHT_CLUSTER_M] of the turn is the turn's own and sets `Maneuver.lightAtTurn`.
+     *
+     * Stop signs: the [stops] the route stops at, by the map's rule for a stop sign on the route
+     * (`RouteProjection.stopIsOnRoute`: on the line, its road running the way the car comes in),
+     * one per junction, as `Maneuver.stopsBeforeM`. One within [STOP_AT_TURN_M] before the turn,
+     * or [STOP_PAST_TURN_M] past it (a sign on the junction's own node), sets
+     * `Maneuver.stopAtTurn`. The sign holding the street the route turns onto sits past the turn
+     * on a road across the approach, and is left out.
+     *
+     * The instruction text is left alone: the engine adds the clause when it speaks
+     * (`NavEngine.lightCue`). The route itself comes back when no turn gains either.
      */
-    fun enrichWithLights(route: Route, signals: List<LatLng>): Route {
+    fun enrichWithLights(route: Route, signals: List<LatLng>, stops: List<TrafficControl> = emptyList()): Route {
         val poly = route.polyline
-        if (signals.isEmpty() || poly.size < 2) return route
+        if ((signals.isEmpty() && stops.isEmpty()) || poly.size < 2) return route
         fun nearestIdx(p: LatLng): Int {
             var best = 0; var bd = Double.MAX_VALUE
             for (i in poly.indices) { val d = poly[i].distanceTo(p); if (d < bd) { bd = d; best = i } }
             return best
         }
+        val cum = if (stops.isEmpty()) DoubleArray(0) else app.vela.core.nav.RouteProjection.cumulative(poly)
         var marked = false
         val legs = route.legs.map { leg ->
             val idx = leg.maneuvers.map { nearestIdx(it.location) }
             val newMans = leg.maneuvers.mapIndexed { i, m ->
-                if (i == 0 || (m.type != ManeuverType.TURN_LEFT && m.type != ManeuverType.TURN_RIGHT)) return@mapIndexed m
+                if (i == 0 || m.type !in LIGHT_TURNS) return@mapIndexed m
                 val toIdx = idx[i]; val fromIdx = idx[i - 1]
                 if (toIdx <= fromIdx) return@mapIndexed m
                 // Walk BACK from the turn along the line up to LIGHT_APPROACH_M: each approach
@@ -750,22 +868,61 @@ object RouteGeometry {
                 var acc = 0.0; var k = toIdx
                 while (k > fromIdx && acc < LIGHT_APPROACH_M) { approach.add(poly[k] to acc); acc += poly[k].distanceTo(poly[k - 1]); k-- }
                 // A signal belonging to the turn's OWN junction is the one you're turning at, not one you
-                // "pass" first. Exclude any signal within LIGHT_CLUSTER_M of the turn vertex — the SAME
+                // "pass" first. Exclude any signal within LIGHT_CLUSTER_M of the turn vertex, the SAME
                 // radius the clustering below treats as one physical junction (one signal per approach can
                 // sit 25-30 m before the junction-center vertex, so LIGHT_SNAP_M=25 was too tight and let
-                // the turn's own light through; audit 2026-07-07). LIGHT_SNAP_M stays the on-the-driven-line
-                // snap tolerance.
+                // the turn's own light through). LIGHT_SNAP_M stays the on-the-driven-line snap tolerance.
                 val turnPt = poly[toIdx]
+                // The step before's corner: a light or stop sign there is that turn's, not this
+                // one's, when the two corners are close (a lot entrance just round a corner).
+                val prevPt = poly[fromIdx]
                 // Cluster the matched nodes: OSM maps one traffic_signals node per approach/carriageway at a
                 // junction, so counting raw nodes would say "pass 2 lights" for one physical intersection.
                 val clusters = ArrayList<Pair<LatLng, Double>>()
+                var atTurn = false
                 for (s in signals) {
-                    if (turnPt.distanceTo(s) < LIGHT_CLUSTER_M) continue
+                    if (prevPt.distanceTo(s) < LIGHT_CLUSTER_M) continue
+                    if (turnPt.distanceTo(s) < LIGHT_CLUSTER_M) { atTurn = true; continue }
                     val (at, before) = approach.minByOrNull { it.first.distanceTo(s) } ?: continue
                     if (at.distanceTo(s) >= LIGHT_SNAP_M) continue
                     if (clusters.none { it.first.distanceTo(s) < LIGHT_CLUSTER_M }) clusters.add(s to before)
                 }
-                if (clusters.isEmpty()) m else { marked = true; m.copy(lightsBeforeM = clusters.map { it.second }.sortedDescending()) }
+                var stopsBefore = emptyList<Double>()
+                var stopAtTurn = false
+                val turnAlong = if (stops.isEmpty()) 0.0 else cum[toIdx]
+                // From STOP_AT_TURN_M past the step before: a sign just past a corner the car has
+                // turned at holds the traffic coming the other way, or is that corner's.
+                val fromAlong = if (stops.isEmpty()) 0.0 else maxOf(cum[fromIdx] + STOP_AT_TURN_M, turnAlong - LIGHT_APPROACH_M)
+                if (stops.isNotEmpty() && fromAlong < turnAlong + STOP_PAST_TURN_M) {
+                    // Projected onto this step's stretch and a little past the turn only, so a
+                    // later stretch of the same line passing nearby cannot claim the sign. The whole
+                    // stretch, so a sign outside the window lands outside it instead of on its end.
+                    var hi = toIdx
+                    while (hi < poly.size - 1 && cum[hi] < turnAlong + STOP_PAST_TURN_M + 1.0) hi++
+                    val sub = poly.subList(fromIdx, hi + 1)
+                    val subCum = cum.copyOfRange(fromIdx, hi + 1)
+                    val stopClusters = ArrayList<Pair<LatLng, Double>>()
+                    for (c in stops) {
+                        if (c.kind != TrafficControl.Kind.STOP) continue
+                        val reach = if (c.roadBearingDeg == null) app.vela.core.nav.RouteProjection.STOP_NO_BEARING_M else app.vela.core.nav.RouteProjection.STOP_ON_ROUTE_M
+                        val at = app.vela.core.nav.RouteProjection.alongMeters(sub, subCum, c.loc, reach) ?: continue
+                        if (at < fromAlong || at > turnAlong + STOP_PAST_TURN_M) continue
+                        // The approach's heading, also for a sign on the junction's own node.
+                        val heading = app.vela.core.nav.RouteProjection.bearingAt(sub, subCum, minOf(at, turnAlong - 1.0))
+                        if (c.roadBearingDeg != null && !app.vela.core.nav.RouteProjection.alignedWithRoad(heading, c.roadBearingDeg)) continue
+                        val before = turnAlong - at
+                        if (before <= STOP_AT_TURN_M) { stopAtTurn = true; continue }
+                        if (stopClusters.none { it.first.distanceTo(c.loc) < LIGHT_CLUSTER_M }) stopClusters.add(c.loc to before)
+                    }
+                    stopsBefore = stopClusters.map { it.second }.sortedDescending()
+                }
+                if (clusters.isEmpty() && !atTurn && stopsBefore.isEmpty() && !stopAtTurn) m else {
+                    marked = true
+                    m.copy(
+                        lightsBeforeM = clusters.map { it.second }.sortedDescending(), lightAtTurn = atTurn,
+                        stopsBeforeM = stopsBefore, stopAtTurn = stopAtTurn,
+                    )
+                }
             }
             leg.copy(maneuvers = newMans)
         }
@@ -1100,6 +1257,37 @@ object RouteGeometry {
             }
             return bestAlong
         }
+
+        /** Along-distances of every pass of the polyline within [tolM] of [p], one per pass (the
+         *  nearest point of each), in order. A pass ends where the line is [passGapM] or more along
+         *  from the last near point. */
+        fun allAlong(p: LatLng, tolM: Double, passGapM: Double = 60.0): List<Double> {
+            val cx = Math.floor(p.lng / cell).toInt(); val cy = Math.floor(p.lat / cell).toInt()
+            val latScale = Math.cos(Math.toRadians(p.lat))
+            val hits = ArrayList<Pair<Double, Double>>() // along, distance
+            val segsSeen = HashSet<Int>()
+            for (x in cx - 1..cx + 1) for (y in cy - 1..cy + 1) {
+                val segs = map[key(x, y)] ?: continue
+                for (i in segs) {
+                    if (!segsSeen.add(i)) continue
+                    val a = poly[i]; val b = poly[i + 1]
+                    val bx = (b.lng - a.lng) * latScale; val by = b.lat - a.lat
+                    val px = (p.lng - a.lng) * latScale; val py = p.lat - a.lat
+                    val len2 = bx * bx + by * by
+                    val t = if (len2 <= 0.0) 0.0 else ((px * bx + py * by) / len2).coerceIn(0.0, 1.0)
+                    val dM = Math.hypot(px - bx * t, py - by * t) * 111_320.0
+                    if (dM <= tolM) hits += (cum[i] + (cum[i + 1] - cum[i]) * t) to dM
+                }
+            }
+            hits.sortBy { it.first }
+            val passes = ArrayList<Pair<Double, Double>>()
+            for (h in hits) {
+                val last = passes.lastOrNull()
+                if (last != null && h.first - last.first < passGapM) { if (h.second < last.second) passes[passes.lastIndex] = h }
+                else passes += h
+            }
+            return passes.map { it.first }
+        }
     }
 
     // --- traffic-aware routing (option 3) -------------------------------------
@@ -1110,13 +1298,11 @@ object RouteGeometry {
     internal fun startsAgainst(poly: List<LatLng>, headingDeg: Double): Boolean {
         if (poly.size < 2) return false
         val a = poly.first()
-        var run = 0.0
-        var b = a
-        for (i in 1 until poly.size) {
-            run += poly[i - 1].distanceTo(poly[i])
-            b = poly[i]
-            if (run >= START_LOOK_M) break
-        }
+        // The point START_LOOK_M along the line, not the first vertex past it: Google's line
+        // has few vertices, and "56 m back, then right" whose next vertex was a kilometer up the
+        // new street read as setting off north from a car going east.
+        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+        val b = app.vela.core.nav.RouteProjection.pointAt(poly, cum, START_LOOK_M)
         if (a.distanceTo(b) < 15.0) return false
         val k = kotlin.math.cos(Math.toRadians(a.lat))
         val brg = (Math.toDegrees(kotlin.math.atan2((b.lng - a.lng) * k, b.lat - a.lat)) + 360.0) % 360.0
@@ -1125,6 +1311,221 @@ object RouteGeometry {
     }
     private const val START_LOOK_M = 80.0
     private const val AGAINST_DEG = 120.0
+
+    /**
+     * True when [poly] takes the car back along the road it came by: within its first
+     * [BACK_LOOK_M], [BACK_RUN_M] or more of it runs within [BACK_NEAR_M] of [behind] (the car's
+     * own track, oldest first, ending where the car is) the opposite way. A U-turn does, and so
+     * does the way round a block back to a missed turn. A loop ramp does not: it never comes back
+     * onto the road the car drove. Its first [BACK_SKIP_M] is left out, where the line still
+     * starts on the track.
+     */
+    internal fun goesBack(poly: List<LatLng>, behind: List<LatLng>): Boolean {
+        if (poly.size < 2 || behind.size < 2) return false
+        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+        val end = minOf(cum.last(), BACK_LOOK_M)
+        var run = 0.0
+        var m = BACK_SKIP_M
+        while (m + BACK_STEP_M <= end) {
+            val p = app.vela.core.nav.RouteProjection.pointAt(poly, cum, m)
+            val q = app.vela.core.nav.RouteProjection.pointAt(poly, cum, m + BACK_STEP_M)
+            val dir = bearingDeg(p, q)
+            // The nearest stretch of the track, and the way the car drove it.
+            var best = Double.MAX_VALUE
+            var trackDir = 0.0
+            for (i in 1 until behind.size) {
+                val a = behind[i - 1]; val b = behind[i]
+                if (a.distanceTo(b) < 1.0) continue
+                val d = distToSegment(p, a, b)
+                if (d < best) { best = d; trackDir = bearingDeg(a, b) }
+            }
+            val opposite = best <= BACK_NEAR_M && angleBetween(dir, trackDir) > BACK_OPPOSITE_DEG
+            run = if (opposite) run + BACK_STEP_M else 0.0
+            if (run >= BACK_RUN_M) return true
+            m += BACK_STEP_M
+        }
+        return false
+    }
+    /**
+     * True when [poly] begins by backing up: a point of its first [BEHIND_LOOK_M] lies more than
+     * [BEHIND_M] behind its start along [headingDeg]. A U-turn to the street just passed does,
+     * however soon it turns off again; [startsAgainst] read 15 m back and then up a cross street
+     * as setting off sideways. A turn at the junction the car is crossing lies a few meters
+     * behind at most, and a loop ramp only comes back behind its start much further on.
+     */
+    internal fun startsBehind(poly: List<LatLng>, headingDeg: Double): Boolean {
+        if (poly.size < 2) return false
+        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+        val a = poly.first()
+        val k = kotlin.math.cos(Math.toRadians(a.lat)) * 111_320.0
+        val hx = kotlin.math.sin(Math.toRadians(headingDeg)); val hy = kotlin.math.cos(Math.toRadians(headingDeg))
+        var m = 0.0
+        val end = minOf(cum.last(), BEHIND_LOOK_M)
+        while (m <= end) {
+            val p = app.vela.core.nav.RouteProjection.pointAt(poly, cum, m)
+            val ahead = (p.lng - a.lng) * k * hx + (p.lat - a.lat) * 111_320.0 * hy
+            if (ahead < -BEHIND_M) return true
+            m += BACK_STEP_M
+        }
+        return false
+    }
+    private const val BEHIND_LOOK_M = 60.0
+    private const val BEHIND_M = 12.0
+
+    /**
+     * True when [poly] turns round on itself within its first [SELF_LOOK_M], or by [upToM] (the
+     * end of its first leg) when that comes first: [SELF_RUN_M] or more of it runs back within
+     * [SELF_NEAR_M] of its own earlier line, the opposite way. A route that sends the car on to a
+     * U-turn in the road, or up a side street to turn there and come back, does. [goesBack]
+     * misses both: the road the route comes back along is one the car has not driven yet. The
+     * line within [SELF_GAP_M] behind each point is left out, where it is the same stretch of
+     * road. A switchback's legs part too soon to count.
+     */
+    internal fun doublesBack(poly: List<LatLng>, upToM: Double = Double.MAX_VALUE): Boolean {
+        if (poly.size < 2) return false
+        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+        val end = minOf(cum.last(), SELF_LOOK_M, upToM)
+        var run = 0.0
+        var m = SELF_GAP_M
+        while (m + BACK_STEP_M <= end) {
+            val p = app.vela.core.nav.RouteProjection.pointAt(poly, cum, m)
+            val q = app.vela.core.nav.RouteProjection.pointAt(poly, cum, m + BACK_STEP_M)
+            val dir = bearingDeg(p, q)
+            // The nearest stretch of the line up to SELF_GAP_M before this point, and its way.
+            val limit = m - SELF_GAP_M
+            var best = Double.MAX_VALUE
+            var lineDir = 0.0
+            for (i in 1 until poly.size) {
+                if (cum[i - 1] >= limit) break
+                val a = poly[i - 1]
+                val b = if (cum[i] <= limit) poly[i] else app.vela.core.nav.RouteProjection.pointAt(poly, cum, limit)
+                if (a.distanceTo(b) < 1.0) continue
+                val d = distToSegment(p, a, b)
+                if (d < best) { best = d; lineDir = bearingDeg(a, b) }
+            }
+            val opposite = best <= SELF_NEAR_M && angleBetween(dir, lineDir) > BACK_OPPOSITE_DEG
+            run = if (opposite) run + BACK_STEP_M else 0.0
+            if (run >= SELF_RUN_M) return true
+            m += BACK_STEP_M
+        }
+        return false
+    }
+    private const val SELF_LOOK_M = 1500.0
+    private const val SELF_GAP_M = 40.0
+    private const val SELF_NEAR_M = 15.0
+    private const val SELF_RUN_M = 50.0
+
+    /**
+     * The part of the car's track [behind] (oldest first) driven since it last turned round: the
+     * newest stretch more than [BACK_OPPOSITE_DEG] off the way it goes now ([headingDeg], else
+     * the direction of its newest [TURN_REF_M]), and everything before it, is dropped. A car
+     * that has made its own U-turn goes back along the road it came by, and a route on that way
+     * does not turn it round again. A corner is kept.
+     */
+    internal fun sinceTurnRound(behind: List<LatLng>, headingDeg: Double? = null): List<LatLng> {
+        if (behind.size < 3) return behind
+        val ref = headingDeg ?: run {
+            val last = behind.last()
+            var i = behind.size - 2
+            while (i > 0 && behind[i].distanceTo(last) < TURN_REF_M) i--
+            if (behind[i].distanceTo(last) < TURN_MIN_SEG_M) return behind
+            bearingDeg(behind[i], last)
+        }
+        for (i in behind.size - 1 downTo 1) {
+            val a = behind[i - 1]; val b = behind[i]
+            if (a.distanceTo(b) < TURN_MIN_SEG_M) continue
+            if (angleBetween(bearingDeg(a, b), ref) > BACK_OPPOSITE_DEG) return behind.subList(i, behind.size)
+        }
+        return behind
+    }
+
+    /**
+     * Whether a stopped car still points the way it was last going: [course], shown at [at], against
+     * its [track] since (oldest first, ending where it is). Under the heading speed a car can crawl
+     * round a corner or turn in the road and show no course. Once it is [HELD_TURN_CHECK_M] from
+     * [at], the bearing of the newest [HELD_TURN_CHECK_M] of the track decides: more than
+     * [HELD_TURN_MAX_DEG] off [course], the course is no longer the car's.
+     */
+    internal fun courseStillHeld(course: Double, at: LatLng, track: List<LatLng>): Boolean {
+        val here = track.lastOrNull() ?: return true
+        if (at.distanceTo(here) < HELD_TURN_CHECK_M) return true
+        var i = track.size - 2
+        while (i >= 0 && track[i].distanceTo(here) < HELD_TURN_CHECK_M) i--
+        val from = if (i >= 0) track[i] else at
+        if (from.distanceTo(here) < HELD_TURN_CHECK_M) return true
+        return angleBetween(bearingDeg(from, here), course) <= HELD_TURN_MAX_DEG
+    }
+    const val HELD_TURN_CHECK_M = 10.0
+    const val HELD_TURN_MAX_DEG = 45.0
+
+    private const val TURN_REF_M = 15.0
+    private const val TURN_MIN_SEG_M = 2.0
+
+    private const val BACK_LOOK_M = 400.0
+    private const val BACK_SKIP_M = 10.0
+    private const val BACK_STEP_M = 5.0
+    private const val BACK_NEAR_M = 25.0
+    private const val BACK_RUN_M = 30.0
+    private const val BACK_OPPOSITE_DEG = 135.0
+
+    private fun bearingDeg(a: LatLng, b: LatLng): Double {
+        val k = kotlin.math.cos(Math.toRadians(a.lat))
+        return (Math.toDegrees(kotlin.math.atan2((b.lng - a.lng) * k, b.lat - a.lat)) + 360.0) % 360.0
+    }
+    private fun angleBetween(x: Double, y: Double): Double = kotlin.math.abs((x - y + 540.0) % 360.0 - 180.0)
+    /** Meters from [p] to the segment [a]-[b], on a local flat projection. */
+    private fun distToSegment(p: LatLng, a: LatLng, b: LatLng): Double {
+        val k = kotlin.math.cos(Math.toRadians(a.lat)) * 111_320.0
+        val bx = (b.lng - a.lng) * k; val by = (b.lat - a.lat) * 111_320.0
+        val px = (p.lng - a.lng) * k; val py = (p.lat - a.lat) * 111_320.0
+        val len2 = bx * bx + by * by
+        val t = if (len2 <= 0.0) 0.0 else ((px * bx + py * by) / len2).coerceIn(0.0, 1.0)
+        return kotlin.math.hypot(px - t * bx, py - t * by)
+    }
+
+    /**
+     * The routes a reroute may lead with, given the way the car is going: Google's (the list
+     * [forwardChoice] keeps) and the open router's, reordered. A route [back] is one that turns
+     * the car round ([startsAgainst] the heading, [goesBack] along its track, or [doublesBack]
+     * on its own line), and [now] one
+     * that does so where the car is rather than further on. A route that goes on beats one that
+     * turns the car round further on (round a block, back from the next exit), which beats one
+     * that turns it round where it is, while it costs no more than [FORWARD_MAX_EXTRA_S] or
+     * [FORWARD_MAX_EXTRA_SHARE] over the best ([turnRank]). The open router's best can turn
+     * round too, though it was asked with the heading: one of its alternates that turns round
+     * less leads instead, and Google's best is set aside only for an open route that turns
+     * round less than it.
+     */
+    internal fun forwardPick(
+        google: List<Route>, open: List<Route>, back: (Route) -> Boolean, now: (Route) -> Boolean = { false },
+    ): Pair<List<Route>, List<Route>> {
+        val rank = { r: Route -> turnRank(r, back, now) }
+        val top = open.firstOrNull()
+        val lead = if (top != null && rank(top) > 0) open.filter { r ->
+            rank(r) < rank(top) && r.durationSeconds - top.durationSeconds <= maxOf(FORWARD_MAX_EXTRA_S, top.durationSeconds * FORWARD_MAX_EXTRA_SHARE)
+        }.minByOrNull(rank) else null
+        val ordered = if (lead != null) listOf(lead) + open.filter { it !== lead } else open
+        val openLead = ordered.firstOrNull()
+        return forwardChoice(google, rank, openLead?.let(rank), openLead?.durationSeconds, openLead?.distanceMeters) to ordered
+    }
+
+    /** One router's [routes] for a reroute, reordered: when its first turns the car round, the
+     *  route of the lowest [rank] ([turnRank]) that costs no more than the [forwardPick]
+     *  allowance over it leads. For answers with no other router's to weigh them against: Google's
+     *  with the open router out, the phone's. */
+    internal fun leastTurning(routes: List<Route>, rank: (Route) -> Int): List<Route> {
+        val top = routes.firstOrNull() ?: return routes
+        if (rank(top) == 0) return routes
+        fun eta(r: Route) = r.durationInTrafficSeconds ?: r.durationSeconds
+        val allowance = maxOf(FORWARD_MAX_EXTRA_S, eta(top) * FORWARD_MAX_EXTRA_SHARE)
+        val lead = routes.filter { rank(it) < rank(top) && eta(it) - eta(top) <= allowance }.minByOrNull(rank) ?: return routes
+        return listOf(lead) + routes.filter { it !== lead }
+    }
+
+    /** How much [r] turns the car round: 0 it goes on, 1 it turns round further on, 2 it turns
+     *  round where the car is ([back] and [now] as in [forwardPick]). */
+    internal fun turnRank(r: Route, back: (Route) -> Boolean, now: (Route) -> Boolean): Int =
+        if (!back(r)) 0 else if (now(r)) 2 else 1
 
     /** Going on instead of turning around may cost this much over Google's best route... */
     const val FORWARD_MAX_EXTRA_S = 180.0
@@ -1146,19 +1547,33 @@ object RouteGeometry {
      * length at the best route's average speed, within the 0.5 to 3 the other rebasing uses.
      * Raw, a way round that was really nine minutes longer read as a minute shorter.
      */
-    internal fun forwardChoice(google: List<Route>, headingDeg: Double, openSeconds: Double?, openMeters: Double? = null): List<Route> {
+    internal fun forwardChoice(google: List<Route>, headingDeg: Double, openSeconds: Double?, openMeters: Double? = null): List<Route> =
+        forwardChoice(google, { startsAgainst(it.polyline, headingDeg) }, openSeconds, openMeters)
+
+    /** [forwardChoice] with the test for a route that turns the car round given as [back]; a
+     *  given [openSeconds] is an open route that goes on. */
+    internal fun forwardChoice(google: List<Route>, back: (Route) -> Boolean, openSeconds: Double?, openMeters: Double? = null): List<Route> =
+        forwardChoice(google, { if (back(it)) 1 else 0 }, if (openSeconds != null) 0 else null, openSeconds, openMeters)
+
+    /** [forwardChoice] by [turnRank]: [rank] of each route, and [openRank] of the open router's
+     *  route that leads. Google's best stands unless a route of a lower rank costs little more,
+     *  Google's own first, then the open router's. */
+    internal fun forwardChoice(google: List<Route>, rank: (Route) -> Int, openRank: Int?, openSeconds: Double?, openMeters: Double?): List<Route> {
         if (google.isEmpty()) return google
         fun eta(r: Route) = r.durationInTrafficSeconds ?: r.durationSeconds
         val best = google.minByOrNull { eta(it) }!!
-        val forward = google.filterNot { startsAgainst(it.polyline, headingDeg) }
-        if (best in forward) return forward
+        val bestRank = rank(best)
+        if (bestRank == 0) return google.filter { rank(it) == 0 }
         val allowance = maxOf(FORWARD_MAX_EXTRA_S, eta(best) * FORWARD_MAX_EXTRA_SHARE)
-        val affordable = forward.filter { eta(it) - eta(best) <= allowance }
-        if (affordable.isNotEmpty()) return affordable
-        if (openSeconds != null && openSeconds > 0.0) {
+        val openAffordable = openSeconds != null && openSeconds > 0.0 && run {
             val cal = if (openMeters != null && openMeters > 0.0 && best.distanceMeters > 0.0 && best.durationSeconds > 0.0)
                 ((openMeters / openSeconds) / (best.distanceMeters / best.durationSeconds)).coerceIn(0.5, 3.0) else 1.0
-            if (openSeconds * cal - best.durationSeconds <= allowance) return emptyList()
+            openSeconds * cal - best.durationSeconds <= allowance
+        }
+        for (tier in 0 until bestRank) {
+            val affordable = google.filter { rank(it) == tier && eta(it) - eta(best) <= allowance }
+            if (affordable.isNotEmpty()) return affordable
+            if (openRank == tier && openAffordable) return emptyList()
         }
         return listOf(best) + google.filter { it !== best }
     }

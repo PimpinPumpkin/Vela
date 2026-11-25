@@ -83,6 +83,15 @@ class HybridRouteTest {
         assertTrue(HybridRoute.stretches(lane, openLine).isEmpty())
     }
 
+    @Test fun comingBackAlongTheOpenRoutesStreetIsADifferentWay() {
+        // Google: north 600 m up the open route's street, a U-turn in the road, back down it and
+        // on south. The way back runs on the open route's line, the other way.
+        val back = listOf(p(0.0, 0.0), p(0.0054, 0.0), p(0.0054, 0.00002), p(0.0, 0.00002), p(-0.01, 0.00002))
+        val s = HybridRoute.stretches(back, openLine)
+        assertEquals(1, s.size)
+        assertTrue("from ${s[0].fromM}: the U-turn and the way back are in it", s[0].fromM in 400.0..600.0)
+    }
+
     @Test fun theSameWayHasNoStretches() {
         assertTrue(HybridRoute.stretches(openLine, openLine).isEmpty())
     }

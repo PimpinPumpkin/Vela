@@ -541,7 +541,6 @@
     <string name="car_along_route">Pesquisar ao longo da rota</string>
     <string name="car_along_none">Nada encontrado por perto</string>
     <string name="car_stop_added">Adicionado como próxima paragem: %1$s</string>
-    <string name="car_continue_on">Continue em %1$s</string>
     <string name="car_no_route">Sem rota, verifique a localização</string>
     <string name="map_parking_saved">Estacionamento guardado</string>
     <string name="map_parking_no_fix">A aguardar a localização</string>
@@ -1348,7 +1347,7 @@
     <string name="settings_start_view_last">Onde fiquei no mapa</string>
     <string name="settings_start_view_place">Um local à minha escolha</string>
     <string name="settings_start_view_use_current">Usar a visão actual de mapa</string>
-    <string name="settings_start_view_hint">Onde o mapa se encontra ao iniciar o Vela. Um link para outra app ainda abre no seu local.</string>
+    <string name="settings_start_view_hint">O mapa é apresentado ao iniciar o Vela. No modo de condução, o mapa é o único elemento presente no ecrã, seja para um telemóvel ou tablet montado. Os links de outras aplicações ainda abrem em um local separado.</string>
     <string name="settings_start_view_saved">Vela abre nesta vista.</string>
     <string name="nav_bar_trip">Viagem %1$s · %2$s</string>
     <string name="nav_bar_your_stop">A sua paragem</string>
@@ -1462,7 +1461,6 @@
     <string name="settings_zoom_key_in">Tecla de ampliação</string>
     <string name="settings_zoom_key_out">Tecla de redução</string>
     <string name="settings_zoom_key_none">Não definido</string>
-    <string name="settings_zoom_keys_hint">Duas teclas que permitem ampliar e reduzir o mapa em qualquer ponto, como as teclas 2 e 5 de um teclado numérico. Num campo de texto, o utilizador ainda digita.</string>
     <string name="settings_zoom_key_press">Pressione a tecla para usar. As setas, OK e Voltar estão reservadas.</string>
     <string name="settings_zoom_key_clear">Limpar</string>
     <string name="settings_project_site_button">Website</string>
@@ -1491,4 +1489,7 @@
     </plurals>
     <string name="bulk_done">Seleção terminada</string>
     <string name="bulk_moved">%1$d movido para %2$s</string>
+    <string name="settings_region_updated_on">actualizado %1$s</string>
+    <string name="settings_start_view_drive">Modo de Condução</string>
+    <string name="driving_mode">Mode de condução</string>
 </resources>

@@ -142,7 +142,10 @@ symbol placement on every tick.
 reroute, an added stop, a faster route you accept. When it did not, the white callouts stayed
 hidden after the change for as far as you had already driven.
 
-The street the next turn enters gets a blue callout 30 m in. A ramp, fork or keep whose
+The street the next turn enters gets a blue callout with its tail on the corner. The bubble reaches
+away from the turn, right of the corner for a left and left of it for a right, so it never sits on
+the turn arrow. A light, stop sign or camera on the corner moves the tail along the cross street,
+away from the turn. A ramp, fork or keep whose
 instruction names a numbered exit gets a green one `EXIT_CALLOUT_AHEAD_M = 70` m past the
 maneuver point, on the ramp. `ExitLabel.of` finds the number beside an exit word from a
 per-language table. A bare number is usually a route number and never counts. These two never
@@ -190,17 +193,26 @@ They draw from z15.4, just under the camera's 15.5 floor, above the route line.
 Turn arrows (Settings > Navigation, on by default) are short white arrows with a thin dark
 indigo edge drawn inside the blue line through each turn ahead, 30 m before the maneuver point to
 30 m past the corner, from z14, the way Google draws them. They are cut from the line the map
-draws, so they sit on it, and follow a curve within 1.5 m. The arrow is about three quarters of
-the line's width, with a round tail and a plain triangle head whose base runs into the shaft.
-The corner is where the line turns, which for a fork or a ramp is past the point the route puts
-the maneuver at, so the arrow runs on through the split. A continue, a merge and a roundabout's
-entry get none; the step you are on and everything after it has one, and a passed turn's arrow
-goes with the step.
+draws, so they sit on it, and follow a wavy road within half a meter. A corner is rounded into an
+arc of up to 5 m radius, so the arrow curves through the turn the way the car does. The arrow is
+about three quarters of the line's width, with a round tail and a plain triangle head whose base
+runs into the shaft. The corner is where the line turns, which for a fork or a ramp is past the
+point the route puts the maneuver at, so the arrow runs on through the split. A continue, a merge
+and a roundabout's entry get none.
+
+The part of an arrow the car has driven over is not drawn. As the car reaches an arrow its tail
+shortens under the car every frame, through the corner and out the other side, until the head
+goes too; nothing of the arrow is ever behind the car. The two arrows the car can be on (the one
+it is driving through and the next) each have a source of their own, and the cut is a paint
+change on them, never new geometry (SPEC 4.7, Turn arrows).
 
 ### The route line during a drive
 
 The line is as wide as a two-lane street (`ROUTE_REAL_M = 8.5` m), with a dark blue outline of
-`ROUTE_OUTLINE_DP = 1.25` dp a side. It is split into pieces so that no geometry moves per frame:
+`ROUTE_OUTLINE_DP = 1.25` dp a side. Where two roads' centers meet at a junction the line turns
+on a curve that starts 10 m before the corner and ends 10 m after it, a right angle passing
+3.5 m inside the corner, so the arrow on the line goes round the turn the way the car does
+(SPEC 4.8, The geometry drawn). It is split into pieces so that no geometry moves per frame:
 
 ```
 full line     the whole route in gray, uploaded once per route
@@ -223,19 +235,69 @@ over the whole route smears the cut across `routeLength / 256` meters.
   paint lands at once and geometry a few frames later.
 - "Road behind you" (Settings > Navigation, off by default) keeps the driven part gray. Off,
   nothing is drawn behind the arrow.
-- A paused drive draws the line ahead in `ROUTE_PAUSED_COLOR` (`#9C8AD6`, lavender).
+- A paused drive draws the line ahead in `ROUTE_PAUSED_COLOR` (`#9C8AD6`, lavender). The arrow
+  and the camera are then the bare map's (the free-drive follow): a paused drive is usually off
+  its route, where an arrow held to the route is wrong. The camera keeps the drive's
+  angle and heading through the pause (SPEC 4.6, Pause).
 
 ### The arrow
 
 The arrow is a Compose overlay placed at its point's screen position right after each camera
 move. As a map symbol it landed on time or a frame late at random, because a source update is
 asynchronous and the camera move is not. Its position is a filtered estimate of meters along the
-route, not the raw fix, and it is drawn on the route line itself. Its heading comes from a copy of
+route, fed by the fused position guidance steers by ([chapter 4](04-navigation.md)), and it is
+drawn on the route line itself. Its heading comes from a copy of
 the line with short median jogs straightened, so the arrow and the camera hold their heading
 through one.
 
+The arrow is drawn where the car is now, not where the last fix put it. A GPS fix reaches the
+app about 150 ms after it was measured, so the puck carries each fix forward by its speed times
+that age. In a turn the arrow's heading is the line's direction across at least 12 m either side
+of a point 0.3 s ahead, because a car starts its arc that far before the corner's point and the
+heading's own smoothing takes that long to land. The camera aims 0.4 s further on still, the lag
+of its own easing, and once it has swung more than 12 degrees it keeps its quick easing until it
+has caught up. On a mock turn from a stop that took the map's lag from 1.5 s to 0.5 s and the
+arrow's from 1.0 s to 0.7 s (SPEC 4.7).
+
+By default the arrow is turned by the rate the phone's gyroscope measures (Settings > Diagnostics
+> "Turn the arrow with the gyroscope"; off goes back to the line ahead). The line ahead turns
+where its corner is drawn, which can be a second before or after the car turns; the gyroscope
+turns when the car does. The road's direction at the arrow pulls the heading back, slowly in a
+turn and quickly on a straight, which also cancels the gyroscope's drift. Turning into a corner
+there is no pull: the road's direction at the arrow turns about a second after the car, and
+pulling toward it left the arrow behind the car through the turn. Stopped, the gyroscope is
+ignored, since a phone picked up at a light turns too.
+
+A phone in a wobbly mount twists without the car turning, so two things hold the arrow to the
+road. It can only point where the route goes from a second behind it to a second and a half
+ahead, which on a straight is a couple of degrees either way. And it can only turn as fast as
+the phone is being pushed sideways: a car turning at speed pushes, a mount twisting does not.
+The camera leads the arrow by a third of a second of the measured turn, inside the same limits.
+The nav trace's `gyro_dps` column says which way each frame was drawn, and `camera_target_deg`
+where the camera was aiming. A trip saved with the trace on keeps that drive's trace, and
+sharing trips from the list sends it with them.
+
+Between fixes the arrow glides along the route, so at a corner a car drives straight through it
+went round the turn for a second or two. With the gyroscope on, the arrow waits at a sharp
+corner (35 degrees or more) 3 m past it, pointing along the road it is on, until the gyroscope
+feels the car turn that way or a fix lands on the road the corner turns onto. On a mock drive
+straight past a left turn the arrow kept pointing ahead and waited at the corner until the
+reroute; turned with no gyroscope signal, it waited 1 s for the next fix (SPEC 4.7).
+
+The arrow only moves forward, so carrying on at its modeled speed through a stop can leave it
+past the car. Between fixes the model slows at the braking the last two fixes' speeds show, or the
+accelerometer's if that is harder, so the arrow stops with the car: on a mock stop at 2.5 m/s²
+it ran 5.6 m past and then slid back, and now stops 0.7 m past and stays. A real drive showed the
+slide back at every stop. Braking harder, at 3.3 m/s², it stops about 2 m past and stays: only
+past 4 m, stopped for a second and three fixes, does it glide back onto where the fixes put the
+car, since sitting a little ahead at a light reads as nothing and moving backwards does not. The first fix of a pull-away is taken at
+once when its own speed says the car is moving.
+
 "Navigation icon" (Settings > Navigation) swaps the arrow for a car, a UFO, a pirate ship or a
-rubber duck, which in a drive are low-poly 3D models (`ui/map/Puck3D.kt`).
+rubber duck, which in a drive are 3D (`ui/map/Puck3D.kt`): low-poly meshes for the car, UFO and
+ship, and a smooth, glossy duck ray cast per pixel on a worker thread. A tap on the arrow
+while navigating opens the same choice over the map; a pick shows at once and Cancel puts back
+the old one. The new icon replaces the map symbol's image in place, so the map does not reload.
 
 ### The camera
 
@@ -263,11 +325,12 @@ nothing changes. With a large display size or large text:
   camera.
 
 "Zoom to the next turn" (Settings > Navigation, off by default) is for long stretches between
-turns. Heading-up, the camera zooms out until the next turn sits 24 dp under the turn card, or
-under the top of the map when nothing covers it, and the speed zoom takes over once the turn is
-near enough for it. It never goes below z12 unless the `turnZoomMin` dial says so: there the map
-still draws motorways through minor roads and the route, and a turn farther than that sits off
-the top until it is nearer. Street names, lights and stop signs do not draw that far out. Below
+turns. Heading-up, the camera zooms out until the next turn sits 72 dp under the turn card, room for
+the turn's callout, or 72 dp under the top of the map when nothing covers it, and the speed zoom
+takes over once the turn is near enough for it. "Zoom out as far as" sets how far out it may go:
+Town (z12, the default), Region (z10) or Far (z8). At z12 the map still draws motorways through
+minor roads and the route. A turn farther than the floor allows sits off the top until it is
+nearer. Street names, lights and stop signs do not draw that far out. Below
 z15 the camera lies flatter, the way it does for a pinch, and the zoom allows for that, as it
 allows for the pitch MapLibre holds the camera under (52.6 degrees on a Pixel 4a, less on a
 denser screen). A turn off to the side pulls the camera toward it, up to 90 degrees off the
@@ -284,7 +347,8 @@ zoom it crosses. On a Pixel 4a, seconds 2 to 4 after Start ran 6 to 20 fps flyin
 cutting.
 
 A phone in a driveway can be farther from the route than the arrow's 22 m snap tolerance. Until
-the car reaches the road the icon is drawn at the raw fix, and the map still tilts in.
+the car reaches the road the icon is drawn off the line at the fused position, and the map still
+tilts in.
 
 The overview button is a toggle. It cuts to a fit of the remaining route, and a second press or
 Re-center cuts back and tilts in like a start. Each cut fades off a veil in the map's land color
@@ -336,6 +400,19 @@ the route with traffic and a point for each stop.
 A paused drive shows "Paused" in the bar, turns the line ahead lavender and lets the screen
 sleep. What pause holds, and the live update's conditions, are in [chapter 4](04-navigation.md).
 
+While a drive runs, Vela shows over the lock screen, so the power button brings back the route,
+not the PIN prompt ("Show the drive on the lock screen", Settings > Navigation, on by default).
+Pausing or ending the drive puts the lock screen back over it, and Settings asks for the unlock.
+
+"Wake the screen before each turn" (on by default, under that switch) lights a dark screen
+about 25 seconds before each turn at the route's pace: about 200 m out in town, 750 m on a
+freeway, never more than 1 km. It shows the glance screen: black, with the turn's arrow, the
+distance, the instruction and the lanes in large type. Black costs an OLED screen almost nothing
+and does not glare at night. It lets go 4 seconds after the turn, and the screen goes dark at the
+phone's own screen timeout, since an app cannot turn the screen off. A touch, a key or the power
+button brings back the whole drive and its keep-awake. Not on foot, and not while a car screen
+is up.
+
 ### Stops during the drive
 
 The step list's first row is the stops row. With no stops it reads "Edit route" and opens the
@@ -361,9 +438,11 @@ The drive's layout with no route, for a phone on a mount, a tablet or a head uni
 Android Auto. The layers panel ends with a "Driving mode" row, and Settings > Map > "Where the map
 opens" > "Driving mode" starts Vela in it ([chapter 13](13-settings.md)).
 
-- The map is the browse map's own follow, which turns heading-up and tilts once you move
+- The map is the browse map's own follow, which turns heading-up and tilts once you move (unless
+  "Turn the map as you drive" is off)
   ([SPEC 4.7, Free-drive follow](../../SPEC.md)). The location dot stays the dot: the arrow is
-  drawn on a route.
+  drawn on a route. At driving speed the dot is moved onto the road it runs along, so a weak GPS,
+  such as a head unit's, does not draw the car beside the street. It lets go at forks and turns.
 - The bar is the drive's bar with an X where End sits, the mode's name and the time of day.
   The X is the only way out; Back works as it does on the plain map.
 - The right-edge column has a locate button and the voice button with its three choices. The

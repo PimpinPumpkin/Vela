@@ -18,9 +18,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Vela's neural voice: a Piper VITS model via sherpa-onnx [OfflineTts] → [AudioTrack]. Single
- * worker thread, generation-counter interrupt, full-utterance-then-play. Piper runs at/above
- * realtime, so nav prompts are timely (the slower Kokoro/Matcha models were dropped 2026-07).
+ * Vela's neural voice: a Piper VITS model via sherpa-onnx [OfflineTts] → [AudioTrack]. One
+ * worker renders (spoken lines and lines prepared ahead), one thread plays ([sayer]), with a
+ * generation counter for interrupts. A line prepared ahead plays without waiting for the worker.
  * Sample rate is read from the generated audio (Piper=22050).
  */
 @Singleton
@@ -168,11 +168,15 @@ class PiperSynth @Inject constructor(
         if (tid != 0) setPriority(if (urgent) android.os.Process.THREAD_PRIORITY_DEFAULT else SPEAK_PRIORITY, tid)
     }
 
-    /** Bumped by every [speak]: a [prepare] still queued when a real line is asked for is dropped,
-     *  so prepare-ahead work never sits between Start and the opener (four queued prepares held a
-     *  cold-start opener back by another 5 s on the 4a). The one already rendering stops at its
-     *  next phrase. */
+    /** Bumped by every [speak]: a [prepare] still queued when another line is asked for is
+     *  dropped, so prepare-ahead work never sits between Start and the opener (four queued
+     *  prepares held a cold-start opener back by another 5 s on the 4a). The one already
+     *  rendering stops at its next phrase. */
     @Volatile private var speaksAsked = 0
+    /** The text of the latest [speak], for a [prepare] of the same line to keep going. */
+    @Volatile private var lastSpeak: String? = null
+    /** Counts [prepareAll] calls: a queued prepare from an older one is dropped. */
+    @Volatile private var prepareRound = 0
 
 
     private fun ensureLoaded(): OfflineTts? {
@@ -184,6 +188,7 @@ class PiperSynth @Inject constructor(
         // use-after-free). loadFailed resets so a previously-bad voice doesn't block a new one.
         runCatching { cur?.release() }
         tts = null; loadedVoiceId = null; numSpeakers = 0; loadFailed = false; poolTids = IntArray(0)
+        clearPieces()
         val loadStart = android.os.SystemClock.elapsedRealtime()
         // Place names said the local way: swap the voice's English dictionary before it is read.
         PlaceDictionary.install(context, r.voiceId, r.dataDir)
@@ -232,8 +237,8 @@ class PiperSynth @Inject constructor(
      */
     fun reloadVoice() {
         generation++
+        sayer.execute { runCatching { track?.pause(); track?.flush() } }
         worker.execute {
-            runCatching { track?.pause(); track?.flush() }
             runCatching { tts?.release() }
             tts = null; loadedVoiceId = null; numSpeakers = 0; loadFailed = false; poolTids = IntArray(0)
             ensureLoaded()
@@ -248,159 +253,246 @@ class PiperSynth @Inject constructor(
         worker.execute { runCatching { dir.deleteRecursively() } }
     }
 
-    override fun speak(text: String, interrupt: Boolean, onDone: () -> Unit) {
-        // Counted before the raise: [prepare] relies on that order.
-        speaksAsked++
-        boostBackground(interrupt)
-        val myGen = if (interrupt) ++generation else generation
-        val asked = android.os.SystemClock.elapsedRealtime()
-        worker.execute {
-            val engine = ensureLoaded()
-            if (engine == null || myGen != generation) { onDone(); return@execute }
-            // An imminent-turn prompt (interrupt: it cuts whatever is playing) keeps the default
-            // priority so a busy map cannot delay it; the far prompts and the opener yield.
-            setPriority(if (interrupt) android.os.Process.THREAD_PRIORITY_DEFAULT else SPEAK_PRIORITY)
-            try {
-                val t0 = android.os.SystemClock.elapsedRealtime()
-                val sid = speakerId()
-                val spd = speed()
-                // Audio [prepare] made ahead of time for exactly this line plays at once: the drive's
-                // opener is prepared while the route preview is up, so Start does not synthesize while
-                // the camera flies in (two synth threads took the 4a's fast cores from the map).
-                val ready = synchronized(prepared) { prepared.remove(preparedKey(text, sid, spd)) }
-                val vol = volume()
-                val aborted = { myGen != generation }
-                // PLAY WHILE RENDERING (2026-10-04): a line is rendered phrase by phrase (see
-                // [synthesize]), and the first phrase used to wait for the last. Each phrase now goes
-                // to the player as it is made, so the wait before the first word is one phrase's
-                // render, not the line's. The player keeps the stream fed with silence when the next
-                // phrase is not ready (a longer beat at a comma, never an underrun: see STARVE_MS).
-                val queue = java.util.concurrent.LinkedBlockingQueue<FloatArray>()
-                var sampleRate = 22050
-                var player: java.util.concurrent.Future<Long>? = null
-                var firstAudioMs = -1L
-                var made = 0
-                // One gain for the whole line, from the voice's level so far (this line's first
-                // phrase when it has never spoken), so the level cannot pump between phrases.
-                val levelKey = "$loadedVoiceId|$sid"
-                val level = levelFor(levelKey)
-                var gain = Float.NaN
-                fun feed(chunk: FloatArray, rate: Int) {
-                    if (chunk.isEmpty()) return
-                    synchronized(level) { level.add(chunk) }
-                    if (gain.isNaN() && level.rms > 0f) gain = VoiceLevel.gain(level.rms, vol)
-                    VoiceLevel.apply(chunk, if (gain.isNaN()) vol else gain)
-                    if (made == 0) sampleRate = rate
-                    made += chunk.size
-                    queue.put(chunk)
-                }
-                fun start() {
-                    if (player != null || made == 0) return
-                    firstAudioMs = android.os.SystemClock.elapsedRealtime() - t0
-                    val at = ensureTrack(sampleRate)
-                    val rate = sampleRate
-                    player = playerThread.submit<Long> { play(at, rate, queue, aborted) }
-                }
-                if (ready != null) { feed(ready.first, ready.second); start() }
-                else {
-                    val frags = SpeechText.speechFragments(text, PAUSE_SEC, CLAUSE_PAUSE_SEC)
-                    // Played once the audio made covers the rest's expected render time
-                    // (StreamStart), so a slow voice does not stop mid-line for its next phrase.
-                    val costKey = "$loadedVoiceId|$sid|$spd"
-                    var charsLeft = frags.sumOf { it.first.length }
-                    for ((i, f) in frags.withIndex()) {
-                        val (frag, gapAfter) = f
-                        if (aborted()) break
-                        val r0 = android.os.SystemClock.elapsedRealtime()
-                        val (audio, rate) = render(engine, frag, sid, spd)
-                        val renderMs = (android.os.SystemClock.elapsedRealtime() - r0).toDouble()
-                        val before = made
-                        feed(audio, rate)
-                        if (gapAfter > 0f) feed(FloatArray(gapFrames(rate, gapAfter, spd)), rate)
-                        val renderPer = app.vela.core.voice.StreamStart.perChar(renderCost[costKey], renderMs, frag.length)
-                        val audioPer = app.vela.core.voice.StreamStart.perChar(audioCost[costKey], (made - before) * 1000.0 / rate, frag.length)
-                        renderCost[costKey] = renderPer
-                        audioCost[costKey] = audioPer
-                        charsLeft -= frag.length
-                        val nextChars = frags.getOrNull(i + 1)?.first?.length ?: 0
-                        if (app.vela.core.voice.StreamStart.ready(made * 1000.0 / sampleRate, charsLeft, nextChars, renderPer, audioPer)) start()
-                    }
-                }
-                start()
-                queue.put(END)
-                val genMs = android.os.SystemClock.elapsedRealtime() - t0
-                // How long a line waited (queue + model load) and took to make: a late "Starting
-                // navigation" on a slow head unit is one of the two (2026-10-03). No text: lengths only.
-                Log.i(TAG, "speak: waited ${t0 - asked} ms, ${if (ready != null) "prepared" else "first audio after $firstAudioMs ms, all rendered in $genMs ms"}, ${text.length} chars")
-                app.vela.diag.TripNote.add("voice: waited ${t0 - asked} ms, ${if (ready != null) "ready ahead" else "first sound after $firstAudioMs ms, rendered in $genMs ms"}, ${text.length} letters")
-                val p = player
-                if (p != null) {
-                    val at = track ?: return@execute
-                    // Frames the player wrote, the fed silence included: what the track must play out.
-                    val written = runCatching { p.get() }.getOrDefault(0L)
-                    // DRAIN before finishing: the last write returns while the track buffer's tail
-                    // (~1 s — bufferSize is sampleRate*4 bytes = 1 s of float mono) is still PLAYING,
-                    // and the NEXT queued prompt's pause+flush would chop it — the "spoken directions
-                    // partially stacking" bug (the end of one direction swallowed as the next began,
-                    // worst at nav start where the opener + first approach prompt queue back-to-back).
-                    // Wait until the audio truly ends, then leave a short breath between prompts
-                    // (Google finishes the sentence, beat, then speaks the next). INTERRUPTS STAY
-                    // INSTANT: an interrupting speak bumps [generation] and this loop bails within
-                    // ~30 ms — the urgent prompt then flushes the tail exactly as before. onDone
-                    // (audio-focus release) also now fires at the REAL end of audio, so music no
-                    // longer un-ducks over the last words.
-                    val deadline = android.os.SystemClock.elapsedRealtime() + 2000L
-                    while (myGen == generation &&
-                        runCatching { at.playbackHeadPosition.toLong() }.getOrDefault(written) < written &&
-                        android.os.SystemClock.elapsedRealtime() < deadline
-                    ) {
-                        Thread.sleep(30)
-                    }
-                    if (myGen == generation) Thread.sleep(INTER_PROMPT_GAP_MS)
-                    // Played out: pause the track, so the audio output can go to standby between
-                    // prompts instead of holding a PLAYING stream (the next prompt plays it again).
-                    if (myGen == generation) runCatching { at.pause() }
-                }
-                val starvedMs = starvedFrames * 1000 / sampleRate
-                Log.i(TAG, "spoke ${"%.1f".format(made / sampleRate.toFloat())}s audio (${if (ready != null) "prepared" else "streamed"}) in ${genMs}ms, gain ${"%.2f".format(gain)}, waited for audio $starvedMs ms mid-line")
-                // A shared trip shows a line that stopped mid-way for its next phrase (#795).
-                if (starvedMs >= STARVE_NOTE_MS) app.vela.diag.TripNote.add("voice: paused $starvedMs ms mid-line waiting for its next phrase")
-                // Derived from the voice itself, so it is not in the backup rules.
-                runCatching { levelPrefs().edit().putString(levelKey, synchronized(level) { level.encode() }).apply() }
-            } catch (t: Throwable) {
-                Log.e(TAG, "speak failed: ${t.message}", t)
-            } finally {
-                onDone()
-            }
+    /**
+     * One line asked to be spoken: its audio, made by [renderLine] on [worker] or taken whole from
+     * [prepared], and played by [sayLine] on [sayer]. The two run apart, so a line with its audio
+     * ready never waits for a render, and a line that needs one renders while the line before it
+     * plays.
+     */
+    private inner class Line(val text: String, val gen: Int, val interrupt: Boolean, val asked: Long) {
+        val queue = java.util.concurrent.LinkedBlockingQueue<FloatArray>()
+        /** Opens when playback may begin: the audio is whole, or enough of it to play through. */
+        val canStart = java.util.concurrent.CountDownLatch(1)
+        @Volatile var sampleRate = 22050
+        @Volatile var made = 0
+        @Volatile var fromPrepared = false
+        /** Audio [prepare] made for this line, taken when it was asked; leveled when it plays. */
+        @Volatile var ready: Pair<FloatArray, Int>? = null
+        @Volatile var renderStarted = 0L
+        @Volatile var renderMs = -1L
+        /** Phrases of a rendered line that were already stored, for the log. */
+        @Volatile var storedPhrases = 0
+        @Volatile var levelKey: String? = null
+        private var gain = Float.NaN
+        fun aborted() = gen != generation
+
+        /** [chunk] leveled to the voice's usual loudness and queued. One gain for the whole line,
+         *  from the voice's level so far (this line's first phrase when it has never spoken), so
+         *  the level cannot pump between phrases. */
+        fun feed(chunk: FloatArray, rate: Int, key: String, vol: Float) {
+            if (chunk.isEmpty()) return
+            levelKey = key
+            val level = levelFor(key)
+            synchronized(level) { level.add(chunk) }
+            if (gain.isNaN() && level.rms > 0f) gain = VoiceLevel.gain(level.rms, vol)
+            VoiceLevel.apply(chunk, if (gain.isNaN()) vol else gain)
+            if (made == 0) sampleRate = rate
+            made += chunk.size
+            queue.put(chunk)
+        }
+
+        fun start() = canStart.countDown()
+
+        /** Nothing more comes: the player stops at the end of the queue. */
+        fun end() {
+            queue.put(END)
+            canStart.countDown()
         }
     }
 
-    /** Synthesize [text] the way [speak] voices it: phrase fragments, each with terminal
-     *  punctuation, and a spliced silence after each. Null when [aborted] turns true mid-way. */
-    private fun synthesize(engine: OfflineTts, text: String, sid: Int, spd: Float, aborted: () -> Boolean): Pair<FloatArray, Int>? {
-        // Synthesize each sentence on its own and splice a fixed silence gap between them, so
-        // periods get a real, controllable beat. sherpa-onnx's own `silenceScale` config is a
-        // no-op for this Piper/VITS path (measured on-device: 0.2 vs 1.4 gave identical audio
-        // length), and one-shot generation runs sentences together, so we do the pausing here.
-        // Break into phrase fragments (sentences + comma/semicolon clauses), synth each on its
-        // own, and splice the tagged silence after it: a firm beat at periods, a shorter one at
-        // commas (Piper reads straight through commas otherwise, running "In a quarter mile, turn
-        // right" together). The split lives in :core so it's unit-tested (see SpeechText).
+    /** Plays lines in the order asked, one at a time, and owns [track]. */
+    private val sayer = Executors.newSingleThreadExecutor { r ->
+        Thread({ runCatching { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_AUDIO) }; r.run() }, "piper-say").apply { isDaemon = true }
+    }
+
+    /** The whole of [text] from stored [pieces] with the voice, speaker and speed in use, its
+     *  pauses spliced in; null when a phrase of it is not stored. */
+    private fun takePrepared(text: String, sid: Int = speakerId(), spd: Float = speed()): Pair<FloatArray, Int>? {
+        if (loadedVoiceId == null) return null
         val frags = SpeechText.speechFragments(text, PAUSE_SEC, CLAUSE_PAUSE_SEC)
-        var sampleRate = 22050
+        if (!synchronized(pieces) { frags.all { pieces.containsKey(pieceKey(it.first, sid, spd)) } }) return null
         val chunks = ArrayList<FloatArray>(frags.size * 2)
+        var rate = 22050
+        for ((frag, gapAfter) in frags) {
+            val (audio, r) = storedPiece(pieceKey(frag, sid, spd)) ?: return null
+            rate = r
+            if (audio.isNotEmpty()) chunks.add(audio)
+            if (gapAfter > 0f) chunks.add(FloatArray(gapFrames(rate, gapAfter, spd)))
+        }
+        return concat(chunks) to rate
+    }
+
+    /** True when every phrase of [text] is stored. */
+    private fun isPrepared(text: String, sid: Int, spd: Float): Boolean =
+        SpeechText.speechFragments(text, PAUSE_SEC, CLAUSE_PAUSE_SEC).let { frags ->
+            synchronized(pieces) { frags.all { pieces.containsKey(pieceKey(it.first, sid, spd)) } }
+        }
+
+    override fun speak(text: String, interrupt: Boolean, onDone: () -> Unit) {
+        // Counted before the raise: [prepare] relies on that order.
+        lastSpeak = text
+        speaksAsked++
+        boostBackground(interrupt)
+        val myGen = if (interrupt) ++generation else generation
+        val line = Line(text, myGen, interrupt, android.os.SystemClock.elapsedRealtime())
+        // Audio [prepare] made ahead of time for exactly this line plays at once, whatever the
+        // worker is rendering. Otherwise the worker renders it now, while the line before plays;
+        // a prepare of this very line still rendering is finished first and taken there.
+        line.ready = runCatching { takePrepared(text) }.getOrNull()
+        if (line.ready == null) worker.execute { renderLine(line) }
+        sayer.execute { sayLine(line, onDone) }
+    }
+
+    /** Renders [line] phrase by phrase into its queue, on [worker]. Playback may start once the
+     *  audio made covers the rest's expected render time (StreamStart), so a slow voice does not
+     *  stop mid-line for its next phrase. */
+    private fun renderLine(line: Line) {
+        try {
+            if (line.aborted()) return
+            val engine = ensureLoaded() ?: return
+            // An imminent-turn prompt (interrupt: it cuts whatever is playing) keeps the default
+            // priority so a busy map cannot delay it; the far prompts and the opener yield.
+            setPriority(if (line.interrupt) android.os.Process.THREAD_PRIORITY_DEFAULT else SPEAK_PRIORITY)
+            val sid = speakerId()
+            val spd = speed()
+            val vol = volume()
+            val levelKey = "$loadedVoiceId|$sid"
+            takePrepared(line.text, sid, spd)?.let { ready ->
+                line.fromPrepared = true
+                line.feed(ready.first, ready.second, levelKey, vol)
+                return
+            }
+            val t0 = android.os.SystemClock.elapsedRealtime()
+            line.renderStarted = t0
+            val frags = SpeechText.speechFragments(line.text, PAUSE_SEC, CLAUSE_PAUSE_SEC)
+            val costKey = "$loadedVoiceId|$sid|$spd"
+            // Phrases already stored (a distance, the rest of a line prepared at another
+            // distance) cost no render, so only the others count toward when playback may start.
+            val stored = synchronized(pieces) { frags.map { pieces.containsKey(pieceKey(it.first, sid, spd)) } }
+            line.storedPhrases = stored.count { it }
+            var charsLeft = frags.indices.filter { !stored[it] }.sumOf { frags[it].first.length }
+            for ((i, f) in frags.withIndex()) {
+                val (frag, gapAfter) = f
+                if (line.aborted()) return
+                val key = pieceKey(frag, sid, spd)
+                val kept = if (stored[i]) storedPiece(key) else null
+                val before = line.made
+                val rate: Int
+                if (kept != null) {
+                    rate = kept.second
+                    line.feed(kept.first, rate, levelKey, vol)
+                } else {
+                    val r0 = android.os.SystemClock.elapsedRealtime()
+                    val made = render(engine, frag, sid, spd)
+                    val fragMs = (android.os.SystemClock.elapsedRealtime() - r0).toDouble()
+                    rate = made.second
+                    storePiece(key, made.first, rate)
+                    line.feed(made.first, rate, levelKey, vol)
+                    renderCost[costKey] = app.vela.core.voice.StreamStart.perChar(renderCost[costKey], fragMs, frag.length)
+                    audioCost[costKey] = app.vela.core.voice.StreamStart.perChar(audioCost[costKey], (line.made - before) * 1000.0 / rate, frag.length)
+                    if (!stored[i]) charsLeft -= frag.length
+                }
+                if (gapAfter > 0f) line.feed(FloatArray(gapFrames(rate, gapAfter, spd)), rate, levelKey, vol)
+                val renderPer = renderCost[costKey]
+                val audioPer = audioCost[costKey]
+                val nextChars = frags.getOrNull(i + 1)?.first?.length?.takeIf { !stored[i + 1] } ?: 0
+                // With no render measured yet for this voice, stored phrases alone start the line
+                // only when nothing is left to render.
+                val go = if (renderPer == null || audioPer == null) charsLeft <= 0
+                    else app.vela.core.voice.StreamStart.ready(line.made * 1000.0 / line.sampleRate, charsLeft, nextChars, renderPer, audioPer)
+                if (go) line.start()
+            }
+            line.renderMs = android.os.SystemClock.elapsedRealtime() - t0
+        } catch (t: Throwable) {
+            Log.e(TAG, "render failed: ${t.message}", t)
+        } finally {
+            setPriority(SPEAK_PRIORITY)
+            line.end()
+        }
+    }
+
+    /** Plays [line] once the line before it is done, on [sayer]: waits for its audio to be ready
+     *  to play, writes it to the track, and lets it play out before the next line. */
+    private fun sayLine(line: Line, onDone: () -> Unit) {
+        try {
+            line.ready?.let { (audio, rate) ->
+                line.fromPrepared = true
+                line.feed(audio, rate, "$loadedVoiceId|${speakerId()}", volume())
+                line.end()
+            }
+            while (!line.aborted() && !line.canStart.await(30, java.util.concurrent.TimeUnit.MILLISECONDS)) Unit
+            if (line.aborted() || line.made == 0) return
+            val playAt = android.os.SystemClock.elapsedRealtime()
+            val waited = playAt - line.asked
+            // How long a line took to sound (queue, model load, render) and to make: a late
+            // "Starting navigation" on a slow head unit is one of these (2026-10-03). Lengths only.
+            val firstAudio = if (line.renderStarted > 0) playAt - line.renderStarted else 0L
+            Log.i(TAG, "speak: waited $waited ms, ${if (line.fromPrepared) "prepared" else "first audio after $firstAudio ms, all rendered in ${line.renderMs.coerceAtLeast(firstAudio)} ms, ${line.storedPhrases} phrases stored"}, ${line.text.length} chars")
+            app.vela.diag.TripNote.add("voice: waited $waited ms, ${if (line.fromPrepared) "ready ahead" else "first sound after $firstAudio ms"}, ${line.text.length} letters")
+            val rate = line.sampleRate
+            val at = ensureTrack(rate)
+            val written = play(at, rate, line.queue) { line.aborted() }
+            // DRAIN before finishing: the last write returns while the track buffer's tail (~1 s:
+            // bufferSize is sampleRate*4 bytes = 1 s of float mono) is still PLAYING, and the NEXT
+            // line's pause+flush would chop it, the "spoken directions partially stacking" bug.
+            // Wait until the audio truly ends, then leave a short breath between prompts. An
+            // interrupting speak bumps [generation] and this loop bails within ~30 ms; the urgent
+            // prompt then flushes the tail. onDone (audio-focus release) fires at the real end.
+            val deadline = android.os.SystemClock.elapsedRealtime() + 2000L
+            while (!line.aborted() &&
+                runCatching { at.playbackHeadPosition.toLong() }.getOrDefault(written) < written &&
+                android.os.SystemClock.elapsedRealtime() < deadline
+            ) {
+                Thread.sleep(30)
+            }
+            if (!line.aborted()) Thread.sleep(INTER_PROMPT_GAP_MS)
+            // Played out: pause the track, so the audio output can go to standby between prompts
+            // instead of holding a PLAYING stream (the next prompt plays it again).
+            if (!line.aborted()) runCatching { at.pause() }
+            val starvedMs = starvedFrames * 1000 / rate
+            Log.i(TAG, "spoke ${"%.1f".format(line.made / rate.toFloat())}s audio (${if (line.fromPrepared) "prepared" else "streamed"}) in ${line.renderMs.coerceAtLeast(0)}ms, waited for audio $starvedMs ms mid-line")
+            // A shared trip shows a line that stopped mid-way for its next phrase (#795).
+            if (starvedMs >= STARVE_NOTE_MS) app.vela.diag.TripNote.add("voice: paused $starvedMs ms mid-line waiting for its next phrase")
+            // Derived from the voice itself, so it is not in the backup rules.
+            line.levelKey?.let { key ->
+                val level = levelFor(key)
+                runCatching { levelPrefs().edit().putString(key, synchronized(level) { level.encode() }).apply() }
+            }
+        } catch (t: Throwable) {
+            Log.e(TAG, "speak failed: ${t.message}", t)
+        } finally {
+            onDone()
+        }
+    }
+
+    /** Renders the phrases of [text] not stored yet, the way [speak] voices them, and stores
+     *  them (as [keep] pieces when asked). Returns the line's audio seconds and the phrases it
+     *  rendered, or null when [aborted] turns true mid-way; the phrases done by then stay stored. */
+    private fun synthesize(engine: OfflineTts, text: String, sid: Int, spd: Float, keep: Boolean, aborted: () -> Boolean): Pair<Float, Int>? {
+        // Each phrase (sentence or comma clause) is its own engine call with a spliced silence
+        // after it: sherpa-onnx's `silenceScale` is a no-op for Piper/VITS, one-shot generation
+        // runs sentences together, and Piper reads straight through commas. The split lives in
+        // :core so it is unit-tested (SpeechText).
+        val frags = SpeechText.speechFragments(text, PAUSE_SEC, CLAUSE_PAUSE_SEC)
+        var seconds = 0f
+        var rendered = 0
         for ((frag, gapAfter) in frags) {
             if (aborted()) return null
-            // Every fragment gets TERMINAL PUNCTUATION before synthesis: a bare-ending fragment
-            // ("turn left") gives the model no final prosody contour, so it trails off and swallows
-            // the last consonant, the real-drive "lef" instead of "left" (user 2026-07-06). The
-            // semicolon contour was A/B'd best on this voice (see EnNavStrings.arrived).
-            val (audio, rate) = render(engine, frag, sid, spd)
-            sampleRate = rate
-            if (audio.isNotEmpty()) chunks.add(audio)
-            if (gapAfter > 0f) chunks.add(FloatArray(gapFrames(sampleRate, gapAfter, spd))) // spliced silence
+            val key = pieceKey(frag, sid, spd)
+            val have = synchronized(pieces) { pieces[key] }
+            val (frames, rate) = if (have != null) {
+                if (keep) storePiece(key, null, have.rate, keep = true)
+                have.pcm.size to have.rate
+            } else {
+                val (audio, rate) = render(engine, frag, sid, spd)
+                storePiece(key, audio, rate, keep)
+                rendered++
+                audio.size to rate
+            }
+            seconds += frames / rate.toFloat()
+            if (gapAfter > 0f) seconds += gapFrames(rate, gapAfter, spd) / rate.toFloat()
         }
-        return concat(chunks) to sampleRate
+        return seconds to rendered
     }
 
     /** A spliced pause in frames. The pause lengths were tuned by ear at [PAUSE_TUNED_SPEED], so
@@ -408,14 +500,17 @@ class PiperSynth @Inject constructor(
     private fun gapFrames(sampleRate: Int, gapSec: Float, spd: Float): Int =
         (sampleRate * gapSec * PAUSE_TUNED_SPEED / spd.coerceAtLeast(0.1f)).toInt()
 
-    /** One phrase's audio and its sample rate. */
+    /** One phrase's audio and its sample rate. Every phrase gets terminal punctuation: a
+     *  bare-ending one ("turn left") gives the model no final contour, so it trails off and
+     *  swallows the last consonant ("lef", user 2026-07-06). The semicolon contour was A/B'd best
+     *  on this voice (see EnNavStrings.arrived). */
     private fun render(engine: OfflineTts, frag: String, sid: Int, spd: Float): Pair<FloatArray, Int> {
         val fragText = if (frag.lastOrNull()?.isLetterOrDigit() == true) "$frag;" else frag
         val a = engine.generate(text = fragText, sid = sid, speed = spd)
         return a.samples to a.sampleRate
     }
 
-    /** Plays queued audio until [END], on [playerThread]; returns the frames written. Writes in
+    /** Plays queued audio until [END], on [sayer]; returns the frames written. Writes in
      *  ~200 ms pieces with an abort check between them, so an INTERRUPT (turn-now / rerouting /
      *  stop-nav bumps `generation`) takes effect within ~200 ms; on abort, pause+flush kills the
      *  buffered tail so the urgent prompt is not preceded by stale audio. When the next phrase is
@@ -452,42 +547,79 @@ class PiperSynth @Inject constructor(
         }
     }
 
-    private val playerThread = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "piper-play") }
-
     /** Silence [play] wrote because the next phrase was not rendered yet, for the log. */
     @Volatile private var starvedFrames = 0L
     private val END = FloatArray(0)
 
     /** Synthesize [text] now, at background priority, and keep the audio for the next [speak] of
      *  exactly this line with the same voice and speed (a few lines at most). */
-    override fun prepare(text: String, onDone: () -> Unit) {
+    override fun prepare(text: String, onDone: () -> Unit) = enqueuePrepare(text, prepareRound, false, onDone)
+
+    /** The drive's next lines, most needed first, then the [keep] pieces. Lines an earlier call
+     *  left queued are dropped when the worker reaches them; the one being rendered finishes. */
+    override fun prepareAll(texts: List<String>, keep: List<String>) {
+        val round = ++prepareRound
+        // The line being prepared stops at its next phrase when this set wants a line it has no
+        // audio for before it and no longer counts it among its first [URGENT_PREPARES]: a long
+        // line for the turn after must not hold up the line at the turn in hand. One the set
+        // leaves out, or still has near the top (another wording of the same line may lead this
+        // time), finishes: the drive's guess can flip back a second later, and stopping it then
+        // cost a whole render. Its finished phrases stay stored either way.
+        val inHand = preparing
+        if (inHand != null) {
+            val at = texts.indexOf(inHand)
+            val first = runCatching { val sid = speakerId(); val spd = speed(); texts.firstOrNull { !isPrepared(it, sid, spd) } }.getOrNull()
+            if (first != null && first != inHand && at >= URGENT_PREPARES && at > texts.indexOf(first)) preempted = inHand
+        }
+        texts.forEach { enqueuePrepare(it, round, false) {} }
+        if (keep.isNotEmpty()) worker.execute {
+            // Pieces kept for another voice, speaker or speed go back to the ordinary store.
+            val prefix = pieceKey("", speakerId(), speed())
+            synchronized(pieces) { kept.retainAll { it.startsWith(prefix) } }
+        }
+        keep.forEach { enqueuePrepare(it, round, true) {} }
+    }
+
+    /** The line [enqueuePrepare] is rendering, and one a newer [prepareAll] told to stop. */
+    @Volatile private var preparing: String? = null
+    @Volatile private var preempted: String? = null
+
+    private fun enqueuePrepare(text: String, round: Int, keep: Boolean, onDone: () -> Unit) {
         val asked = speaksAsked
+        // A line asked to be spoken since ends this one, unless it is this very line: the render
+        // here is then what the speak plays, sooner than starting it again.
+        fun overtaken() = asked != speaksAsked && lastSpeak != text
+        // Never stopped for a newer guess when it is the line just asked to be spoken.
+        fun stopped() = overtaken() || preempted == text && !(asked != speaksAsked && lastSpeak == text)
         worker.execute {
-            if (asked != speaksAsked) { onDone(); return@execute }
+            if (overtaken() || round != prepareRound) { onDone(); return@execute }
             backgroundTid = android.os.Process.myTid()
             setPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
             try {
                 // Read again with the priority down. [speak] counts a line before it raises this
                 // thread, so a line asked up to here ends the work and a later one raises it.
-                if (asked != speaksAsked) return@execute
+                if (overtaken()) return@execute
                 val engine = ensureLoaded() ?: return@execute
                 val sid = speakerId()
                 val spd = speed()
-                val key = preparedKey(text, sid, spd)
-                if (synchronized(prepared) { prepared.containsKey(key) }) return@execute
-                // A line asked to be SPOKEN while this one renders ends it at the next phrase: a
-                // turn about to be missed must not wait behind audio for one that is a minute
-                // away. The phrase in hand finishes first, raised by [boostBackground]. A line that
-                // was on its last phrase is kept: it is paid for, and may be the one asked.
-                val made = synthesize(engine, text, sid, spd) { asked != speaksAsked } ?: return@execute
-                synchronized(prepared) {
-                    prepared[key] = made
-                    while (prepared.size > MAX_PREPARED) prepared.remove(prepared.keys.first())
+                // Another line asked to be SPOKEN while this one renders ends it at the next phrase:
+                // a turn about to be missed must not wait behind audio for one that is a minute
+                // away. The phrase in hand finishes first, raised by [boostBackground]. When the
+                // line asked is this one, it renders on, raised, and the speak plays it. Phrases
+                // already stored are only marked used, so the lines the drive still wants outlast
+                // old ones.
+                preparing = text
+                val r0 = android.os.SystemClock.elapsedRealtime()
+                val (seconds, rendered) = synthesize(engine, text, sid, spd, keep) { stopped() } ?: run {
+                    Log.i(TAG, "prepare stopped after ${android.os.SystemClock.elapsedRealtime() - r0} ms${if (preempted == text) " for a newer guess" else ""}")
+                    return@execute
                 }
-                Log.i(TAG, "prepared ${"%.1f".format(made.first.size / made.second.toFloat())}s of audio ahead")
+                if (rendered > 0) Log.i(TAG, "${if (keep) "kept" else "prepared"} ${"%.1f".format(seconds)}s of audio ahead in ${android.os.SystemClock.elapsedRealtime() - r0} ms, $rendered of ${SpeechText.speechFragments(text, PAUSE_SEC, CLAUSE_PAUSE_SEC).size} phrases rendered")
             } catch (t: Throwable) {
                 Log.w(TAG, "prepare failed: ${t.message}")
             } finally {
+                preparing = null
+                if (preempted == text) preempted = null
                 backgroundTid = 0
                 setPriority(SPEAK_PRIORITY)
                 onDone()
@@ -495,8 +627,47 @@ class PiperSynth @Inject constructor(
         }
     }
 
-    private val prepared = LinkedHashMap<String, Pair<FloatArray, Int>>()
-    private fun preparedKey(text: String, sid: Int, spd: Float) = "$loadedVoiceId|$sid|$spd|$text"
+    /** A rendered phrase as 16-bit samples, half the memory of the float audio. */
+    private class Piece(val pcm: ShortArray, val rate: Int)
+
+    /**
+     * Rendered phrases by voice, speaker, speed and text ([pieceKey]), least recently used first.
+     * A line is prepared when all its phrases are here, so the wordings of one line at two
+     * distances share their rest ("In 500 feet," and "In 300 feet," before the same turn), and a
+     * phrase rendered once never renders again while it is kept. [kept] pieces ("Rerouting", the
+     * spoken distances) stay while their voice, speaker and speed are in use; the others go oldest
+     * first past [PIECE_BUDGET_SEC] of audio. Written on [worker] only.
+     */
+    private val pieces = LinkedHashMap<String, Piece>(64, 0.75f, true)
+    private val kept = HashSet<String>()
+
+    private fun pieceKey(frag: String, sid: Int, spd: Float) = "$loadedVoiceId|$sid|$spd|$frag"
+
+    /** A stored phrase as fresh float audio (feeding levels it in place); marks it used. */
+    private fun storedPiece(key: String): Pair<FloatArray, Int>? {
+        val p = synchronized(pieces) { pieces[key] } ?: return null
+        return FloatArray(p.pcm.size) { p.pcm[it] / PCM_SCALE } to p.rate
+    }
+
+    /** Stores [audio] under [key], or with [audio] null only marks the stored piece [keep]. */
+    private fun storePiece(key: String, audio: FloatArray?, rate: Int, keep: Boolean = false) {
+        synchronized(pieces) {
+            if (audio != null) pieces[key] = Piece(ShortArray(audio.size) { (audio[it].coerceIn(-1f, 1f) * PCM_SCALE).toInt().toShort() }, rate)
+            if (keep) kept.add(key)
+            var loose = pieces.entries.sumOf { (k, p) -> if (k in kept) 0L else p.pcm.size.toLong() }
+            val budget = (PIECE_BUDGET_SEC * rate).toLong()
+            val it = pieces.entries.iterator()
+            while (loose > budget && it.hasNext()) {
+                val e = it.next()
+                if (e.key in kept || e.key == key) continue
+                loose -= e.value.pcm.size
+                it.remove()
+            }
+        }
+    }
+
+    /** Drops every stored phrase: the voice they were rendered with is gone. */
+    private fun clearPieces() = synchronized(pieces) { pieces.clear(); kept.clear() }
 
     /** Concatenate audio + spliced-silence chunks into one buffer (the gaps are already silence chunks
      *  inserted by the caller). Single chunk → returned as-is. */
@@ -538,15 +709,13 @@ class PiperSynth @Inject constructor(
 
     override fun stop() {
         generation++
-        worker.execute { runCatching { track?.pause(); track?.flush() } }
+        sayer.execute { runCatching { track?.pause(); track?.flush() } }
     }
 
     override fun release() {
         generation++
-        worker.execute {
-            runCatching { track?.release() }; track = null
-            runCatching { tts?.release() }; tts = null
-        }
+        sayer.execute { runCatching { track?.release() }; track = null }
+        worker.execute { runCatching { tts?.release() }; tts = null; clearPieces() }
     }
 
     private companion object {
@@ -564,8 +733,14 @@ class PiperSynth @Inject constructor(
          *  thread was measured on the 4a at 3x playback (2026-10-02): prompts ~30% slower to
          *  synthesize, and the frame dips at turns no different, so two stays the default. */
         val SYNTH_THREADS: Int get() = app.vela.ui.AppTune.local("synthThreads")?.toInt()?.coerceIn(1, 4) ?: 2
-        /** Prepared lines kept at once: a drive's opener and its first turns' prompts (up to 7). */
-        const val MAX_PREPARED = 8
+        /** Audio kept in [pieces] besides the kept ones, the least recently used dropped first:
+         *  a drive's opener and its first turns' prompts, or the two turns ahead with each line's
+         *  possible distances (about 2.6 MB at 22050 Hz). */
+        const val PIECE_BUDGET_SEC = 60
+        const val PCM_SCALE = 32767f
+        /** The lines at the head of a [prepareAll] set: the one being prepared is not stopped
+         *  for a newer set while it is among them. */
+        const val URGENT_PREPARES = 2
         const val TAG = "PiperSynth"
         const val WORKER_NAME = "piper-tts"
         const val SPEED = 1.0f

@@ -43,6 +43,29 @@ class TransitousTest {
         assertEquals(TransitMode.BUS, downtown.mode)
     }
 
+    // #946: a bus waiting to start its run reports its position, and the feed predicts it as on
+    // its way. Twelve minutes early is that; one minute early is a bus running early.
+    @Test
+    fun `a live time far ahead of the timetable shows the timetable, without the live mark`() {
+        fun early(live: String, sched: String) = Transitous.StopTime(
+            place = Transitous.StPlace(departure = live, scheduledDeparture = sched, tz = "UTC"),
+            mode = "BUS", realTime = true, headsign = "Depot", routeShortName = "7",
+        )
+        val board = Transitous.buildBoard(
+            listOf(early("2026-01-01T10:02:00Z", "2026-01-01T10:12:00Z"), early("2026-01-01T10:29:00Z", "2026-01-01T10:30:00Z")),
+            stationName = null,
+        )!!
+        val ups = board.lines.single().upcoming
+        assertEquals(Transitous.parseIso("2026-01-01T10:12:00Z"), ups[0].epochSec)
+        assertTrue(!ups[0].realtime)
+        assertEquals(Transitous.parseIso("2026-01-01T10:29:00Z"), ups[1].epochSec)
+        assertTrue(ups[1].realtime)
+        // Late is always trusted, and no timetable leaves the live time alone.
+        assertEquals(100L, Transitous.trustLive(100L, 40L))
+        assertEquals(100L, Transitous.trustLive(100L, null))
+        assertNull(Transitous.trustLive(100L, 100L + Transitous.EARLY_DOUBT_S + 1))
+    }
+
     @Test
     fun `canceled runs are dropped, empty board is null`() {
         assertNull(Transitous.buildBoard(listOf(st("1", "A", "2026-01-01T10:00:00Z", canceled = true)), null))
@@ -247,5 +270,24 @@ class TransitousTest {
         ))
         assertEquals(1, paired.size)
         assertEquals(setOf("BUS", "TRAM"), paired[0].modes.toSet())
+    }
+
+    // Issue #999: one station listed under two names 15 m apart drew two badges on top of each
+    // other. Stations fold by name without the station words; a bus stop with the station's bare
+    // name and a different line's station keep their own icons.
+    @Test fun `one station under two names is one badge`() {
+        fun stop(id: String, name: String, lat: Double, lng: Double, modes: List<String>) =
+            Transitous.MapStop(name = name, stopId = id, lat = lat, lon = lng, modes = modes)
+        val merged = Transitous.mergeDirectionalPairs(listOf(
+            stop("u", "Bond Street Underground Station", 51.51442, -0.14944, listOf("SUBWAY")),
+            stop("p", "Bond Street Station", 51.51430, -0.14938, listOf("SUBWAY")),
+            stop("e", "Bond Street (Elizabeth line)", 51.51400, -0.15000, listOf("REGIONAL_RAIL")),
+            stop("b", "Bond Street", 51.51460, -0.14900, listOf("BUS")),
+        ))
+        assertEquals(3, merged.size)
+        val station = merged.first { it.stopId == "u" || it.stopId == "p" }
+        assertEquals(setOf("u", "p"), (listOf(station.stopId) + station.siblingIds).toSet())
+        assertTrue(merged.any { it.stopId == "e" } && merged.any { it.stopId == "b" })
+        assertEquals("bond st", Transitous.stationKey("Bond Street Underground Station"))
     }
 }

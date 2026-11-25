@@ -8,7 +8,7 @@ import org.junit.Test
 
 /** The stop approach phrases ([NavStrings.stopAhead], [NavStrings.thenStop], [NavStrings.intoLotThen]) in every language. */
 class StopCueStringsTest {
-    private val langs = listOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "hu", "zh", "zh-tw", "ja", "he")
+    private val langs = listOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "hu", "zh", "zh-tw", "ja", "th", "he")
 
     @Test fun `english reads as the feedback asked`() {
         val en = EnNavStrings

@@ -82,6 +82,25 @@ internal class NavController(
 
     private var replayJob: Job? = null
     private var replayOwnsNav = false // a replay auto-started the nav session → tear it down on end/supersede
+    private var runUpGen = 0 // counts replayTrip calls: the newest one owns the run-up's mute
+    /** The route the recording's last block holds ([syncTripRoute]). */
+    private var lastTripRoute: app.vela.core.model.Route? = null
+
+    /**
+     * Write the drive's route into the recording as a new block when it changed (a reroute, a
+     * faster route taken). Called by the state collector and, before each engine input is
+     * written, by the location path, so an input never lands in the file ahead of the route it
+     * ran against (the collector can run a fix late). The start route is written by [startNav];
+     * the same line handed back with more on it (lights) is the same block.
+     */
+    fun syncTripRoute(route: app.vela.core.model.Route? = navSession.state.value.route, navigating: Boolean = navSession.state.value.navigating) {
+        if (!navigating || route == null) return
+        val last = lastTripRoute
+        if (route === last) return
+        if (last != null && route.polyline !== last.polyline) tripStore.saveRoute(route, navSession.lastSwapReason)
+        lastTripRoute = route
+    }
+
     private var lastRecordedRoute: app.vela.core.model.Route? = null // last route block written to the
                                                                      // active trip (route swaps append)
     // Nav resume across process death: persist just the DESTINATION (+ label/mode) when nav starts, so if
@@ -102,6 +121,18 @@ internal class NavController(
     /** Last time a guidance-quality fix fed navSession; the view model's location collector writes it,
      *  the tunnel dead-reckon loop reads it to detect a quiet feed. */
     @Volatile var lastNavFedMs = 0L
+
+    private var stripAtMs = 0L
+
+    /** Save the map along the drive's route while there is signal ([app.vela.offline.OfflineMaps.saveRouteStrip]):
+     *  at the start, then for a new route at most every [STRIP_GAP_MS]. */
+    private fun saveRouteStrip(route: app.vela.core.model.Route, first: Boolean) {
+        if (_state.value.offline || route.polyline.size < 2) return
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!first && now - stripAtMs < STRIP_GAP_MS) return
+        stripAtMs = now
+        app.vela.offline.OfflineMaps.saveRouteStrip(appContext, _state.value.styleUri, route.polyline)
+    }
 
     /** Whether a route-corridor controls fetch owns [MapUiState.trafficControls] for this drive. */
     val corridorControlsActive: Boolean get() = navControlsKey != null
@@ -130,9 +161,14 @@ internal class NavController(
                 if (ns.navigating && nsRoute != null && nsRoute !== lastRecordedRoute && nsRoute.polyline === lastRecordedRoute?.polyline) {
                     lastRecordedRoute = nsRoute
                 }
+                syncTripRoute(nsRoute, ns.navigating)
                 if (ns.navigating && nsRoute != null && nsRoute !== lastRecordedRoute) {
                     val first = lastRecordedRoute == null
-                    if (!first) tripStore.saveRoute(nsRoute, navSession.lastSwapReason)
+                    // A re-drive's routes reach logcat when asked for (VelaRC at DEBUG): no file
+                    // is written in a replay, and the routes it switched to are what is compared.
+                    if (_state.value.replaying && nsRoute.polyline !== lastRecordedRoute?.polyline && android.util.Log.isLoggable("VelaRC", android.util.Log.DEBUG)) {
+                        android.util.Log.d("VelaRC", "driven," + app.vela.core.replay.TripLog.candidatePayload(navSession.lastSwapReason, nsRoute.source.name.lowercase(), emptyList(), nsRoute))
+                    }
                     lastRecordedRoute = nsRoute
                     // Never in a recorded-trip replay (no live lookups); a simulated drive is a drive.
                     if (!_state.value.replaying || _state.value.demoDriving) lightCues(nsRoute, first)
@@ -149,6 +185,7 @@ internal class NavController(
                     // them it fell back to every sign in view, which is not what the drive showed.
                     // It still makes no live request for them (no Overpass, no camera lookups).
                     if (vs.replaying && !vs.demoDriving) refreshNavRouteControls(nsRoute, liveFetch = false)
+                    if (!vs.replaying) saveRouteStrip(nsRoute, first)
                     if (!vs.replaying || vs.demoDriving) {
                         refreshNavRouteControls(nsRoute)
                         refreshRouteSpeedCams(nsRoute) // spoken camera warnings (issue #229)
@@ -158,6 +195,7 @@ internal class NavController(
                 }
                 if (!ns.navigating) {
                     lastRecordedRoute = null
+                    lastTripRoute = null
                     clearNavRouteControls()
                     routeCamMeters = emptyList(); routeCamKey = null; spokenCams = emptySet()
                     app.vela.car.CarBridge.clear()
@@ -379,13 +417,9 @@ internal class NavController(
         app.vela.car.CarBridge.toast(msg)
     }
 
-    /** A minute-of-day in the user's clock format (locale + the system 12/24-hour setting). */
-    private fun formatMinuteOfDay(min: Int): String {
-        val cal = java.util.Calendar.getInstance()
-        cal.set(java.util.Calendar.HOUR_OF_DAY, min / 60)
-        cal.set(java.util.Calendar.MINUTE, min % 60)
-        return android.text.format.DateFormat.getTimeFormat(appContext).format(cal.time)
-    }
+    /** A minute-of-day on the clock chosen in Settings, in the app's language. */
+    private fun formatMinuteOfDay(min: Int): String =
+        java.time.LocalTime.of(min / 60, min % 60).format(app.vela.ui.clockTimeFormatter())
 
     /** Drive [route] as a synthetic GPS trace ([DemoTrace] → the recorded-trip [LocationProvider.replay]
      *  path), so navigation runs with NO real fix - for demos, screenshots and testing nav anywhere.
@@ -501,32 +535,42 @@ internal class NavController(
      *  NavStrings table doesn't implement passLights (currently all but English). Best-effort + IO;
      *  a fetch miss just leaves the route unchanged. */
     /**
-     * Settings > Navigation "Traffic-light guidance" (pref `nav_traffic_lights`, off by default):
-     * mark the lights before each turn of [route], the one just taken up by the drive, and hand
-     * the marked copy to the session, which speaks "Pass the traffic light, then ..." from it.
-     * Nothing is looked up with the switch off or in a language with no such phrase. The lights
-     * come from the downloaded road features; where no region is downloaded, the public
-     * Overpass server is asked for the [first] route of a drive only, never for each reroute.
+     * Settings > Navigation "Lights and stop signs in directions" (pref `nav_traffic_lights`, off
+     * by default): mark the lights and stop signs before each turn of [route], the one just taken
+     * up by the drive, and the turns at one, and hand the marked copy to the session, which speaks
+     * "Go past this light, then ...", "At the light, ..." and "At the stop sign, ..." from it.
+     * Nothing is looked up with the switch off or in a language with none of the phrases. Both
+     * come from the road features file of the region, which downloads by itself. Where the catalog
+     * has no region, the public Overpass server is asked for the lights of the [first] route of a
+     * drive only, never for each reroute.
      */
     private fun lightCues(route: app.vela.core.model.Route, first: Boolean) {
         if (!settingsPrefs.getBoolean("nav_traffic_lights", false)) return
-        if (app.vela.core.i18n.NavStringsRegistry.current().passLights(1).isBlank()) return
+        val words = app.vela.core.i18n.NavStringsRegistry.current()
+        if (words.passLights(1).isBlank() && words.atLight("") == null && words.atStop("") == null) return
         scope.launch {
             val lit = runCatching { enrichLights(route, overpass = first) }.getOrNull() ?: return@launch
             // Counts only: which turns, and where, stays off the log.
-            runCatching { android.util.Log.i("VelaDirections", "light cues: ${lit.maneuvers.count { it.lightsBeforeM.isNotEmpty() }} of ${lit.maneuvers.size} step(s) have a light before them") }
+            runCatching {
+                android.util.Log.i("VelaDirections", "light cues: ${lit.maneuvers.count { it.lightsBeforeM.isNotEmpty() }} of ${lit.maneuvers.size} step(s) have a light before them, ${lit.maneuvers.count { it.lightAtTurn }} turn at one; ${lit.maneuvers.count { it.stopsBeforeM.isNotEmpty() }} have a stop sign before them, ${lit.maneuvers.count { it.stopAtTurn }} turn at one")
+            }
             if (lit !== route) navSession.applyEnrichedRoute(route, lit)
         }
     }
 
     private suspend fun enrichLights(route: app.vela.core.model.Route, overpass: Boolean): app.vela.core.model.Route {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            var stops = emptyList<app.vela.core.data.TrafficControl>()
             val signals = when (host.roadFeaturesCoverRoute(route.polyline)) {
-                MapViewModel.RoadCover.LOADED -> withContext(Dispatchers.Default) { app.vela.data.RoadFeatures.signalsAlong(route.polyline) }
+                MapViewModel.RoadCover.LOADED -> withContext(Dispatchers.Default) {
+                    val all = app.vela.data.RoadFeatures.controlsAlong(route.polyline, app.vela.data.RoadFeatures.SIGNALS_ALONG_M)
+                    stops = all.filter { it.kind == app.vela.core.data.TrafficControl.Kind.STOP }
+                    all.filter { it.kind == app.vela.core.data.TrafficControl.Kind.SIGNAL }.map { it.loc }
+                }
                 MapViewModel.RoadCover.FAILED -> emptyList()
                 MapViewModel.RoadCover.NONE -> if (overpass) app.vela.core.data.OverpassTrafficSignals.fetchAlong(http, route.polyline) else emptyList()
             }
-            app.vela.core.data.RouteGeometry.enrichWithLights(route, signals)
+            app.vela.core.data.RouteGeometry.enrichWithLights(route, signals, stops)
         }
     }
 
@@ -573,7 +617,14 @@ internal class NavController(
         // coordinates (offline routing can have any of those missing); the address rides along
         // only when it says something the primary line doesn't.
         val (destName, destAddr) = NavSession.destinationDisplay(s.selected?.name, s.selected?.address, dest)
-        navSession.start(route, dest, destName, s.selectedEngine?.packageName, stops, s.travelMode, destinationAddress = destAddr.orEmpty())
+        // Where the car is now, for a start away from the route (NavSession.START_REPLAN_M): a live,
+        // usable fix only, and a course only while moving.
+        val from = s.myLocation?.takeIf { !s.myLocationStale && (s.myAccuracyM ?: 0f) <= 50f }
+        val course = s.myBearing?.toDouble()?.takeIf { (s.mySpeed ?: 0f) >= 3f }
+        navSession.start(
+            route, dest, destName, s.selectedEngine?.packageName, stops, s.travelMode,
+            destinationAddress = destAddr.orEmpty(), from = from, fromCourseDeg = course,
+        )
         navSession.plannedWayName = route.savedName // a saved route: leaving it is said once (NavSession.reroute)
         beginDriveTrace(route)
         NavigationService.start(appContext)
@@ -581,11 +632,15 @@ internal class NavController(
         if (_state.value.resumeNavLabel != null) _state.update { it.copy(resumeNavLabel = null) } // starting fresh clears any stale offer
         // Record this trip's GPS trace for later replay, if the user opted in. Read
         // the pref directly so it works even before Settings has been opened.
+        var tripId: String? = null
         if (settingsPrefs.getBoolean("trip_recording_on", false)) {
             host.pruneOldTrips()
-            tripStore.startTrip(_state.value.selected?.name ?: appContext.getString(R.string.mapvm_trip_default_name), dest, System.currentTimeMillis())
+            tripId = tripStore.startTrip(_state.value.selected?.name ?: appContext.getString(R.string.mapvm_trip_default_name), dest, System.currentTimeMillis())
+                ?: tripStore.activeId
             tripStore.saveRoute(route, "start") // save the blue line + maneuvers so a replay drives THIS route
         }
+        // A resumed drive records into this drive's trip, never an older drive's (null removes it).
+        navResumePrefs.edit().putString("trip", tripId).apply()
         // If the phone has no voice engine, say so once instead of going silent - with a pill
         // straight to the voice library. Not when spoken directions are OFF: silence is chosen.
         if (voice.availableEngines().isEmpty() && !voice.muted) {
@@ -603,6 +658,7 @@ internal class NavController(
         if (_state.value.replaying && replayOwnsNav) { stopReplay(); return }
         NavigationService.stop(appContext)
         navSession.stop()
+        app.vela.core.data.TrackRide.clear() // a GPX track's ride is over (see clearRoute)
         val recorded = tripStore.finishTrip() // close + persist the recorded trip (drops too-short ones)
         // Offer to name it while the drive is still in mind - a trip auto-named after the
         // host.destination is fine for one drive and useless once there are twenty of the same one.
@@ -741,9 +797,13 @@ internal class NavController(
         val totalS = ((fixes.last().t - fixes.first().t) / 1000L).toInt().coerceAtLeast(1)
         _state.update { it.copy(replaying = true, navCameraDetached = false, replayPaused = false, replayTotalS = totalS, replayProgress = from) }
         if (startAt == 0) host.flashStatus(appContext.getString(R.string.mapvm_replaying, meta.label), 3000L)
-        // Running up to a later moment: no voice and no buzzes until it gets there.
-        val wasMuted = voice.muted
+        // Running up to a later moment: no voice and no buzzes until it gets there. Then the voice
+        // takes the mode the speaker button shows, which a tap during the run-up may have changed.
+        // Set either way, so a replay that replaces one still running up does not inherit its
+        // silence, and only the newest replay gives the voice back ([runUpGen]).
+        val gen = ++runUpGen
         if (startAt > 0) { voice.muted = true; navSession.silent = true }
+        else { voice.muted = _state.value.voiceMuted; navSession.silent = false }
         val fixIdxSeen = intArrayOf(0)
         val job = scope.launch {
             try {
@@ -758,9 +818,22 @@ internal class NavController(
                 // fetches (replayMode suppresses reroute + the faster-route recheck; a live fetch
                 // used to swap the route mid-replay and match the trace against a route the
                 // driver never drove - arrow on another street, faster-route sheet over a replay).
-                val segments = tripStore.rawCsv(meta.id)
-                    ?.let { app.vela.core.replay.TripLog.parse(it).segments }
-                    .orEmpty()
+                val parsed = tripStore.rawCsv(meta.id)?.let { app.vela.core.replay.TripLog.parse(it) }
+                val segments = parsed?.segments.orEmpty()
+                // WHAT THE ENGINE WAS HANDED (TripLog `N` lines): a file that has them feeds the
+                // engine exactly those, the positions, speeds, accuracies and headings the drive's
+                // engine got, the fixes its position filter refused and its dead-reckoned points between fixes, so the
+                // replay goes off route and speaks where the drive did. The fixes still move the
+                // dot. An older file derives the inputs from the fixes as the drive would have.
+                val inputs = parsed?.inputs.orEmpty()
+                val points = parsed?.points
+                val exact = inputs.isNotEmpty() && points?.size == fixes.size
+                // The drive's units, from its routing note (the current setting for an older file).
+                val imperial = parsed?.let { app.vela.core.replay.TripLog.recordedImperial(it.events) } ?: app.vela.ui.Units.imperial.value
+                // RE-DRIVE (debug dial `replayLive`): the same inputs through today's code with live
+                // rerouting, at the drive's own pace, and none of the recorded swaps: how a change to
+                // rerouting is tried on the wrong turn that showed the problem.
+                val live = (app.vela.ui.AppTune.local("replayLive") ?: 0.0) > 0.0
                 if (!navSession.state.value.navigating) {
                     val saved = segments.firstOrNull()?.route
                     val route = saved ?: meta.dest?.let { d ->
@@ -776,25 +849,67 @@ internal class NavController(
                         // bug). Wire the neural synth too, in case the pick changed since launch.
                         val engine = _state.value.selectedEngine?.packageName
                         host.neuralSynthFor(engine)?.let { voice.neural = it }
-                        navSession.replayMode = true
+                        navSession.replayMode = !live
+                        if (live) android.util.Log.i("VelaTrip", "replay: re-drive, rerouting live")
                         navSession.start(route, dest, meta.label, engine)
                         replayOwnsNav = true
                     }
                 }
                 // reason -> chime: only wrong-turn reroutes chime in replay; faster/heal/
                 // stop-added swaps were quiet live. Old reason-less recordings chime for all.
-                val swapAt = segments.drop(1).associateBy({ it.fromPoint }, { it.route to (it.reason ?: "reroute") })
-                val pts = fixes.map { app.vela.core.location.ReplayFix(it.lat, it.lng, it.t, it.bearing, it.speed) }
+                val swapAt = segments.withIndex().drop(1).associateBy({ it.value.fromPoint }, { it.index })
+                var curSeg = 0
+                // Play back the drive's own route swaps: at the fix where each block was written,
+                // or in an exact file at the first input that ran on it, whichever comes first.
+                fun swapTo(seg: Int, at: Int) {
+                    if (live || seg <= curSeg || !replayOwnsNav) return
+                    val chime = (curSeg + 1..seg).any { (segments.getOrNull(it)?.reason ?: "reroute") == "reroute" } && at >= startAt
+                    segments.getOrNull(seg)?.let { navSession.replaySetRoute(it.route, chime = chime) }
+                    curSeg = seg
+                }
+                // The paced stream: every fix, and in an exact file each dead-reckoned input at its
+                // moment between them. An item is a fix index, or -(input index + 1).
+                val items = ArrayList<Int>(fixes.size)
+                val pts = ArrayList<app.vela.core.location.ReplayFix>(fixes.size)
+                val byFix = HashMap<Int, MutableList<Int>>()
+                val reckonedAfter = HashMap<Int, MutableList<Int>>()
+                if (exact) inputs.forEachIndexed { k, inp ->
+                    (if (inp.kind == 'd') reckonedAfter else byFix).getOrPut(inp.afterFix.coerceAtLeast(0)) { ArrayList() }.add(k)
+                }
+                fixes.forEachIndexed { i, f ->
+                    items += i
+                    pts += app.vela.core.location.ReplayFix(f.lat, f.lng, f.t, f.bearing, f.speed)
+                    reckonedAfter[i]?.forEach { k ->
+                        val inp = inputs[k]
+                        val nextT = fixes.getOrNull(i + 1)?.t ?: Long.MAX_VALUE
+                        items += -(k + 1)
+                        pts += app.vela.core.location.ReplayFix(inp.lat, inp.lng, (f.t + inp.msSinceFix).coerceIn(f.t, nextT - 1), 0f, (inp.speed ?: 0.0).toFloat())
+                    }
+                }
+                val streamStart = items.indexOf(startAt).coerceAtLeast(0)
+                var item = 0
                 var lastReplayT = 0L
                 var fixIdx = 0
                 val posOutlierStreak = intArrayOf(0)
+                val fixFilter = app.vela.core.location.PositionFilter() // steers as live does
                 val t0 = fixes.first().t
-                locationProvider.replay(pts, { if (_state.value.replayPaused) 0f else _state.value.replaySpeed }, startAt).collect { loc ->
-                    // Play back the drive's own route swaps at the fix where they happened.
-                    swapAt[fixIdx]?.let { (r, why) -> if (replayOwnsNav) navSession.replaySetRoute(r, chime = why == "reroute" && fixIdx >= startAt) }
+                // A re-drive runs at the drive's pace: a reroute takes the time it takes, and at
+                // three times the speed the car would be three times as far down the road by then.
+                locationProvider.replay(pts, { if (_state.value.replayPaused) 0f else if (live) 1f else _state.value.replaySpeed }, streamStart).collect { loc ->
+                    val it0 = items[item++]
+                    if (it0 < 0) {
+                        // A point the drive's engine was handed between fixes (dead-reckoned).
+                        val inp = inputs[-it0 - 1]
+                        swapTo(inp.segment, fixIdx)
+                        _state.update { it.copy(myLocation = inp.latLng, mySpeed = inp.speed?.toFloat(), mySpeedRaw = null, center = inp.latLng, myLocationStale = false) }
+                        navSession.onLocation(inp.latLng, imperial, inp.speed, inp.accuracyM, inp.bearing, fromFix = false)
+                        return@collect
+                    }
+                    val fi = fixIdx
+                    swapAt[fi]?.let { swapTo(it, fi) }
                     fixIdx += 1
                     fixIdxSeen[0] = fixIdx
-                    if (fixIdx == startAt + 1 && startAt > 0) { voice.stop(); voice.muted = wasMuted; navSession.silent = false }
+                    if (fixIdx == startAt + 1 && startAt > 0) { voice.stop(); voice.muted = _state.value.voiceMuted; navSession.silent = false }
                     if (fixIdx >= startAt) ((loc.time - t0) / 1000f / totalS).coerceIn(0f, 1f).let { p ->
                         if (kotlin.math.abs(p - _state.value.replayProgress) >= 0.004f) _state.update { it.copy(replayProgress = p) }
                     }
@@ -822,11 +937,34 @@ internal class NavController(
                             center = here, myLocationStale = false,
                         )
                     }
-                    navSession.onLocation(here, app.vela.ui.Units.imperial.value, speed?.toDouble())
+                    if (exact) {
+                        byFix[fi]?.forEach { k ->
+                            val inp = inputs[k]
+                            swapTo(inp.segment, fi)
+                            navSession.onLocation(inp.latLng, imperial, inp.speed, inp.accuracyM, inp.bearing, fromFix = inp.fromFix)
+                        }
+                    } else {
+                        // As the drive would have: GPS only and 50 m or better steers, with the
+                        // fix's accuracy and a heading only while moving (a recorded 0 is none).
+                        val pm = points?.getOrNull(fi)
+                        val acc = pm?.accuracyM?.toDouble()
+                        if ((pm?.provider == null || pm.provider == android.location.LocationManager.GPS_PROVIDER) && (acc == null || acc <= 50.0)) {
+                            val sp = loc.speed
+                            val wide = (acc ?: 0.0) > app.vela.core.location.Stillness.ACC_TRUST_M
+                            val course = loc.bearing.takeIf { b -> b != 0f && sp > 0.5f && (!wide || sp >= app.vela.core.location.Stillness.SLOW_MPS) }
+                            // Steered by the position filter, as live: the low-pass is the dot's.
+                            val fused = fixFilter.update(
+                                rawHere, loc.time / 1000.0, acc, sp.toDouble(), pm?.speedAccuracy?.toDouble(),
+                                if (sp > 0.5f) loc.bearing.toDouble() else null, pm?.bearingAccuracy?.toDouble(), still = pm?.still == true,
+                            )
+                            navSession.onLocation(fused.position, imperial, speed?.toDouble(), accuracyM = acc, bearingDeg = course?.toDouble(), fromFix = fused.accepted)
+                        }
+                    }
                     host.updateSpeedLimit(here) // posted-limit badge during replay too (local graph read)
                 }
             } finally {
-                if (startAt > 0 && fixIdxSeen[0] <= startAt) { voice.muted = wasMuted; navSession.silent = false } // stopped mid run-up
+                // Stopped mid run-up, and no newer replay has taken the voice over.
+                if (gen == runUpGen && startAt > 0 && fixIdxSeen[0] <= startAt) { voice.muted = _state.value.voiceMuted; navSession.silent = false }
                 // Only the current replay tears down: a superseded one was already stopped
                 // above, so this stale finally (job guard false) no-ops.
                 if (replayJob === coroutineContext[Job]) {
@@ -885,6 +1023,23 @@ internal class NavController(
             .apply()
     }
 
+    /** A resumed drive records into the trip the killed process left, or into a new one when
+     *  there is none (recording was off then, or the file is gone). Before [NavSession.start],
+     *  so the drive's opening notes land in it. */
+    private fun resumeTrip(route: app.vela.core.model.Route, dest: LatLng, label: String) {
+        if (!settingsPrefs.getBoolean("trip_recording_on", false)) return
+        val prior = navResumePrefs.getString("trip", null)
+        if (prior != null && tripStore.resumeTrip(prior)) {
+            tripStore.note("K", "resumed: the app was restarted mid-drive")
+        } else {
+            host.pruneOldTrips()
+            val id = tripStore.startTrip(label.ifBlank { appContext.getString(R.string.mapvm_trip_default_name) }, dest, System.currentTimeMillis())
+                ?: tripStore.activeId
+            navResumePrefs.edit().putString("trip", id).apply()
+        }
+        tripStore.saveRoute(route, "resume")
+    }
+
     /** Nav ended (stopped/arrived/dismissed) → forget the resume target so it isn't offered next launch. */
     private fun clearPersistedNav() {
         resumeDest = null
@@ -916,6 +1071,7 @@ internal class NavController(
         val mode = resumeMode
         if (_state.value.myLocation == null) { host.showStatus(appContext.getString(R.string.mapvm_resume_waiting_gps)); return }
         _state.update { it.copy(resumeNavLabel = null) }
+        val atTap = _state.value
         scope.launch {
             // Route from a FRESH fix, not the launch seed. A cold start shows the LAST KNOWN
             // position first (where the process died, minutes and miles ago), and routing from it
@@ -933,11 +1089,16 @@ internal class NavController(
             var route = routes.firstOrNull()
             if (route?.provisional == true) route = host.nameIfNeeded(route)
             if (route == null) { host.showStatus(appContext.getString(R.string.mapvm_resume_failed)); clearPersistedNav(); return@launch }
+            // The wait for a fix and the route take seconds. A driver who has gone on to plan
+            // something else in them (a search, a place, directions, another drive) has moved on:
+            // the resumed drive started under that and left the route sheet over it.
+            if (ResumeYield.movedOn(atTap, _state.value)) { clearPersistedNav(); return@launch }
             host.destination = dest
             _state.update { it.copy(activeRoute = route, routes = routes) }
             // No address survives a process kill (only the label was persisted); destinationDisplay
             // still guarantees SOMETHING shows on the arrive step (label, else the coordinates).
             val (resumedName, _) = NavSession.destinationDisplay(label, null, dest)
+            resumeTrip(route, dest, label)
             navSession.start(route, dest, resumedName, _state.value.selectedEngine?.packageName, emptyList(), mode)
             NavigationService.start(appContext)
             persistNav(dest, label, mode) // keep it persisted through the resumed drive
@@ -1001,6 +1162,8 @@ internal class NavController(
                 )
             }
             host.restartStaleTimer() // keep the dot/arrow blue while the estimate runs
+            syncTripRoute()
+            tripStore.recordInput('d', pt, drSpeed, null, null) // the drive's record (TripLog `N`)
             navSession.onLocation(pt, app.vela.ui.Units.imperial.value, drSpeed, fromFix = false)
         }
     }
@@ -1565,6 +1728,8 @@ private const val BRIDGE_REFRESH_MS = 5 * 60_000L
 /** Driving mode's look ahead (issue #727): how far the line reaches, how wide its corridor is, and
  *  how often it is rescanned, by time or by distance driven. */
 private const val DRIVE_AHEAD_M = 1200.0
+/** A new route during a drive saves the map along it at most this often ([NavController.saveRouteStrip]). */
+private const val STRIP_GAP_MS = 60_000L
 private const val DRIVE_CORRIDOR_M = 60.0
 private const val DRIVE_SCAN_MS = 4000L
 private const val DRIVE_SCAN_M = 150.0

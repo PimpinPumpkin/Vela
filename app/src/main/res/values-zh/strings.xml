@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Vela Maps</string>
     <!-- shared search-category chip labels (map + along-route); the search QUERY stays English in code -->
     <string name="cat_restaurants">餐厅</string>
     <string name="cat_coffee">咖啡</string>
@@ -1090,7 +1089,6 @@
     <string name="car_along_route">沿途搜索</string>
     <string name="car_along_none">附近没有找到结果</string>
     <string name="car_stop_added">已将%1$s添加为下一个途经点</string>
-    <string name="car_continue_on">沿%1$s继续行驶</string>
     <string name="map_import_needs_google">Vela 不使用 Google 时无法打开共享的 Google 地图列表。</string>
     <string name="map_link_needs_google">“打开分享的 Google 地图链接”已在设置 ▸ 隐私中关闭。</string>
     <string name="map_link_unreadable">无法打开该链接。</string>

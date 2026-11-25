@@ -26,6 +26,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
+import app.vela.ui.map.coversMap
 import kotlin.math.roundToInt
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
@@ -155,6 +156,12 @@ fun ManeuverBanner(
     // Off-route latch: the banner headline becomes "Rerouting..." (Google-style) instead of a stale
     // old-route instruction. Step preview still shows the previewed step normally.
     offRoute: Boolean = false,
+    // Off the route with no signal and no way back planned (NavSession): "No signal" and where
+    // the route is, instead of a "Rerouting..." that never ends.
+    backToRoute: app.vela.core.nav.BackToRoute? = null,
+    // OpenStreetMap bans this turn and the way round was too long to take instead (TurnBans):
+    // a warning line under the instruction.
+    mayBeBanned: Boolean = false,
     onPreviewNext: () -> Unit = {},
     onPreviewPrev: () -> Unit = {},
     onExitPreview: () -> Unit = {},
@@ -182,8 +189,11 @@ fun ManeuverBanner(
     // step, then the new card slides in from the opposite edge — like flicking a
     // pager. Below threshold it springs back.
     // The "Then" tab hangs off the card's lower left: the card's corner is square where they meet.
+    // Off the route the old route's next step and lanes are stale: neither shows while it asks
+    // for a new one, nor with no signal to ask with.
+    val offLine = (offRoute || backToRoute != null) && !previewing
     val thenShown = nextText != null && nextType != null && isCompoundNext(nextDistanceMeters) &&
-        (previewing || distanceMeters <= laneShowM)
+        (previewing || distanceMeters <= laneShowM) && !offLine
     // A long next step can make the tab as wide as the card: then the right corner squares off too.
     var cardW by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var tabW by remember { androidx.compose.runtime.mutableIntStateOf(0) }
@@ -276,7 +286,8 @@ fun ManeuverBanner(
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
     ) {
-        val rerouting = offRoute && !previewing
+        val noSignal = backToRoute != null && !previewing
+        val rerouting = (offRoute || noSignal) && !previewing
         val full = text.ifEmpty { stringResource(R.string.nav_maneuver_continue) }
         val strings = app.vela.core.i18n.NavStringsRegistry.current()
         // Sentence layout: headline = the SPOKEN form of the instruction (primary sign destination
@@ -312,7 +323,9 @@ fun ManeuverBanner(
                     // slow fetch read as frozen). The angle is read in graphicsLayer - a draw-phase
                     // read, so the infinite transition never recomposes the banner; it only exists
                     // while rerouting is showing at all.
-                    if (rerouting) {
+                    if (noSignal) {
+                        Icon(Sym.PublicOff, contentDescription = null, modifier = Modifier.size(if (compact) 36.dp else 54.dp))
+                    } else if (rerouting) {
                         val spin = androidx.compose.animation.core.rememberInfiniteTransition(label = "reroute")
                         val angle by spin.animateFloat(
                             initialValue = 0f, targetValue = 360f,
@@ -353,7 +366,11 @@ fun ManeuverBanner(
                         // One line that shrinks to fit beside the shield: wrapped at large text it
                         // took two headline lines. Reset only when its length changes, not on
                         // every distance tick.
-                        val distText = if (rerouting) stringResource(R.string.nav_rerouting) else formatDistance(distanceMeters)
+                        val distText = when {
+                            noSignal -> stringResource(R.string.nav_no_signal)
+                            rerouting -> stringResource(R.string.nav_rerouting)
+                            else -> formatDistance(distanceMeters)
+                        }
                         val distStyle = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium
                         FitText(
                             distText,
@@ -376,6 +393,25 @@ fun ManeuverBanner(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                             modifier = Modifier.padding(top = 2.dp, bottom = 1.dp),
                         ) { chips.forEach { SignChip(it, onBanner = true) } }
+                    }
+                    if (noSignal && backToRoute != null) {
+                        val far = formatDistance(backToRoute.meters)
+                        Text(
+                            stringResource(
+                                when (backToRoute.side) {
+                                    app.vela.core.nav.BackToRoute.Side.LEFT -> R.string.nav_back_to_route_left
+                                    app.vela.core.nav.BackToRoute.Side.RIGHT -> R.string.nav_back_to_route_right
+                                    app.vela.core.nav.BackToRoute.Side.AHEAD -> R.string.nav_back_to_route_ahead
+                                    app.vela.core.nav.BackToRoute.Side.BEHIND -> R.string.nav_back_to_route_behind
+                                    null -> R.string.nav_back_to_route_away
+                                },
+                                far,
+                            ),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = BANNER_HEADLINE_LINES,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                     if (parts != null) {
                         if (isRoundabout(type) && parts.lead.isNotEmpty()) Text(
@@ -416,6 +452,7 @@ fun ManeuverBanner(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
+                    if (mayBeBanned && !rerouting) TurnBanWarning(content)
                     // The arrive step names WHERE you're arriving (Google-style): the business or
                     // label, and its address when that adds anything. Skip a line that would just
                     // repeat the instruction text.
@@ -442,7 +479,7 @@ fun ManeuverBanner(
             // otherwise the arrows sit there for miles telling you to "be in the right lane" for an exit
             // way ahead, which is just noise. The distance gate covers BOTH paths (the count-based hint
             // was just as noisy). In step-preview (swiping ahead) always show, since you're inspecting a step.
-            if (previewing || distanceMeters <= laneShowM) {
+            if ((previewing || distanceMeters <= laneShowM) && !offLine) {
                 if (lanes.isNotEmpty()) {
                     Spacer(Modifier.height(10.dp))
                     LaneDiagram(lanes, type, on = content)
@@ -506,7 +543,11 @@ private const val BANNER_HEADLINE_LINES = 3
 
 // Show the lane diagram only within this distance of the maneuver (~0.5 mi) — beyond it the arrows are
 // just noise telling you to pick a lane for an exit miles ahead.
-private const val LANE_SHOW_M = 800.0
+internal const val LANE_SHOW_M = 800.0
+
+/** [text] in a first-strong isolate (U+2068 .. U+2069): a figure and its unit ("15.3 mi") keep
+ *  their order and stay together inside a line in a right-to-left language. */
+internal fun bidiIsolate(text: String): String = "\u2068" + text + "\u2069"
 
 /** Google's nav-banner freeway green, pixel-sampled off the Maps app (#00654F). */
 internal val NavBannerGreen = androidx.compose.ui.graphics.Color(0xFF00654F)
@@ -570,6 +611,21 @@ internal fun roadSigns(text: String, explicitRef: String? = null): List<Sign> {
 internal fun routeKey(label: String): String {
     val compact = label.uppercase().replace(Regex("[\\s-]"), "")
     return Regex("^([A-Z]*?)(\\d+)").find(compact)?.let { it.groupValues[1] + it.groupValues[2] } ?: compact
+}
+
+/** "This turn may not be allowed": OpenStreetMap bans the turn Google takes (TurnBans). */
+@Composable
+internal fun TurnBanWarning(color: Color, modifier: Modifier = Modifier) {
+    Row(modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(app.vela.ui.icons.SymOutlined.Warning, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(
+            stringResource(R.string.nav_turn_may_be_banned),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = color,
+        )
+    }
 }
 
 @Composable
@@ -808,7 +864,7 @@ fun NavSearchChips(
     val cfg = LocalConfiguration.current
     val landscape = cfg.screenWidthDp > cfg.screenHeightDp
     val autoFocus = app.vela.ui.rememberDpadAutoFocus()
-    Box(modifier.fillMaxSize()) {
+    Box(modifier.fillMaxSize().coversMap()) {
         // Landscape: the rest of the route stays in view under a tint; a tap on it closes the page.
         // A tap target only, never a focus stop: with keys the close button and Back do this.
         if (landscape) {
@@ -956,6 +1012,7 @@ fun NavControls(
     val previewNaturalPx = remember { floatArrayOf(0f) }
     Card(
         modifier
+            .coversMap() // docs/dpad.md, map keys
             .fillMaxWidth()
             // dpad-ok: OK on NavBarTop's handle opens the step list, the same as this drag.
             .pointerInput(Unit) {
@@ -1232,8 +1289,10 @@ fun NavBarTop(
                 var pausedTick by remember { mutableStateOf(0) }
                 LaunchedEffect(paused) { while (paused) { kotlinx.coroutines.delay(30_000); pausedTick++ } }
                 FitText(
-                    formatDistance(shownMeters) +
-                        " · " + formatArrivalClock(shownSeconds).also { pausedTick } +
+                    // Each figure isolated: in a right-to-left language "15.3 mi · 20:45" came out
+                    // "mi · 20:45 15.3", the unit cut from its number (Hebrew).
+                    bidiIsolate(formatDistance(shownMeters)) +
+                        " · " + bidiIsolate(formatArrivalClock(shownSeconds).also { pausedTick }) +
                         when {
                             paused -> " · " + stringResource(R.string.nav_paused)
                             offRoute -> " · " + stringResource(R.string.nav_rerouting)
@@ -1324,7 +1383,7 @@ fun ArrivalSummary(
         }
     }
     Card(
-        modifier.fillMaxWidth(),
+        modifier.coversMap().fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -1445,7 +1504,7 @@ fun NavStopOffer(
     }
     val ringColor = MaterialTheme.colorScheme.primary
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.coversMap().fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 3.dp,

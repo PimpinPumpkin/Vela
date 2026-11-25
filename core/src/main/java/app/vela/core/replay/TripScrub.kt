@@ -42,6 +42,13 @@ import kotlin.math.sqrt
  * before the first surviving fix has a negative time. What it gives away is how long the drive
  * spent inside a trimmed end, never where.
  *
+ * `N` lines (what the nav engine or the walking dot was handed) and `W` lines (a walk's steps:
+ * interval, compass heading, step length) are kept only right after a kept fix: the fix line
+ * before them survived, so an `N` line's time since its fix still counts from a fix in the file.
+ * An `N` line also needs its own position outside every zone, and a `W` line, which has no
+ * position but retraces the walk's shape when strung together, needs a kept fix within
+ * [EVENT_NEAR_MS]. `RC` lines are dropped: a router's answer runs to the destination.
+ *
  * Unknown line kinds are DROPPED, not passed through. The format is deliberately append-only, so
  * a tag added later would otherwise be published by a scrubber written before it existed. If you
  * add a line kind to [TripLog], decide here whether it is safe to share.
@@ -77,6 +84,9 @@ object TripScrub {
         val spokenDropped: Int,
         val routeTrimmed: Boolean,
         val otherLinesDropped: Int,
+        /** The kept fixes' own times, before the rebase, for trimming the trip's nav trace
+         *  ([TripNavTrace.trim]). Never written into the shared file. */
+        val keptFixTimes: LongArray = LongArray(0),
     ) {
         val fixesRemoved: Int get() = fixesBefore - fixesAfter
     }
@@ -137,11 +147,14 @@ object TripScrub {
         var routeTrimmed = false
         var otherDropped = 0
         val out = StringBuilder()
+        // Whether the last fix line read was kept: N and W lines ride on the fix before them.
+        var lastFixKept = false
 
         for (line in lines) {
             val fix = parseFix(line)
             if (fix != null) {
-                if (private(fix.latLng)) continue
+                lastFixKept = !private(fix.latLng)
+                if (!lastFixKept) continue
                 out.append(rebaseFix(line, tZero)).append('\n')
                 continue
             }
@@ -192,6 +205,19 @@ object TripScrub {
                     val t = line.split(',').getOrNull(1)?.toLongOrNull()
                     if (t == null) otherDropped++ else out.append(rebaseEvent(line, tZero)).append('\n')
                 }
+                "N" -> {
+                    val f = line.split(',')
+                    val t = f.getOrNull(1)?.toLongOrNull()
+                    val lat = f.getOrNull(4)?.toDoubleOrNull()
+                    val lng = f.getOrNull(5)?.toDoubleOrNull()
+                    if (t == null || lat == null || lng == null || !lastFixKept || private(LatLng(lat, lng))) otherDropped++
+                    else out.append(rebaseEvent(line, tZero)).append('\n')
+                }
+                "W" -> {
+                    val t = line.split(',').getOrNull(1)?.toLongOrNull()
+                    if (t == null || !lastFixKept || !nearKeptFix(t)) otherDropped++
+                    else out.append(rebaseEvent(line, tZero)).append('\n')
+                }
                 else -> otherDropped++
             }
         }
@@ -207,6 +233,7 @@ object TripScrub {
             spokenDropped = spokenDropped,
             routeTrimmed = routeTrimmed,
             otherLinesDropped = otherDropped,
+            keptFixTimes = keptTimes,
         )
     }
 
@@ -281,7 +308,7 @@ object TripScrub {
         return f.joinToString(",")
     }
 
-    /** An event line (`S`/`J`/`B`) with field 1 (its timestamp) rebased. The text may hold
+    /** An event line (`S`/`J`/`B`/`K`/`N`/`W`) with field 1 (its timestamp) rebased. The text may hold
      *  commas, so only the first two fields are touched. */
     private fun rebaseEvent(line: String, tZero: Long): String {
         val f = line.split(',', limit = 3)

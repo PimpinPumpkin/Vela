@@ -15,11 +15,13 @@ object HouseNumbers {
     const val NEAR = "near"     // the old fixed gate: numbers only at the closest zoom
     const val NORMAL = "normal" // default: half a level further out
     const val FAR = "far"       // a full level out; blocks start to carpet in numbers
+    const val FURTHEST = "furthest" // opt-in: about CoMaps' distance (issue #827), costs frame rate in dense cities
     val level = mutableStateOf(NORMAL)
 
     fun minZoom(): Float = when (level.value) {
         NEAR -> 18.3f
         FAR -> 17.3f
+        FURTHEST -> 16.8f
         else -> 17.8f
     }
 

@@ -96,9 +96,11 @@ class NavEngineSpokenDetailTest {
     @Test fun `the line prepared ahead of time is the one that is spoken`() {
         SpokenDetail.mode = SpokenDetail.Mode.BRIEF
         val ready = NavEngine.upcomingPrompts(turn, fromStep = 1, spoken = emptySet(), speedMps = 10.0, imperial = false)
-        assertEquals(approach(turn, 10.0).first, ready)
+        // The turn's one line, then the arrival's.
+        assertEquals(approach(turn, 10.0).first, ready.take(1))
+        assertTrue(ready.drop(1).none { "Turn" in it })
         SpokenDetail.mode = SpokenDetail.Mode.EXITS
-        assertTrue(NavEngine.upcomingPrompts(turn, fromStep = 1, spoken = emptySet(), speedMps = 10.0, imperial = false).isEmpty())
+        assertTrue(NavEngine.upcomingPrompts(turn, fromStep = 1, spoken = emptySet(), speedMps = 10.0, imperial = false).none { "Turn" in it })
     }
 
     @Test fun `exits only still says the destination is ahead`() {

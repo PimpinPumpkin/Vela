@@ -29,6 +29,10 @@ data class NavState(
     val chainedBands: Set<Int> = setOf(0, 1), // the approach bands of [chainedStep] that "then" said
     val stillFixes: Int = 0,           // fixes in a row under the moving speed
                                        // (NavEngine.chainedNext): its own approach is not said again
+    val backToRoute: BackToRoute? = null, // off the route with no signal and no way back planned
+                                          // (NavSession): where the route is, for the banner
+    val toTrackM: Double = -1.0,       // a GPX track ride (TrackRide) away from its line: meters to it (its
+                                       // start until the rider has joined it); -1 otherwise
 )
 
 /**

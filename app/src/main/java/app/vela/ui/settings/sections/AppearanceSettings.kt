@@ -103,13 +103,21 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 selected = AppTheme.mapMode.value == app.vela.ui.theme.MapThemeMode.DARK,
                 onClick = { AppTheme.setMap(context, app.vela.ui.theme.MapThemeMode.DARK) },
             )
+            GroupDivider()
+            // The map by the sun under any app theme (issue #874): a dark app over a day and
+            // night map.
+            SelectableRow(
+                label = stringResource(R.string.settings_theme_auto),
+                selected = AppTheme.mapMode.value == app.vela.ui.theme.MapThemeMode.AUTO,
+                onClick = { AppTheme.setMap(context, app.vela.ui.theme.MapThemeMode.AUTO) },
+            )
         }
         Hint(stringResource(R.string.settings_map_theme_hint))
 
-        // Orthogonal to the mode above, and only meaningful alongside a FIXED choice: keep the app
-        // dark by preference, but drive by a light map in daylight. Hidden under AUTO, where it
-        // would claim to do something already happening.
-        if (AppTheme.mode.value != ThemeMode.AUTO) {
+        // Orthogonal to the modes above: keep the app dark by preference, but drive by a light map
+        // in daylight. Hidden where it would claim to do something already happening (the app on
+        // AUTO with the map following it or on AUTO too).
+        if (app.vela.ui.theme.navDayNightMatters(AppTheme.mode.value, AppTheme.mapMode.value)) {
             Spacer(Modifier.height(8.dp))
             SettingsGroup {
                 ToggleRow(
@@ -131,9 +139,7 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             )
         }
 
-        // FONT (issue #252). Only two states, and deliberately so: the platform font, or a file the
-        // user supplies. We ship no faces of our own - the one people ask for is proprietary and
-        // cannot be redistributed - so the honest offer is "use what you already have a license to".
+        // FONT (issue #252). Bundled open-licensed families, the platform font, or a file the user supplies.
         Spacer(Modifier.height(8.dp))
         val fontBad = stringResource(R.string.settings_font_bad)
         val fontScope = androidx.compose.runtime.rememberCoroutineScope()
@@ -162,8 +168,14 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             )
             GroupDivider()
             SelectableRow(
+                label = "Vazirmatn",
+                selected = app.vela.ui.AppFont.vazirmatn.value,
+                onClick = { app.vela.ui.AppFont.setVazirmatn(context) },
+            )
+            GroupDivider()
+            SelectableRow(
                 label = stringResource(R.string.settings_font_system),
-                selected = app.vela.ui.AppFont.customName.value == null && !app.vela.ui.AppFont.builtin.value,
+                selected = app.vela.ui.AppFont.customName.value == null && !app.vela.ui.AppFont.builtin.value && !app.vela.ui.AppFont.vazirmatn.value,
                 onClick = { app.vela.ui.AppFont.clear(context) },
             )
             GroupDivider()
@@ -182,6 +194,7 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             )
         }
         Hint(stringResource(R.string.settings_font_flex_hint))
+        Hint(stringResource(R.string.settings_font_vazirmatn_hint))
 
         Spacer(Modifier.height(8.dp))
         // Interface size: scales every control and sheet (not the map) - for car/tablet

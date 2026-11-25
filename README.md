@@ -109,6 +109,13 @@ Check a downloaded file against it before installing:
 apksigner verify --print-certs vela-maps-*.apk
 ```
 
+With the GitHub CLI you can also see which build made the file. This names the
+workflow run and the commit (releases from before November 2026 have none):
+
+```bash
+gh attestation verify vela-maps-*.apk -R PimpinPumpkin/Vela
+```
+
 On the phone, [App Verifier](https://github.com/soupslurpr/AppVerifier) checks
 the same thing. It wants the package name on the first line and the fingerprint
 on the second, so paste this block, not the line above:
@@ -199,8 +206,8 @@ repository are published as a searchable site at
   signed file the app checks at launch. When Google shifts a field, a fix reaches
   every install in minutes with no app update. [`SPEC.md`](SPEC.md) sections 3
   and 11 describe it.
-- **The rest.** 19 languages, light and dark themes, optional wallpaper colors,
-  full operation by D-pad on keypad phones, a built-in updater with stable,
+- **The rest.** 21 languages, light and dark themes, optional wallpaper colors,
+  right-to-left layout for Hebrew and Persian, full operation by D-pad on keypad phones, a built-in updater with stable,
   nightly and canary channels, and Android Auto screens (a car accepts a
   sideloaded app only in some setups; see [docs/ANDROID-AUTO.md](docs/ANDROID-AUTO.md)).
 
@@ -330,8 +337,9 @@ Wikidata. Transit boards come from Transitous and the agencies' own GTFS feeds. 
 prices come from the UK government's Fuel Finder, through
 [matthewgall/fuelfinder-archive](https://github.com/matthewgall/fuelfinder-archive), and
 contain public sector information licensed under the Open Government Licence v3.0.
-Satellite imagery is Esri World Imagery, with Google imagery where Esri has none
-at close zoom.
+Highway 407 ETR's toll rates come from its published rate chart, the A-25 and A-30 bridges' from
+their operators' published rate grids, and the roads' lines from OpenStreetMap. Satellite imagery
+is Esri World Imagery, with Google imagery where Esri has none at close zoom.
 
 ## License
 
@@ -339,4 +347,4 @@ at close zoom.
 
 Vela is Free Software: you can use, study, share and improve it at your will. You may use, modify and redistribute this project only if your modifications remain open source under the same license.
 
-The app bundles the Google Sans Flex font, copyright The Google Sans Flex Authors, under the [SIL Open Font License 1.1](app/src/main/assets/licenses/GoogleSansFlex-OFL.txt). Google Sans Flex is a trademark of Google LLC; Vela is not affiliated with or endorsed by Google.
+The app bundles Google Sans Flex, copyright The Google Sans Flex Authors, and Vazirmatn, copyright The Vazirmatn Project Authors, under the [SIL Open Font License 1.1](app/src/main/assets/licenses/GoogleSansFlex-OFL.txt) and [Vazirmatn license](app/src/main/assets/licenses/OFL-Vazirmatn.txt), respectively. Google Sans Flex is a trademark of Google LLC; Vela is not affiliated with or endorsed by Google.

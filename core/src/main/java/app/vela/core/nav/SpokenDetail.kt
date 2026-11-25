@@ -6,8 +6,9 @@ import app.vela.core.model.ManeuverType
  * How much spoken guidance says (issue #718): a step between everything and the mute button, for
  * a driver who wants music or a book and still does not want to sail past an exit.
  *
- *  - [Mode.FULL] is what Vela has always done: up to three lines a turn (far, near, at the turn),
- *    lanes and signs included.
+ *  - [Mode.FULL] says a turn in town three times (far, near, at the turn), and anything at
+ *    [FAST_MPS] or more, or an exit, fork or keep at highway pace, twice (about 15 s out and at
+ *    the turn; `NavEngine.oneApproach`), lanes and signs included.
  *  - [Mode.BRIEF] says each maneuver ONCE, in its short form with no street name: "In 150 meters,
  *    turn left". Exits and forks are said at the far prompt (about 35 s out), turns at the near
  *    one (about 10 s), and nothing is repeated at the turn itself.

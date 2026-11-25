@@ -36,7 +36,7 @@ class NavEngineChainTest {
         return Route(poly, listOf(RouteLeg(1600.0 + gap, 160.0, null, ms)), 1600.0 + gap, 160.0, null)
     }
 
-    private fun drive(r: Route, gap: Double, mps: Double = 10.0): List<String> {
+    private fun drive(r: Route, gap: Double, mps: Double = 10.0, trackRide: Boolean = false): List<String> {
         var st = NavState()
         val said = ArrayList<String>()
         var m = 0.0
@@ -46,7 +46,7 @@ class NavEngineChainTest {
                 m <= 1000.0 + gap -> pt(1000.0, -(m - 1000.0)) to 180.0
                 else -> pt(1000.0 + (m - 1000.0 - gap), -gap) to 90.0
             }
-            val (s, ev) = NavEngine.update(r, st, here, speedMps = mps, bearingDeg = brg)
+            val (s, ev) = NavEngine.update(r, st, here, speedMps = mps, bearingDeg = brg, trackRide = trackRide)
             st = s
             ev.filterIsInstance<NavEvent.Speak>().forEach { said += it.text }
             m += 5.0
@@ -108,5 +108,113 @@ class NavEngineChainTest {
         assertEquals(2, NavEngine.chainedNext(r.maneuvers, man, 1))
         assertEquals("the arrival has lines of its own", -1, NavEngine.chainedNext(r.maneuvers, doubleArrayOf(0.0, 1000.0, 1080.0, 1100.0), 2))
         assertEquals(-1, NavEngine.chainedNext(r.maneuvers, doubleArrayOf(0.0, 1000.0, 1000.0 + NavEngine.CHAIN_M + 1.0, 1900.0), 1))
+    }
+
+    /** An interchange at freeway speed: two forks 45 m apart, a third 180 m on, then a merge.
+     *  [middleLanes] gives the middle fork lanes to say. */
+    private fun forks(middleLanes: List<app.vela.core.model.Lane> = emptyList()): Route {
+        val poly = (0..300).map { pt(it * 10.0, 0.0) }
+        val ms = listOf(
+            Maneuver(ManeuverType.DEPART, "Head east", poly.first(), 1500.0, 60.0),
+            Maneuver(ManeuverType.FORK_LEFT, "Keep slight left toward Sacramento, Davis", pt(1500.0, 0.0), 45.0, 2.0, instructionNoRoad = "Keep slight left"),
+            Maneuver(ManeuverType.FORK_RIGHT, "Keep slight right toward Davis: Woodland", pt(1545.0, 0.0), 180.0, 7.0, instructionNoRoad = "Keep slight right", lanes = middleLanes),
+            Maneuver(ManeuverType.FORK_RIGHT, "Keep slight right toward Dixon", pt(1725.0, 0.0), 680.0, 27.0, instructionNoRoad = "Keep slight right"),
+            Maneuver(ManeuverType.MERGE, "Merge onto Elm Street", pt(2405.0, 0.0), 595.0, 24.0, road = "Elm Street"),
+            Maneuver(ManeuverType.ARRIVE, "Arrive", poly.last(), 0.0, 0.0),
+        )
+        return Route(poly, listOf(RouteLeg(3000.0, 120.0, null, ms)), 3000.0, 120.0, null)
+    }
+
+    @Test fun `a fork said as the then of the fork before it is not said again two seconds later`() {
+        val r = forks()
+        var st = NavState()
+        val said = ArrayList<Pair<Double, String>>()
+        var middleBuzz = 0
+        var m = 0.0
+        // One fix a second at 25 m/s, as a phone reports it on a freeway.
+        while (m <= 2900.0) {
+            val before = st.stepIndex
+            val (s, ev) = NavEngine.update(r, st, pt(m, 0.0), speedMps = 25.0, bearingDeg = 90.0)
+            ev.filterIsInstance<NavEvent.Speak>().forEach { said += m to it.text }
+            if (before == 2) middleBuzz += ev.count { it is NavEvent.Haptic && !it.approaching }
+            st = s
+            m += 25.0
+        }
+        val atFirst = said.last { it.second.startsWith("Keep slight left") }
+        assertTrue("$said", atFirst.second.endsWith(", then keep slight right"))
+        // Nothing between the first fork's line and the third fork's approach.
+        val next = said.first { it.first > atFirst.first }
+        assertTrue("$said", next.second.startsWith("In ") && "Dixon" in next.second)
+        // The third fork still has its own line at the turn, and the middle one still buzzes.
+        assertTrue("$said", said.any { it.first > 1600.0 && it.second == "Keep slight right" })
+        assertEquals("$said", 1, middleBuzz)
+    }
+
+    @Test fun `a fork said with its lanes in the then is not said again two seconds later`() {
+        val lanes = listOf(app.vela.core.model.Lane(listOf("slight left"), valid = false), app.vela.core.model.Lane(listOf("slight right"), valid = true))
+        val r = forks(lanes)
+        var st = NavState()
+        val said = ArrayList<Pair<Double, String>>()
+        var m = 0.0
+        while (m <= 2900.0) {
+            val (s, ev) = NavEngine.update(r, st, pt(m, 0.0), speedMps = 25.0, bearingDeg = 90.0)
+            ev.filterIsInstance<NavEvent.Speak>().forEach { said += m to it.text }
+            st = s
+            m += 25.0
+        }
+        val atFirst = said.last { it.second.startsWith("Keep slight left") }
+        assertTrue("$said", atFirst.second.endsWith(", then use the right lane to keep slight right"))
+        val next = said.first { it.first > atFirst.first }
+        assertTrue("$said", next.second.startsWith("In ") && "Dixon" in next.second)
+    }
+
+    @Test fun `at town speed the second turn keeps its own line`() {
+        // 80 m at 10 m/s is 8 s: long enough for the reminder to be worth saying.
+        val said = drive(route(80.0), 80.0)
+        assertEquals("$said", "Turn left onto Oak Avenue", said.last { "Oak Avenue" in it })
+    }
+
+    @Test fun `on a track ride a turn 150 m on is said on its own`() {
+        // Riding at 5 m/s, Oak Avenue 150 m after Elm Street. A car's 400 m far band makes the
+        // second turn's first line due at once, so it rides on the first: "..., then turn left".
+        val car = drive(route(150.0), 150.0, mps = 5.0)
+        assertTrue("$car", car.any { it.startsWith("Turn right") && "then" in it })
+        // A track ride's bands are a cyclist's: each turn is said on its own.
+        val ride = drive(route(150.0), 150.0, mps = 5.0, trackRide = true)
+        assertTrue("$ride", ride.none { "then" in it })
+        assertTrue("$ride", ride.any { it.startsWith("Turn right onto Elm Street") })
+        assertTrue("$ride", ride.any { it.startsWith("Turn left onto Oak Avenue") || it.endsWith("turn left onto Oak Avenue") })
+    }
+
+    @Test fun `on a track ride turns 50 m apart still ride together`() {
+        val ride = drive(route(50.0), 50.0, mps = 5.0, trackRide = true)
+        assertTrue("$ride", ride.any { it.startsWith("Turn right") && "then turn left" in it })
+    }
+
+    /** East 30 m from the start, left onto Oak Avenue, north 300 m. */
+    private fun shortStart(): Route {
+        val poly = (0..3).map { pt(it * 10.0, 0.0) } + (1..30).map { pt(30.0, it * 10.0) }
+        val ms = listOf(
+            Maneuver(ManeuverType.DEPART, "Start your route", poly.first(), 30.0, 6.0),
+            Maneuver(ManeuverType.TURN_LEFT, "Turn left onto Oak Avenue", pt(30.0, 0.0), 300.0, 60.0, road = "Oak Avenue", instructionNoRoad = "Turn left"),
+            Maneuver(ManeuverType.ARRIVE, "Arrive", poly.last(), 0.0, 0.0),
+        )
+        return Route(poly, listOf(RouteLeg(330.0, 66.0, null, ms)), 330.0, 66.0, null)
+    }
+
+    @Test fun `a turn the track start line named is not said again`() {
+        // A drive begun on the track: on the first fix the engine is on the departure step, says
+        // nothing, and moves to the left turn 30 m on. NavSession's start line names that turn and
+        // records the bands it is inside (NavEngine.bandsWithin); the engine must not say it again.
+        val r = shortStart()
+        val (first, ev) = NavEngine.update(r, NavState(), pt(0.0, 0.0), speedMps = 0.0, bearingDeg = 90.0, trackRide = true)
+        assertTrue("$ev", ev.none { it is NavEvent.Speak })
+        assertEquals(1, first.stepIndex)
+        val marked = first.copy(spoken = first.spoken + NavEngine.bandsWithin(first.distanceToNextManeuver, 0.0, trackRide = true))
+        val (_, ev2) = NavEngine.update(r, marked, pt(3.0, 0.0), speedMps = 3.0, bearingDeg = 90.0, trackRide = true)
+        assertTrue("$ev2", ev2.filterIsInstance<NavEvent.Speak>().none { it.text.startsWith("In ") })
+        // Unmarked, the engine says the approach line itself: the duplicate this guards against.
+        val (_, ev3) = NavEngine.update(r, first, pt(3.0, 0.0), speedMps = 3.0, bearingDeg = 90.0, trackRide = true)
+        assertTrue("$ev3", ev3.filterIsInstance<NavEvent.Speak>().any { it.text.startsWith("In ") })
     }
 }

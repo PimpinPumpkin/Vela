@@ -36,6 +36,12 @@ interface NeuralSynth {
      *  once. Optional: a synth that cannot keep audio ignores it. */
     fun prepare(text: String, onDone: () -> Unit = {}) { onDone() }
 
+    /** [prepare] each of [texts], most needed first, in place of whatever an earlier call left
+     *  queued: the drive's latest guess at its next lines replaces the one before. Then the
+     *  [keep] phrases, which a synth that stores phrases keeps for the whole drive ("Rerouting",
+     *  the spoken distances), so a line made of them needs no render. */
+    fun prepareAll(texts: List<String>, keep: List<String> = emptyList()) { (texts + keep).forEach { prepare(it) } }
+
     /** Stop any current + queued speech now. */
     fun stop()
 

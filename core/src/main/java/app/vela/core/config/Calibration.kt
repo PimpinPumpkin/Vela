@@ -121,6 +121,10 @@ data class Calibration(
     // contains "station", and boards now fetch by proximity, so a fuel stop next to a bus stop
     // showed that stop's departures (device report 2026-07-13). Multilingual like the gate itself.
     val transitExcludeWords: List<String>? = null,
+    // Dishes and drinks that count as describing words in a search along a route
+    // (`QueryNameFilter`): "boba" or "pho" there is a kind of place, never a brand to narrow to.
+    // A present list REPLACES the compiled one; singular forms, any language.
+    val nameFilterFoodWords: List<String>? = null,
     // Field-index paths of the DIRECTIONS response (2026-09-13): the route list, the per-route
     // summary and its distance / typical / in-traffic / typical-range / endpoint fields, and
     // the congestion spans. Remote keys merge over [DEFAULT_DIRECTIONS_PATHS] one at a time, like
@@ -323,6 +327,9 @@ data class Calibration(
             // It's how Google marks dead POIs that carry no open/closed status text,
             // and — unlike popular times — it survives the keyless degraded response.
             "closedFlag" to listOf(1, 23),
+            // The "Suggest an edit" menu: entries with their kind at [6]. A place Google has marked
+            // closed carries kind 3, "Reopen this place" (SearchParser.hasReopenAction).
+            "editMenu" to listOf(1, 96, 5),
             // Popular-times histogram: [84][0] = 7 days, each [d][0]=day-of-week,
             // [d][1]=hourly [hour, occupancy%, …]. Relative to the place node [1].
             "popularTimes" to listOf(1, 84),

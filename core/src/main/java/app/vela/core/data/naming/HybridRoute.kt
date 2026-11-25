@@ -44,6 +44,10 @@ object HybridRoute {
      *  the lines are within this of each other, at most [WALK_MAX_M], before the pad. */
     private const val TIGHT_M = 10.0
     private const val WALK_MAX_M = 600.0
+    /** A sample of Google's line is on the open route only where the two run within this of
+     *  the same way, each read over [WAY_M] either side. */
+    private const val SAME_WAY_DEG = 90.0
+    private const val WAY_M = 10.0
     /** An open-router maneuver is carried over only when the open route's own path after it
      *  stays on Google's line: checked every [AGREE_STEP_M] for up to [AGREE_M] of its leg. */
     private const val AGREE_M = 400.0
@@ -83,17 +87,36 @@ object HybridRoute {
     fun tripEndSlack(s: Stretch, lineM: Double, slackM: Double): Pair<Double, Double> =
         (if (s.fromM <= 0.0) slackM else 0.0) to (if (s.toM >= lineM - 1.0) slackM else 0.0)
 
-    /** Where [google] leaves [open], as padded and merged stretches along [google]. Empty when
-     *  the two are the same way. */
+    /** Where [google] leaves [open], or runs along it the other way, as padded and merged
+     *  stretches along [google]. Empty when the two are the same way. */
     fun stretches(google: List<LatLng>, open: List<LatLng>): List<Stretch> {
         if (google.size < 2 || open.size < 2) return emptyList()
-        val grid = RouteGeometry.SegmentGrid(open, cumulative(open))
+        val openCum = cumulative(open)
+        val grid = RouteGeometry.SegmentGrid(open, openCum)
         val cum = cumulative(google)
         val total = cum.last()
         val offRuns = ArrayList<Stretch>()
         var start = -1.0
         var m = 0.0
-        fun farFrom(at: Double, tol: Double) = grid.along(pointAt(google, cum, at), tol) == null
+        fun way(line: List<LatLng>, c: DoubleArray, at: Double): Double? {
+            val a = pointAt(line, c, (at - WAY_M).coerceAtLeast(0.0))
+            val b = pointAt(line, c, (at + WAY_M).coerceAtMost(c.last()))
+            if (a.distanceTo(b) < 2.0) return null
+            val k = kotlin.math.cos(Math.toRadians(a.lat))
+            return Math.toDegrees(kotlin.math.atan2((b.lng - a.lng) * k, b.lat - a.lat))
+        }
+        // On the open route means near it AND going its way: a line that turns round in the
+        // road comes back along the open route's own street the other way, and read as on it,
+        // its U-turn was never said.
+        fun farFrom(at: Double, tol: Double): Boolean {
+            val passes = grid.allAlong(pointAt(google, cum, at), tol)
+            if (passes.isEmpty()) return true
+            val g = way(google, cum, at) ?: return false
+            return passes.none { a ->
+                val o = way(open, openCum, a) ?: return@none true
+                kotlin.math.abs((g - o + 540.0) % 360.0 - 180.0) < SAME_WAY_DEG
+            }
+        }
         while (m <= total) {
             val off = farFrom(m, OFF_M)
             if (off && start < 0) start = m

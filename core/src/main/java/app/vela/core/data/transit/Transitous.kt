@@ -17,10 +17,7 @@ import java.net.URLEncoder
 import app.vela.core.model.TransitItinerary
 import app.vela.core.model.LatLng
 import org.json.JSONObject
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
-import java.util.TimeZone
 
 /**
  * **Transitous** (transitous.org) - the community-run, keyless public-transit API over the world's
@@ -296,8 +293,19 @@ object Transitous {
      *  the rest as [MapStop.siblingIds] - the two curbs of a directional pair become one stop like
      *  Google's POI, and the merged board's headsigns tell the directions apart. Distinct names
      *  (a "NB Station"/"SB Station" pair) and far-apart same names both stay separate. */
-    fun mergeDirectionalPairs(stops: List<MapStop>, radiusM: Double = PAIR_MERGE_M): List<MapStop> =
-        mergeColocated(stops).groupBy { stopKey(it.name) }.flatMap { (_, group) ->
+    fun mergeDirectionalPairs(stops: List<MapStop>, radiusM: Double = PAIR_MERGE_M): List<MapStop> {
+        val pairs = foldNear(mergeColocated(stops), radiusM) { stopKey(it.name) }
+        // Then one station under two names (issue #999: "Bond Street Underground Station" and a
+        // platform listed as "Bond Street Station"), stations only, so a bus stop called "X Station"
+        // keeps its own icon beside the station.
+        val (stations, rest) = pairs.partition { st -> st.modes.any { kindOf(it).let { k -> k == Kind.METRO || k == Kind.TRAIN } } }
+        return (rest + foldNear(stations, radiusM) { stationKey(it.name) })
+            .map { if (it.name == it.name.uppercase() && it.name.any(Char::isLetter)) it.copy(name = displayName(listOf(it.name))) else it }
+    }
+
+    /** [stops] with those sharing a [key] within [radiusM] of each other folded into one. */
+    private fun foldNear(stops: List<MapStop>, radiusM: Double, key: (MapStop) -> String): List<MapStop> =
+        stops.groupBy(key).flatMap { (_, group) ->
             if (group.size < 2) return@flatMap group
             val clusters = mutableListOf<MutableList<MapStop>>()
             for (st in group) {
@@ -316,7 +324,14 @@ object Transitous {
                     modes = cl.flatMap { it.modes }.distinct(),
                 )
             }
-        }.map { if (it.name == it.name.uppercase() && it.name.any(Char::isLetter)) it.copy(name = displayName(listOf(it.name))) else it }
+        }
+
+    /** [stopKey] without the words that only say it is a station ("Underground Station"). */
+    fun stationKey(name: String): String =
+        stopKey(name).split('|').map { part -> part.split(' ').filter { it !in STATION_WORDS }.joinToString(" ") }
+            .filter { it.isNotEmpty() }.sorted().joinToString("|")
+
+    private val STATION_WORDS = setOf("station", "stn", "underground", "tube", "metro", "subway", "railway", "rail", "train")
 
     /**
      * ONE PHYSICAL STOP, SEVERAL FEEDS (2026-09-22, user: "bus icons right next to each other on the
@@ -380,6 +395,20 @@ object Transitous {
             .replace(AFTER_SLASH) { "/" + it.groupValues[1].uppercase() }
     }
 
+    /**
+     * A live time more than [EARLY_DOUBT_S] before its timetable time is not shown (#946). A
+     * vehicle waiting to start its run already reports its position, and the feed then predicts it
+     * as on its way: a stop two minutes from the start read "2 min" for a bus leaving in twelve.
+     * Running that early is rare, so the timetable time is shown instead, without the live mark.
+     * Returns the live time when it is trusted, else null.
+     */
+    internal fun trustLive(liveSec: Long?, schedSec: Long?): Long? = when {
+        liveSec == null -> null
+        schedSec != null && schedSec - liveSec > EARLY_DOUBT_S -> null
+        else -> liveSec
+    }
+    const val EARLY_DOUBT_S = 180L
+
     private const val PAIR_MERGE_M = 160.0
     private const val LAP_SAME_STOP_M = 30.0
     private const val COLOCATED_M = 3.0
@@ -395,13 +424,15 @@ object Transitous {
         if (groups.isEmpty()) return null
         val lines = groups.map { (k, ts) ->
             val deps = ts.mapNotNull { t ->
-                val iso = t.place.departure ?: t.place.scheduledDeparture ?: return@mapNotNull null
-                val epoch = parseIso(iso) ?: return@mapNotNull null
+                val sched = t.place.scheduledDeparture?.let { parseIso(it) }
+                val live = trustLive(t.place.departure?.let { parseIso(it) }, sched)
+                val epoch = live ?: sched ?: return@mapNotNull null
                 StopDeparture(
                     clockText = clockText(epoch, t.place.tz),
                     epochSec = epoch,
                     // realTime = the feed is live-tracking this run; that's the green-dot signal.
-                    realtime = t.realTime,
+                    // Not when its live time was too early to trust (trustLive).
+                    realtime = t.realTime && live != null,
                     tripId = t.tripId,
                 )
             }.sortedBy { it.epochSec ?: Long.MAX_VALUE }
@@ -526,10 +557,9 @@ object Transitous {
     }
 
     private fun stopTime(st: TripStop, legCanceled: Boolean): TransitStopTime {
-        val shown = st.departure ?: st.arrival ?: st.scheduledDeparture ?: st.scheduledArrival
         val sched = st.scheduledDeparture ?: st.scheduledArrival
-        val shownEpoch = shown?.let { parseIso(it) }
         val schedEpoch = sched?.let { parseIso(it) }
+        val shownEpoch = trustLive((st.departure ?: st.arrival)?.let { parseIso(it) }, schedEpoch) ?: schedEpoch
         val moved = schedEpoch != null && shownEpoch != null && schedEpoch != shownEpoch
         return TransitStopTime(
             name = st.name,
@@ -713,7 +743,8 @@ object Transitous {
     }
 
     private fun stopTime(o: JSONObject, liveKey: String, schedKey: String, tz: String?): TransitStopTime {
-        val live = parseIso(o.optString(liveKey, "")); val sched = parseIso(o.optString(schedKey, ""))
+        val sched = parseIso(o.optString(schedKey, ""))
+        val live = trustLive(parseIso(o.optString(liveKey, "")), sched)
         val shown = live ?: sched
         return TransitStopTime(
             name = o.optString("name", ""), code = o.optString("stopCode", "").takeIf { it.isNotBlank() },
@@ -761,14 +792,10 @@ object Transitous {
     /** ISO-8601 UTC ("2026-07-13T20:26:00Z") to epoch seconds. */
     internal fun parseIso(iso: String): Long? = runCatching { java.time.Instant.parse(iso).epochSecond }.getOrNull()
 
-    /** Clock text in the STOP's timezone (falls back to the device zone): 12-hour like the
-     *  Google boards, or 24-hour when the device's clock setting says so ([ClockFormat],
-     *  issue #357). */
-    internal fun clockText(epochSec: Long, tz: String?): String {
-        val fmt = SimpleDateFormat(if (app.vela.core.data.ClockFormat.use24h) "HH:mm" else "h:mm a", Locale.US)
-        fmt.timeZone = tz?.let { runCatching { TimeZone.getTimeZone(it) }.getOrNull() } ?: TimeZone.getDefault()
-        return fmt.format(Date(epochSec * 1000))
-    }
+    /** Clock text in the STOP's timezone (falls back to the device zone), on the clock and in the
+     *  language the app uses ([ClockFormat], issue #357). */
+    internal fun clockText(epochSec: Long, tz: String?): String =
+        app.vela.core.data.ClockFormat.at(epochSec, tz?.let { runCatching { java.time.ZoneId.of(it) }.getOrNull() } ?: java.time.ZoneId.systemDefault())
 
     private fun modeOf(mode: String?): TransitMode = when (mode?.uppercase()) {
         "BUS", "COACH" -> TransitMode.BUS

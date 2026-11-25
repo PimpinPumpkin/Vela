@@ -99,10 +99,18 @@ object NavReplay {
 
     /**
      * Replay [fixes] (in order) through [NavEngine] against [route] and return the audit. [imperial]
-     * only affects the spoken-prompt text, not the geometry. Pass the trip's recorded fixes as
-     * [LatLng]s (drop the timestamps — the engine is per-fix stateless on time).
+     * only affects the spoken-prompt text, not the geometry. [speeds] (m/s) and [bearings], one per
+     * fix, are passed to the engine as a live drive passes them: the prompt distances, the line at
+     * the turn and the chained-turn timing all scale with speed, and without them a replay is
+     * timed as if the car were crawling.
      */
-    fun analyze(route: Route, fixes: List<LatLng>, imperial: Boolean = true): Report {
+    fun analyze(
+        route: Route,
+        fixes: List<LatLng>,
+        imperial: Boolean = true,
+        speeds: List<Double?>? = null,
+        bearings: List<Double?>? = null,
+    ): Report {
         val maneuvers = route.maneuvers
         val n = maneuvers.size
         if (n == 0 || fixes.isEmpty()) return Report(emptyList(), emptyList())
@@ -129,7 +137,11 @@ object NavReplay {
         var lastFixAlong = 0.0
         for ((fi, loc) in fixes.withIndex()) {
             val idx = state.stepIndex.coerceIn(0, n - 1) // target BEFORE this update — who the prompt belongs to
-            val (next, events) = NavEngine.update(route, state, loc, imperial)
+            val (next, events) = NavEngine.update(
+                route, state, loc, imperial,
+                speedMps = speeds?.getOrNull(fi),
+                bearingDeg = bearings?.getOrNull(fi),
+            )
             // The fix's true place along the route, followed from the previous fix's: the plain
             // nearest point is the wrong pass half the time on a road driven out and back.
             val fixAlong = if (poly.size < 2) 0.0 else NavEngine.projectAlong(poly, cum, loc, 0.0, total, anchorM = lastFixAlong).first
