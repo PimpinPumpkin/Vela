@@ -23,4 +23,15 @@ class RoadSignsTest {
         val signs = roadSigns("Keep slight left toward I 80 E: Sacramento", explicitRef = "I 80")
         assertEquals(listOf("I 80 E"), signs.map { it.label })
     }
+
+    @Test fun `a ramp toward both directions of one route gets one shield with no direction`() {
+        val signs = roadSigns("Take exit 4A toward I 5 N, I 5 S: Redding, Los Angeles", explicitRef = "I 5")
+        assertEquals(listOf("Exit 4A", "I 5"), signs.map { it.label })
+    }
+
+    @Test fun `the exit tab needs a number and reads Romanian too`() {
+        assertEquals(listOf("Exit 4A", "I 5 N"), roadSigns("Luați ieșirea 4A spre I 5 N: Redding").map { it.label })
+        assertEquals(emptyList<String>(), roadSigns("At the roundabout, take the 1st exit onto 5th St").map { it.label })
+        assertEquals(listOf("I 80"), roadSigns("Take the exit toward I 80").map { it.label })
+    }
 }

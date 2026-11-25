@@ -2270,10 +2270,12 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   joints, renames) keeps the folded step's time as well as its length; a via's DEPART carries
   the minutes from the stop to the next turn, and dropping it ran a trip through one stop a
   fifth short (2026-10-10).
-- Turn card shields (`roadSigns`, `ui/nav/NavOverlays.kt`): the exit tab, the maneuver's own ref
-  and every route number in the instruction text, deduplicated by `routeKey` (letters and
-  number; spaces, dashes and a trailing direction dropped), three at most. The card's "then" row
-  skips a roundabout's own exit step and shows the maneuver after it at the summed distance.
+- Turn card shields (`roadSigns`, `ui/nav/NavOverlays.kt`): the exit tab (`EXIT_RE`: a number with
+  a digit after "exit" or the Romanian "ieșirea", so "the 1st exit onto" makes none), the
+  maneuver's own ref and every route number in the instruction text, deduplicated by `routeKey`
+  (letters and number; spaces, dashes and a trailing direction dropped), three at most. The card's
+  "then" row skips a roundabout's own exit step and shows the maneuver after it at the summed
+  distance.
 - Turn glyphs come from one table, `maneuverGlyph` (`ui/nav/ManeuverGlyph.kt`), for the turn
   card, the step list, picture-in-picture, the notification and Android Auto (`NavGlyphs`).
   Ramps, forks and keeps draw the slight-left or slight-right arrow: a glyph that also drew the
@@ -6866,12 +6868,16 @@ or last chip scrolls the row all the way to that end.
   roundabout, where they carry the exit number (at most 2 lines). Otherwise, when the language
   gives the sign destinations (`NavStrings.signDestination`, the text after " toward "; English
   and Romanian), the line is those destinations split on ":" and ",", minus any that is a chip
-  (a route number compared as letters and digits, a direction letter allowed) and shortened by
-  `RoadNameShort.shorten`. A sign that named only the chips leaves the line out. Depart, the
-  arrival, rerouting and a step neither rule fits keep the sentence layout above. The voice is
-  unchanged.
+  (a route number compared as letters and digits, a direction letter allowed), a street among
+  them shortened (`RoadNameShort.destination`: only a name with a street word after its first,
+  so "J St" but "South Lake Tahoe"). A sign that named only the chips leaves the line out.
+  Depart, the arrival, rerouting and a step neither rule fits keep the sentence layout above.
+  In the glance layout the arrow carries the whole instruction as its content description and
+  the large lines are hidden from TalkBack, so a screen reader still hears "Turn right onto J
+  St". The voice is unchanged.
 - `roadSigns` keeps the longer of two labels for one route, so the text's "I 80 E" wins over the
-  ref's "I 80" and the shield shows its direction.
+  ref's "I 80" and the shield shows its direction. A sign toward both directions of one route
+  ("toward I 5 N, I 5 S") gets one shield with no direction, and the card's line drops both.
 - Route shields (`RouteShield`) grow with the font scale up to `SHIELD_MAX_SCALE` (1.6), badge and
   number together, so a number fits its badge at any text size. A fixed badge with font-scaled
   digits cut "113" to "11" at 2.0.

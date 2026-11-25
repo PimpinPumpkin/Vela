@@ -38,6 +38,13 @@ object RoadNameShort {
         }.joinToString(" ")
     }
 
+    /** A sign destination, which may be a town: shortened only when a word after its first is a
+     *  street word ("J Street" is "J St"), so "South Lake Tahoe" and "North Highlands" stay. */
+    fun destination(name: String): String {
+        val words = name.trim().split(' ').filter { it.isNotEmpty() }
+        return if (words.drop(1).any { it.lowercase() in TYPES }) shorten(name) else name
+    }
+
     /** [text] with its one [road] name shortened in place: "Turn right onto Court Street" with the
      *  road "Court Street" is "Turn right onto Court St". The name is shortened on its own, so its
      *  first word is kept; the text is unchanged when the road is not in it (a romanized name, a

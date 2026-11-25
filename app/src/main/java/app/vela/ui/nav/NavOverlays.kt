@@ -343,7 +343,9 @@ fun ManeuverBanner(
                         )
                     } else Icon(
                         if (isRoundabout(type)) rememberRoundaboutGlyph(roundabout) else maneuverIcon(type),
-                        contentDescription = null,
+                        // In the glance layout the arrow stands for the verb the card no longer
+                        // writes, so a screen reader hears the whole instruction from it.
+                        contentDescription = if (glance) full else null,
                         modifier = Modifier.size(
                             when {
                                 compact -> 36.dp
@@ -413,7 +415,7 @@ fun ManeuverBanner(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    if (parts != null) {
+                    if (parts != null) Column(Modifier.clearAndSetSemantics { }) {
                         if (isRoundabout(type) && parts.lead.isNotEmpty()) Text(
                             parts.lead,
                             style = MaterialTheme.typography.bodyLarge,
@@ -565,7 +567,10 @@ private const val COMPOUND_M = 500.0
 internal fun isCompoundNext(nextDistanceMeters: Double?): Boolean =
     nextDistanceMeters != null && nextDistanceMeters <= COMPOUND_M
 
-private val EXIT_RE = Regex("""\bexit\s+(\w[\w-]*)""", RegexOption.IGNORE_CASE)
+// An exit number after the word for exit, in English and in Romanian ("ieșirea"), the two
+// languages whose turn card drops the sentence for the sign (TurnCardText). The number has a
+// digit, so "the 1st exit onto" and "the exit toward" make no tab.
+private val EXIT_RE = Regex("""\b(?:exit|ie[șş]irea)\s+((?=[\w-]*\d)\w[\w-]*)""", RegexOption.IGNORE_CASE)
 // I / US / SR / Hwy (space or dash), plus any 2-letter-DASH-number for state/provincial routes
 // (TX-35, ON-401, CA-99) — the dash keeps it route-like so it doesn't grab random "to 5" text;
 // parseRouteRef's state set then filters an unknown 2-letter prefix back to a plain chip.
@@ -574,6 +579,9 @@ private val EXIT_RE = Regex("""\bexit\s+(\w[\w-]*)""", RegexOption.IGNORE_CASE)
 // into shields. It previously required the hyphen form, so OSRM's spaced "NV 28" never chipped
 // (user replay report 2026-07-16).
 private val ROUTE_RE = Regex("""\b(?:(?:I|US|CA|SR|US-?Hwy|Hwy)[-\s]?\d+|(?-i:[A-Z]{2}[-\s]\d+))(?:\s?[NSEW]\b)?""", RegexOption.IGNORE_CASE)
+
+/** The direction letter at the end of a route label ("I 5 N", "I-80E"). */
+private val ROUTE_DIR = Regex("""(?<=\d)\s?([NSEW])$""")
 
 /** A highway shield or exit tab extracted from an instruction. */
 internal data class Sign(val isExit: Boolean, val label: String)
@@ -584,6 +592,7 @@ internal data class Sign(val isExit: Boolean, val label: String)
  *  ref "I 80"), so pass it to still get the shield. */
 internal fun roadSigns(text: String, explicitRef: String? = null): List<Sign> {
     val seen = HashSet<String>()
+    val bothWays = HashSet<String>()
     val out = ArrayList<Sign>()
     EXIT_RE.find(text)?.let {
         val label = "Exit ${it.groupValues[1]}"
@@ -597,9 +606,20 @@ internal fun roadSigns(text: String, explicitRef: String? = null): List<Sign> {
         val k = routeKey(label)
         if (seen.add(k)) out.add(Sign(isExit = false, label = label))
         else {
-            // The same route from the ref, without its direction: the text's "I 80 E" keeps the E.
             val i = out.indexOfFirst { !it.isExit && routeKey(it.label) == k }
-            if (i >= 0 && label.length > out[i].label.length) out[i] = Sign(isExit = false, label = label)
+            if (i >= 0 && k !in bothWays) {
+                val had = out[i].label
+                val dirHad = ROUTE_DIR.find(had)?.groupValues?.get(1)
+                val dirNew = ROUTE_DIR.find(label)?.groupValues?.get(1)
+                if (dirHad != null && dirNew != null && dirHad != dirNew) {
+                    // "toward I 5 N, I 5 S": the ramp serves both ways, so the shield has none.
+                    bothWays.add(k)
+                    out[i] = Sign(isExit = false, label = had.replace(ROUTE_DIR, "").trimEnd())
+                } else if (label.length > had.length) {
+                    // The same route from the ref, without its direction: the text's "I 80 E" keeps the E.
+                    out[i] = Sign(isExit = false, label = label)
+                }
+            }
         }
     }
     return out.take(3)

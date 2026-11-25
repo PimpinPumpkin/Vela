@@ -28,6 +28,14 @@ class RoadNameShortTest {
         assertEquals("Elm Jct", RoadNameShort.shorten("Elm Junction"))
     }
 
+    @Test fun aSignDestinationIsShortenedOnlyWhenItIsAStreet() {
+        assertEquals("J St", RoadNameShort.destination("J Street"))
+        assertEquals("Russell Blvd", RoadNameShort.destination("Russell Boulevard"))
+        assertEquals("South Lake Tahoe", RoadNameShort.destination("South Lake Tahoe"))
+        assertEquals("North Highlands", RoadNameShort.destination("North Highlands"))
+        assertEquals("Downtown", RoadNameShort.destination("Downtown"))
+    }
+
     @Test fun aCompassWordAfterARouteNumberIsItsLetter() {
         assertEquals("Take the ramp on the right toward US 169 N: I 44, Tulsa",
             RoadNameShort.inText("Take the ramp on the right toward US 169 North: I 44, Tulsa", null))

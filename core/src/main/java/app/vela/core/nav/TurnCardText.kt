@@ -22,7 +22,7 @@ data class TurnCardText(val lead: String, val main: String, val sub: String) {
          *
          * A turn onto a named road: lead = the words before the road, main = the road, sub = the
          * words after it. A ramp, exit, fork or merge with a sign: main = the destinations that are
-         * not shields, shortened as a sign writes them ("Russell Blvd, Anderson Rd"); lead and sub
+         * not shields, a street shortened as a sign writes it ("J St, Downtown"); lead and sub
          * empty. A sign whose only destination is a shield gives an empty main: the chips say it all.
          */
         fun of(full: String, road: String?, signDest: String?, shields: List<String>): TurnCardText? {
@@ -41,7 +41,7 @@ data class TurnCardText(val lead: String, val main: String, val sub: String) {
             val d = signDest?.trim().orEmpty()
             if (d.isEmpty()) return null
             val items = d.split(':', ',').map { it.trim() }.filter { it.isNotEmpty() }
-            val places = items.filterNot(::onShield).map(RoadNameShort::shorten)
+            val places = items.filterNot(::onShield).map(RoadNameShort::destination)
             return TurnCardText(lead = "", main = places.joinToString(", "), sub = "")
         }
 

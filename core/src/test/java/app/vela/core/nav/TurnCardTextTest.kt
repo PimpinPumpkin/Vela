@@ -64,6 +64,23 @@ class TurnCardTextTest {
     }
 
     @Test
+    fun aTownIsNotShortenedLikeAStreet() {
+        assertEquals(
+            TurnCardText("", "Sacramento, South Lake Tahoe", ""),
+            card("Keep slight left toward Sacramento, South Lake Tahoe", null, listOf("US 50")),
+        )
+    }
+
+    @Test
+    fun bothDirectionsOfAShieldAreLeftToIt() {
+        // The ramp serves I 5 both ways and the card's shield is the bare "I 5".
+        assertEquals(
+            TurnCardText("", "Redding, Los Angeles", ""),
+            card("Take exit 4A toward I 5 N, I 5 S: Redding, Los Angeles", null, listOf("Exit 4A", "I 5")),
+        )
+    }
+
+    @Test
     fun forkWithoutAShieldShowsItsDestinations() {
         assertEquals(
             TurnCardText("", "Russell Blvd, Anderson Rd", ""),

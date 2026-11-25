@@ -504,8 +504,10 @@ off the list when it has been.
 
 - The turn card leads with where you are going (#851, `TurnCardText`, `signDestination`): the
   distance under the arrow, the road or the sign's destinations in bold, the verb left to the
-  arrow. Seen on a Pixel 5 on a simulated highway drive in English. Not yet checked at large
-  text, in compact mode, or in Romanian, the other language with a destination marker.
+  arrow. Seen on a Pixel 5 on a simulated highway drive in English, and on a Pixel 4a on a
+  Davis mock drive (a roundabout, a reroute, the arrival) and in previews of a Davis to
+  Sacramento route at large text, in landscape, in Romanian and in Japanese. Not yet seen on a
+  real drive, and not heard with TalkBack (the arrow's description was read from a UI dump).
 - Data job fixes: the camera bake asks for CSV and tries again, the maxspeed bake skips a
   region with no tagged roads, a failed velamaps.org deploy no longer stops GitHub Pages, and
   the baseline profile run warns instead of failing when it may not open a pull request. Each
