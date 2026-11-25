@@ -6355,9 +6355,15 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   readings split by eSpeak's `?3` / `?!3` flags. `scripts/build-espeak-dict.sh <espeak-ng-data>`
   rebuilds it and stops unless the source reproduces the stock file byte for byte. The location
   guard skips the list (`scripts/check-location.sh` and `location-guard.yml`, kept in step).
-- A line renders phrase by phrase (`SpeechText.speechFragments`) and `PiperSynth.speak` hands
-  each phrase to the `piper-play` thread as it is made (Pixel 4a, 52 characters, a medium
-  voice: first audio at 0.29 s, all rendered at 0.70 s). Prepared lines (`prepare`) render whole.
+- Two threads: the `piper-tts` worker renders (spoken lines and prepared ones, one engine call at
+  a time) and `piper-say` plays the spoken lines in the order asked and owns the `AudioTrack`.
+  A line whose audio was prepared goes straight to `piper-say` and never waits for the worker; a
+  line that needs a render gets it while the line before it plays. On a Davis fixture mock drive
+  on a Pixel 4a with a high voice, every line at a turn started within 5 ms (it waited up to
+  3.5 s behind the worker's render before).
+- A line renders phrase by phrase (`SpeechText.speechFragments`) and each phrase goes to the
+  player as it is made (Pixel 4a, 52 characters, a medium voice: first audio at 0.29 s, all
+  rendered at 0.70 s). Prepared lines (`prepare`) render whole.
 - Playing starts once the audio made outlasts the next phrase's render and the amount the rest
   renders slower than it plays (`StreamStart.ready`, from per-letter render time and audio length
   kept per voice, speaker and speed). A fast voice starts on its first phrase. A voice that renders
@@ -6443,10 +6449,16 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   next one a fix past the turn before it, at the current speed or, past a left or right turn,
   `TURN_PACE_MPS` (5 m/s). A step shorter than its bands says its first line at the real distance
   ("In 650 feet"); the spoken distance moves in 50 ft steps, so where the fix lands picks
-  between at most two wordings, and both are prepared. Asked again whenever the step, the bands
-  said or a speed band changes, and after each spoken line.
+  between at most two wordings, and both are prepared. Whether the step after a turn rides on its
+  line ("then") depends on the speed at the turn, so the forms at `TURN_PACE_MPS` and at
+  `TOWN_PACE_MPS` (15 m/s) or the current speed if faster are both prepared when they differ.
+  The step the drive already said as a "then" (`NavState.chainedStep`) gets no lines of its own
+  beyond what `update` will say. Asked again whenever the step, the bands said or a speed band
+  changes, and after each spoken line.
 - Each new set of predicted lines (`NeuralSynth.prepareAll`) replaces the prepares still queued
-  from the set before; the one being rendered finishes.
+  from the set before. The one being rendered finishes, unless the new set wants a line with no
+  audio before it and no longer has it among its first `URGENT_PREPARES` (2): then it stops at
+  its next phrase. One the set leaves out finishes, since the guess can flip back a second later.
 - A line asked to be spoken drops every prepare still queued and ends the one being rendered at
   its next phrase, unless that one is the line asked: it renders on, raised, and is played. A
   phrase is one engine call and cannot be cut, so the line waits for the phrase in hand, and the

@@ -224,4 +224,25 @@ class StartPromptsTest {
             assertTrue("$startM m out: \"$first\" not prepared (had: $prepared)", first in prepared)
         }
     }
+
+    /** A turn said as the "then" of the line at the turn before it has nothing more of its own
+     *  prepared than update will say: no approach lines, from the first fix on its step. */
+    @Test
+    fun aTurnAlreadySaidAsAThenGetsNoApproachLinesPrepared() {
+        val r = closeTurns(80.0).let { r ->
+            r.copy(legs = listOf(r.legs.single().copy(maneuvers = r.maneuvers.map { it.copy(lightAtTurn = false, stopAtTurn = false) })))
+        }
+        var st = NavState()
+        var checked = false
+        for (p in walk(r.polyline, 10.0)) {
+            val (s2, _) = NavEngine.update(r, st, p, imperial = true, speedMps = 10.0)
+            st = s2
+            if (st.stepIndex == 2 && st.chainedStep == 2 && !checked) {
+                checked = true
+                val ready = NavEngine.upcomingPrompts(r, 2, st.spoken, 10.0, imperial = true, toTurnM = st.distanceToNextManeuver, chainedStep = st.chainedStep, chainedStepBands = st.chainedBands)
+                assertTrue("approach lines prepared for a turn already said: $ready", ready.none { it.startsWith("In ") && "Oak Avenue" in it })
+            }
+        }
+        assertTrue("the second turn was never said as a then", checked)
+    }
 }
