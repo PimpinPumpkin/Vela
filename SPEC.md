@@ -6858,6 +6858,20 @@ or last chip scrolls the row all the way to that end.
   The distance is one line that shrinks to fit beside the road's shield (`FitText`, started over
   when its length changes, not on every tick). The instruction stops at `BANNER_HEADLINE_LINES`
   (3) lines.
+- Glance layout (`TurnCardText.of`, `core/nav`): when the step can be taken apart, the card is the
+  distance (`titleMedium` bold) under a 48 dp glyph, the chips, and one large bold line
+  (`headlineSmall`, `titleLarge` when compact, at most 2 lines) for where you are going. For a
+  turn whose text contains `Maneuver.road` whole-word, that line is the road, with the words
+  after it small below (at most 1 line); the words before it are not shown, except at a
+  roundabout, where they carry the exit number (at most 2 lines). Otherwise, when the language
+  gives the sign destinations (`NavStrings.signDestination`, the text after " toward "; English
+  and Romanian), the line is those destinations split on ":" and ",", minus any that is a chip
+  (a route number compared as letters and digits, a direction letter allowed) and shortened by
+  `RoadNameShort.shorten`. A sign that named only the chips leaves the line out. Depart, the
+  arrival, rerouting and a step neither rule fits keep the sentence layout above. The voice is
+  unchanged.
+- `roadSigns` keeps the longer of two labels for one route, so the text's "I 80 E" wins over the
+  ref's "I 80" and the shield shows its direction.
 - Route shields (`RouteShield`) grow with the font scale up to `SHIELD_MAX_SCALE` (1.6), badge and
   number together, so a number fits its badge at any text size. A fixed badge with font-scaled
   digits cut "113" to "11" at 2.0.

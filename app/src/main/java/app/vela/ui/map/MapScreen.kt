@@ -4401,6 +4401,9 @@ private fun BoxScope.NavTurnBanner(
         type = if (toTrack != null) ManeuverType.DEPART else shown?.type ?: ManeuverType.STRAIGHT,
         roundabout = shown?.roundabout.takeIf { toTrack == null },
         ref = shown?.ref.takeIf { toTrack == null },
+        // The same road text the line above puts into `text` (shortened, then romanized), so the
+        // card can set it on its own line.
+        road = shown?.road?.takeIf { it.isNotBlank() && toTrack == null }?.let { navRomanize(app.vela.core.util.RoadNameShort.shorten(it)) },
         laneHint = shown?.laneHint.takeIf { toTrack == null },
         lanes = if (toTrack != null) emptyList() else shown?.lanes.orEmpty(),
         nextText = next?.instruction?.takeIf { toTrack == null }?.let { navRomanize(app.vela.core.util.RoadNameShort.inText(it, next.road)) },
