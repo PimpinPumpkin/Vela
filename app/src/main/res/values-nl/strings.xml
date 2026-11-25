@@ -1537,4 +1537,13 @@
     <string name="settings_gyro_turn">Draai de pijl met de gyroscoop</string>
     <string name="settings_gyro_turn_hint">Tijdens een rit draait de pijl wanneer de telefoon merkt dat de auto daarit, de vorm van de weg volgend. Uit, volgt het de weg iets verderop.</string>
     <string name="settings_offline_route_strip">De kaart samen met de route opslaan</string>
+    <string name="settings_offline_route_strip_hint">Een rit die begint met een signaal slaat de kaart op langs de route, zodat deze nog steeds wordt weergegeven zonder signaal. De kaartserver krijgt in één keer alle tegels van de route.</string>
+    <string name="settings_auto_parking">Opslaan waar ik parkeer</string>
+    <string name="settings_auto_parking_hint">Na een rit wordt de plek opgeslagen wanneer je bij de auto wegloopt, wanneer Android Auto wordt losgekoppeld, of wanneer je Vela op je bestemming achterlaat.</string>
+    <string name="settings_auto_parking_bt">Ook wanneer de Bluetooth van de auto wegvalt</string>
+    <string name="settings_auto_parking_bt_hint">Vraagt apparaten in de buurt, om uw auto van koptelefoons te onderscheiden, en om de locatie continu te gebruiken, zodat het werkt wanneer Vela gesloten is.</string>
+    <string name="settings_auto_parking_bt_denied">Zonder apparaten in de buurt kan Vela het Bluetooth van je auto niet onderscheiden van koptelefoons.</string>
+    <string name="settings_turn_with_travel">Draai de kaart tijdens de rit</string>
+    <string name="settings_turn_with_travel_hint">Zonder route draait de kaart in jouw richting zodra je met rijsnelheid beweegt. Uitgeschakeld blijft hij noord-omhoog totdat je hem draait.</string>
+    <string name="settings_car_lanes">Rijstrookbegeleiding op het autoscherm</string>
 </resources>

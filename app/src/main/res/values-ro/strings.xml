@@ -1517,4 +1517,5 @@
     <string name="settings_place_names_more">Mai multe</string>
     <string name="settings_place_names_most">Cele mai multe</string>
     <string name="settings_place_names_hint">Funcțiile „Mai multe” și „Cele mai multe” afișează numele și pictogramele magazinelor, școlilor și ale altor locuri atunci când se mărește imaginea la o scară mai mare. Într-o zonă aglomerată, harta poate deveni încărcată, iar derularea acesteia poate fi mai puțin fluidă.</string>
+    <string name="settings_lock_screen_nav">Afișează călătoria pe ecranul de blocare</string>
 </resources>
