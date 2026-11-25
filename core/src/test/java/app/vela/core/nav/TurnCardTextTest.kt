@@ -50,33 +50,33 @@ class TurnCardTextTest {
     fun exitShowsOnlyTheDestinationsNotOnAShield() {
         // The exit tab and the I 5 shield are chips; the sentence and "I 5" are redundant.
         assertEquals(
-            TurnCardText("", "Bellevue, Spokane", ""),
-            card("Take exit 164 toward I 5 S: Bellevue, Spokane", null, listOf("Exit 164", "I 5")),
+            TurnCardText("", "Los Angeles, Sacramento", ""),
+            card("Take exit 4A toward I 5 S: Los Angeles, Sacramento", null, listOf("Exit 4A", "I 5")),
         )
     }
 
     @Test
     fun exitDestinationsAreShortenedLikeASign() {
         assertEquals(
-            TurnCardText("", "150th Ave SE, Eastgate Way", ""),
-            card("Take exit 11A toward 150th Avenue Southeast, Eastgate Way", null, listOf("Exit 11A")),
+            TurnCardText("", "J St, Downtown", ""),
+            card("Take exit 519B toward J Street, Downtown", null, listOf("Exit 519B")),
         )
     }
 
     @Test
     fun forkWithoutAShieldShowsItsDestinations() {
         assertEquals(
-            TurnCardText("", "150th Ave SE, SE 37th St", ""),
-            card("Keep slight right toward 150th Avenue Southeast, Southeast 37th Street", null, emptyList()),
+            TurnCardText("", "Russell Blvd, Anderson Rd", ""),
+            card("Keep slight right toward Russell Boulevard, Anderson Road", null, emptyList()),
         )
     }
 
     @Test
     fun aRouteRoadThatIsAShieldGivesWayToTheCities() {
-        // road = "I 90" is already the chip: the cities are what is left to read.
+        // road = "I 80" is already the chip: the cities are what is left to read.
         assertEquals(
-            TurnCardText("", "Bellevue, Spokane", ""),
-            card("Keep slight left toward I 90 E: Bellevue, Spokane", "I 90", listOf("I 90")),
+            TurnCardText("", "Sacramento, Reno", ""),
+            card("Keep slight left toward I 80 E: Sacramento, Reno", "I 80", listOf("I 80")),
         )
     }
 
@@ -121,7 +121,7 @@ class TurnCardTextTest {
 
     @Test
     fun englishSignDestination() {
-        assertEquals("I 5 S: Bellevue, Portland", en.signDestination("Take exit 164 toward I 5 S: Bellevue, Portland"))
+        assertEquals("I 5 S: Los Angeles, Sacramento", en.signDestination("Take exit 4A toward I 5 S: Los Angeles, Sacramento"))
         assertNull(en.signDestination("Turn right onto Main St"))
     }
 }

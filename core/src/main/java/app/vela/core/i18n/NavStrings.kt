@@ -97,8 +97,8 @@ interface NavStrings {
     fun stayOn(instruction: String, route: String): String? = null
 
     /** The sign destinations of a ramp, exit, fork or merge step: the text after the language's
-     *  destination marker ("Take exit 164 toward I 5 S: Bellevue, Portland" -> "I 5 S: Bellevue,
-     *  Portland"), or null when the instruction has none. The turn card shows this in place of
+     *  destination marker ("Take exit 4A toward I 5 S: Los Angeles, Sacramento" -> "I 5 S: Los
+     *  Angeles, Sacramento"), or null when the instruction has none. The turn card shows this in place of
      *  the sentence (`TurnCardText`). Default = null (the card keeps the sentence until a language
      *  overrides with its own marker, same English-first pattern as [repeatShort]). */
     fun signDestination(instruction: String): String? = null

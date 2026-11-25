@@ -597,7 +597,7 @@ internal fun roadSigns(text: String, explicitRef: String? = null): List<Sign> {
         val k = routeKey(label)
         if (seen.add(k)) out.add(Sign(isExit = false, label = label))
         else {
-            // The same route from the ref, without its direction: the text's "I 90 E" keeps the E.
+            // The same route from the ref, without its direction: the text's "I 80 E" keeps the E.
             val i = out.indexOfFirst { !it.isExit && routeKey(it.label) == k }
             if (i >= 0 && label.length > out[i].label.length) out[i] = Sign(isExit = false, label = label)
         }

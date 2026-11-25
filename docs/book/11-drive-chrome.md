@@ -45,8 +45,8 @@ the left.
 The card leads with where you are going, the way Google's does, with the distance under the
 arrow. A turn shows the road in bold ("W Covell Blvd") and one small line for what follows it
 ("toward Downtown"). "Turn right onto" is not shown; the arrow says it. An exit or a ramp shows
-the exit tab and the route shields as chips, and the sign's other destinations in bold ("Bellevue,
-Spokane"), shortened as a sign writes them ("150th Ave SE"); "Take exit 164 toward I 5 S" is not
+the exit tab and the route shields as chips, and the sign's other destinations in bold ("Sacramento,
+Reno"), shortened as a sign writes them ("J St"); "Take exit 4A toward I 5 S" is not
 repeated as words, since the chips say it. A roundabout keeps "take the 2nd exit onto" above the
 road. The road is found by its own text in any language; the sign destinations need the
 language's "toward" marker (`TurnCardText`, `NavStrings.signDestination`), which English and

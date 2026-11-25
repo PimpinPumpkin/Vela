@@ -6870,8 +6870,8 @@ or last chip scrolls the row all the way to that end.
   `RoadNameShort.shorten`. A sign that named only the chips leaves the line out. Depart, the
   arrival, rerouting and a step neither rule fits keep the sentence layout above. The voice is
   unchanged.
-- `roadSigns` keeps the longer of two labels for one route, so the text's "I 90 E" wins over the
-  ref's "I 90" and the shield shows its direction.
+- `roadSigns` keeps the longer of two labels for one route, so the text's "I 80 E" wins over the
+  ref's "I 80" and the shield shows its direction.
 - Route shields (`RouteShield`) grow with the font scale up to `SHIELD_MAX_SCALE` (1.6), badge and
   number together, so a number fits its badge at any text size. A fixed badge with font-scaled
   digits cut "113" to "11" at 2.0.

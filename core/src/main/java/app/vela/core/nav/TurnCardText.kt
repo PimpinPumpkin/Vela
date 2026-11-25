@@ -18,18 +18,18 @@ data class TurnCardText(val lead: String, val main: String, val sub: String) {
          * null when the card should keep the sentence. [road] is the road entered as it stands in
          * [full]. [signDest] is the text after the language's destination marker, null when the
          * language has none or the step has no sign. [shields] are the route labels the card draws
-         * as chips ("I 90", "EXIT 164"); a destination that is one of them is dropped from the text.
+         * as chips ("I 80", "EXIT 72"); a destination that is one of them is dropped from the text.
          *
          * A turn onto a named road: lead = the words before the road, main = the road, sub = the
          * words after it. A ramp, exit, fork or merge with a sign: main = the destinations that are
-         * not shields, shortened as a sign writes them ("150th Ave SE, Eastgate Way"); lead and sub
+         * not shields, shortened as a sign writes them ("Russell Blvd, Anderson Rd"); lead and sub
          * empty. A sign whose only destination is a shield gives an empty main: the chips say it all.
          */
         fun of(full: String, road: String?, signDest: String?, shields: List<String>): TurnCardText? {
             val keys = shields.map(::key).filter { it.isNotEmpty() }
             fun onShield(s: String): Boolean {
                 val k = key(s)
-                // "I 90 E" is the "I 90" shield with its direction; "I 50" is not "I 5".
+                // "I 80 E" is the "I 80" shield with its direction; "I 50" is not "I 5".
                 return k.isNotEmpty() && keys.any { sk ->
                     k == sk || (k.startsWith(sk) && k.length - sk.length <= 2 && k.substring(sk.length).all(Char::isLetter))
                 }
@@ -71,7 +71,7 @@ data class TurnCardText(val lead: String, val main: String, val sub: String) {
             }
         }
 
-        /** "I-90 E", "I 90" and "Exit 164" compared as route labels: letters and digits, upper case. */
+        /** "I-80 E", "I 80" and "Exit 72" compared as route labels: letters and digits, upper case. */
         private fun key(label: String): String = label.uppercase().filter { it.isLetterOrDigit() }
     }
 }
