@@ -1421,6 +1421,8 @@
     <string name="route_no_tolls">No tolls</string>
     <string name="settings_turn_arrows">Turn arrows on the route</string>
     <string name="settings_turn_arrows_hint">Short arrows on the route at the turns ahead while you drive.</string>
+    <string name="settings_turn_instruction_text">Show written turn instructions</string>
+    <string name="settings_turn_instruction_text_hint">Off keeps the turn arrow, distance, road shields and lane guidance, without the written directions in the top card. Voice guidance is unchanged.</string>
     <string name="settings_route_bar">Road ahead bar</string>
     <string name="settings_route_bar_hint">A strip beside the map showing traffic and what is coming up on the rest of your route. Shows only what Vela actually knows: congestion, lights, stop signs, level crossings, speed bumps and surveillance cameras. Portrait only.</string>
     <string name="settings_font">Font</string>

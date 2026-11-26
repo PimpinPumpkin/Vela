@@ -4406,6 +4406,7 @@ private fun BoxScope.NavTurnBanner(
     ManeuverBanner(
         offRoute = state.nav.offRoute,
         backToRoute = state.nav.backToRoute,
+        showInstructionText = app.vela.ui.TurnInstructionText.show.value,
         // The road inside the text is abbreviated the way the pill does it (issue #837); the
         // voice keeps the full words from `maneuverText`.
         text = navRomanize(app.vela.core.util.RoadNameShort.inText(if (previewing) (shown?.instruction.orEmpty()) else state.maneuverText, shown?.road)),
