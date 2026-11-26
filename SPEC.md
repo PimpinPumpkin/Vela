@@ -6890,11 +6890,13 @@ or last chip scrolls the row all the way to that end.
 - Lanes (`LaneDiagram`, or `LaneGuide` for the count-based hint) sit on a strip across the card's
   foot, black at 22 percent over the card's color, centered, with 38 x 34 dp cells, as on
   Google's card; in both layouts. A lane with several arrows forks as Google's does
-  (`laneShape`): the arrow nearest straight is the trunk, every other arm leaves the shaft at 72
-  percent of the cell's height and reaches out to its side, and the shaft moves 16 percent of the
-  cell away from that side so the glyph stays in its cell. No head touches another arrow of its
-  lane at 38 x 34 or at the step list's 30 x 26 (`LaneShapeTest`). A lane with one arrow, or with
-  a U-turn, bends its arms from one point at 44 percent.
+  (`laneShape`): the arrow nearest straight is the trunk, and every other arm leaves the shaft at
+  80 percent of the cell's height (a sharp turn at 66) at the same angle as that turn's arrow in
+  a lane of its own (slight 45 degrees, a turn 66, sharp 108), long enough that its head clears
+  the trunk. The shaft moves 16 percent of the cell away from the side the arms reach to, so the
+  glyph stays in its cell. No head touches another arrow of its lane at 38 x 34 or at the step
+  list's 30 x 26 (`LaneShapeTest`). A lane with one arrow, or with a U-turn, bends its arms from
+  one point at 44 percent.
 - `roadSigns` keeps the longer of two labels for one route, so the text's "I 80 E" wins over the
   ref's "I 80" and the shield shows its direction. A sign toward both directions of one route
   ("toward I 5 N, I 5 S") gets one shield with no direction, and the card's line drops both.

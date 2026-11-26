@@ -891,8 +891,8 @@ internal class LaneShape(val shaftFrom: Offset, val shaftTo: Offset, val arms: L
 
 /** Draw angle of a lane indication, degrees clockwise from straight up. */
 private fun laneDeg(indication: String): Float = when (indication) {
-    "slight right" -> 32f
-    "slight left" -> -32f
+    "slight right" -> 45f
+    "slight left" -> -45f
     "right" -> 66f
     "left" -> -66f
     "sharp right" -> 108f
@@ -906,10 +906,12 @@ private fun laneDeg(indication: String): Float = when (indication) {
  *
  * One arrow: a shaft up to a bend at 44% of the height and the head from there. A lane with several
  * arrows is drawn as Google draws it: the arrow nearest straight is the trunk, and every other arm
- * leaves the shaft low (72% of the height) and reaches out to its side, so no head touches another.
- * Every arm bent from one point put a straight-or-right lane's right head over its straight head.
- * The shaft moves away from the side the arms reach to, so the glyph stays in its cell. A lane with
- * a U-turn keeps the single bend.
+ * leaves the shaft low and runs out at the same angle as that turn's arrow in a lane of its own,
+ * far enough that its head clears the trunk. Every arm bent from one point put a straight-or-right
+ * lane's right head over its straight head; a flatter arm than the single arrow beside it read as a
+ * different turn. Arms leave at 80% of the height (a sharp turn, which points down, at 66%), and
+ * the shaft moves away from the side they reach to, so the glyph stays in its cell. A lane with a
+ * U-turn keeps the single bend.
  */
 internal fun laneShape(indications: List<String>, w: Float, h: Float): LaneShape {
     val inds = indications.distinctBy(::laneDeg)
@@ -923,28 +925,32 @@ internal fun laneShape(indications: List<String>, w: Float, h: Float): LaneShape
         return LaneShape(Offset(w / 2f, bottom), bend, inds.map { LaneArm(it, listOf(bend, headAt(bend, laneDeg(it), h * 0.40f))) })
     }
     val trunk = inds.minBy { kotlin.math.abs(laneDeg(it)) }
+    val trunkTurns = laneDeg(trunk) != 0f
     val sides = inds.map { kotlin.math.sign(laneDeg(it)) }.filter { it != 0f }.toSet()
     val side = sides.singleOrNull() ?: 0f
     val x0 = w / 2f - side * 0.16f * w
-    val split = Offset(x0, h * 0.72f)
-    val trunkArm = if (laneDeg(trunk) == 0f) {
-        LaneArm(trunk, listOf(split, Offset(x0, h * 0.06f)))
-    } else {
-        val bend = Offset(x0, h * 0.44f)
-        LaneArm(trunk, listOf(split, bend, headAt(bend, laneDeg(trunk), h * 0.40f)))
-    }
     val arms = inds.filter { it != trunk }.map { ind ->
         val deg = laneDeg(ind)
         val turn = kotlin.math.abs(deg)
-        val (dx, ty) = when {
-            turn < 50f -> 0.44f to 0.36f
-            turn < 90f -> if (trunkArm.path.size == 2) 0.46f to 0.45f else 0.50f to 0.60f
-            else -> 0.36f to 0.80f
+        // How far out the head sits, as a share of the cell's width, and where the arm leaves.
+        val (reach, from) = when {
+            turn >= 90f -> 0.42f to 0.66f
+            trunkTurns -> 0.40f to 0.80f
+            turn < 55f -> 0.42f to 0.80f
+            else -> 0.46f to 0.80f
         }
-        val reach = if (side == 0f) 0.43f else dx
-        LaneArm(ind, listOf(split, Offset(x0 + kotlin.math.sign(deg) * reach * w, ty * h)))
+        val dx = (if (side == 0f) minOf(reach, 0.43f) else reach) * w
+        val start = Offset(x0, h * from)
+        LaneArm(ind, listOf(start, headAt(start, deg, dx / kotlin.math.sin(Math.toRadians(turn.toDouble())).toFloat())))
     }
-    return LaneShape(Offset(x0, bottom), split, listOf(trunkArm) + arms)
+    val low = Offset(x0, arms.maxOf { it.path.first().y })
+    val trunkArm = if (!trunkTurns) {
+        LaneArm(trunk, listOf(low, Offset(x0, h * 0.06f)))
+    } else {
+        val bend = Offset(x0, h * 0.44f)
+        LaneArm(trunk, listOf(low, bend, headAt(bend, laneDeg(trunk), h * 0.40f)))
+    }
+    return LaneShape(Offset(x0, bottom), low, listOf(trunkArm) + arms)
 }
 
 /** The two barbs of [arm]'s head, pointing back along its last leg. */

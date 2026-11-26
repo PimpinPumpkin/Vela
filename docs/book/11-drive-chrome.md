@@ -53,7 +53,8 @@ in large type, joined as Google joins them ("Sacramento / Reno"). A town keeps i
 it. A ramp toward both directions of one route gets one shield with no direction. A historic
 route such as Historic US 40 gets no shield. Lanes sit on a darker strip across the card's foot.
 A lane that allows two moves forks like Google's: a straight-or-right lane keeps its straight
-arrow whole and the right arm leaves the shaft low, so the two heads stand apart.
+arrow whole and the right arm leaves the shaft low, at the same angle as a right-only lane's
+arrow, so the two heads stand apart and the same turn looks the same in every lane.
 A screen reader hears the whole instruction from the arrow. A roundabout keeps "take the 2nd
 exit onto" above the road. The road is found by its own text in any language; the sign
 destinations need the language's "toward" marker (`TurnCardText`, `NavStrings.signDestination`),

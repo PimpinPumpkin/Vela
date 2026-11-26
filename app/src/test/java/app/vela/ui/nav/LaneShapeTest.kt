@@ -22,6 +22,8 @@ class LaneShapeTest {
         listOf("right", "sharp right"),
         listOf("left", "right"),
         listOf("left", "uturn"),
+        listOf("left", "straight", "sharp right"),
+        listOf("slight left", "straight", "right"),
     )
 
     // The turn card's strip cell and the steps list's.
@@ -48,6 +50,19 @@ class LaneShapeTest {
             val xs = shape.arms.flatMap { arm -> arm.path.map { it.x } + laneBarbs(arm, w).map { it.second.x } }
             assertTrue("$inds in $w x $h reaches ${xs.min() - half}", xs.min() - half >= -0.02f * w)
             assertTrue("$inds in $w x $h reaches ${xs.max() + half}", xs.max() + half <= 1.02f * w)
+            val ys = shape.arms.flatMap { arm -> arm.path.map { it.y } + laneBarbs(arm, w).map { it.second.y } }
+            assertTrue("$inds in $w x $h reaches down to ${ys.max() + half}", ys.max() + half <= h)
+        }
+    }
+
+    @Test
+    fun `a turn arm points the way the same turn's arrow does in a lane of its own`() {
+        for ((w, h) in cells) for (inds in combos) {
+            if ("uturn" in inds) continue
+            for (arm in laneShape(inds, w, h).arms) {
+                val single = laneShape(listOf(arm.indication), w, h).arms.single()
+                assertEquals("$inds ${arm.indication} in $w x $h", lastLegDegrees(single), lastLegDegrees(arm), 0.5)
+            }
         }
     }
 
@@ -66,6 +81,12 @@ class LaneShapeTest {
         assertEquals(straight.path.first(), right.path.first())
         assertTrue(right.path.first().y > 34f * 0.6f)
         assertTrue(right.path.last().x - straight.path.last().x > 38f * 0.4f)
+    }
+
+    private fun lastLegDegrees(arm: LaneArm): Double {
+        val tip = arm.path.last()
+        val from = arm.path[arm.path.size - 2]
+        return Math.toDegrees(kotlin.math.atan2((tip.x - from.x).toDouble(), (from.y - tip.y).toDouble()))
     }
 
     /** The last barb-length of an arm's last leg and its two barbs. */
