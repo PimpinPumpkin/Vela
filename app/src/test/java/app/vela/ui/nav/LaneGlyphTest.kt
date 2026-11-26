@@ -59,7 +59,7 @@ class LaneGlyphTest {
             val glyphs = laneGlyphs(inds, cx, foot, u)
             for (a in glyphs) for (b in glyphs) {
                 if (a === b) continue
-                val gap = headOutline(a, u).minOf { pa -> headOutline(b, u).minOf { pb -> polygonDistance(pa, pb) } } / u
+                val gap = polygonDistance(laneHeadOutline(a, u), laneHeadOutline(b, u)) / u
                 assertTrue("$inds: ${a.indication} head is ${"%.1f".format(gap)} units from ${b.indication}'s", gap >= 1f)
             }
         }
@@ -80,13 +80,14 @@ class LaneGlyphTest {
 
     @Test
     fun `glyphs keep Google's measured size`() {
-        // Outer tips measured on Google's card at 2.625x: straight 97 up, a right turn 57 out at 48.5
-        // up, a slight right 43 out at 93.5 up, a sharp right 37 out at the foot.
+        // Outer tips measured on Google's card at 2.625x, in units from the lane's foot: straight
+        // 96.8 up, a left turn 56.3 out at 48.5 up, a slight right 42.45 out at 93.0 up, a sharp
+        // right 37 out at the foot.
         fun tip(ind: String) = miterTip(laneGlyphs(listOf(ind), cx, foot, 1f).single(), 1f)
-        assertEquals(97f, tip("straight").y, 0.5f)
-        assertEquals(57f, tip("right").x, 1f); assertEquals(48.5f, tip("right").y, 0.5f)
-        assertEquals(-57f, tip("left").x, 1f)
-        assertEquals(43f, tip("slight right").x, 1.5f); assertEquals(93.5f, tip("slight right").y, 1.5f)
+        assertEquals(96.8f, tip("straight").y, 0.3f)
+        assertEquals(56.3f, tip("right").x, 0.3f); assertEquals(48.5f, tip("right").y, 0.3f)
+        assertEquals(-56.3f, tip("left").x, 0.3f)
+        assertEquals(42.45f, tip("slight right").x, 0.3f); assertEquals(93.0f, tip("slight right").y, 0.3f)
         assertEquals(37f, tip("sharp right").x, 1f); assertEquals(0.5f, tip("sharp right").y, 1f)
         assertTrue(tip("uturn").x < 0f)
     }
@@ -103,6 +104,21 @@ class LaneGlyphTest {
         assertEquals(straight.body.last().x, cx)
     }
 
+    @Test
+    fun `a head has a sharp point and rounded barb ends`() {
+        for (u in units) for (g in laneGlyphs(listOf("straight", "right", "slight left", "sharp right", "uturn"), cx, foot, u)) {
+            val outline = laneHeadOutline(g, u)
+            val tip = miterTip(g, u)
+            assertEquals(g.indication, cx + tip.x * u, outline.first().x, 0.01f)
+            assertEquals(g.indication, foot - tip.y * u, outline.first().y, 0.01f)
+            // Square corners would sit sqrt(barb^2 + half stroke^2) from the point; rounded ones closer.
+            val p = g.head[1]
+            val far = outline.maxOf { hypot(it.x - p.x, it.y - p.y) } / u
+            val square = hypot(LANE_BARB, LANE_STROKE / 2f)
+            assertTrue("${g.indication}: $far", far < square - 0.1f * LANE_ROUND && far > square - 0.3f * LANE_ROUND)
+        }
+    }
+
     /** The outer point of a glyph's head in units from the foot: the chevron's miter. */
     private fun miterTip(g: LaneGlyph, u: Float): Offset {
         val p = g.head[1]
@@ -111,20 +127,6 @@ class LaneGlyphTest {
         val out = LANE_STROKE / 2f * kotlin.math.sqrt(2f) * u
         val tip = Offset(p.x + (p.x - mid.x) / len * out, p.y + (p.y - mid.y) / len * out)
         return Offset((tip.x - cx) / u, (foot - tip.y) / u)
-    }
-
-    /** A head as drawn: each barb a square-ended band one stroke wide, and the miter at the point. */
-    private fun headOutline(g: LaneGlyph, u: Float): List<List<Offset>> {
-        val half = LANE_STROKE / 2f * u
-        val p = g.head[1]
-        val bands = listOf(g.head[0], g.head[2]).map { end ->
-            val len = hypot(end.x - p.x, end.y - p.y)
-            val n = Offset(-(end.y - p.y) / len * half, (end.x - p.x) / len * half)
-            listOf(p + n, end + n, end - n, p - n)
-        }
-        val tip = miterTip(g, u).let { Offset(cx + it.x * u, foot - it.y * u) }
-        val outer = bands.map { band -> band.take(2).plus(band.drop(2)).minByOrNull { hypot(it.x - tip.x, it.y - tip.y) }!! }
-        return bands + listOf(listOf(p, outer[0], tip, outer[1]))
     }
 
     private fun polygonDistance(a: List<Offset>, b: List<Offset>): Float {

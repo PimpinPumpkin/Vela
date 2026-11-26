@@ -869,11 +869,10 @@ internal fun LaneDiagram(
                     val u = unit.toPx()
                     val foot = u * LANE_GLYPH
                     val body = Stroke(u * LANE_STROKE, cap = StrokeCap.Butt, join = StrokeJoin.Round)
-                    val head = Stroke(u * LANE_STROKE, cap = StrokeCap.Butt, join = StrokeJoin.Miter)
                     laneGlyphs(inds, size.width / 2f, foot, u).sortedBy { if (lit(it.indication)) 1 else 0 }.forEach { g ->
                         val color = if (lit(g.indication)) bright else dim
                         drawPath(lanePath(g.body), color, style = body)
-                        drawPath(lanePath(g.head), color, style = head)
+                        drawPath(lanePath(laneHeadOutline(g, u)).apply { close() }, color)
                     }
                     if (i < shown.lastIndex) drawLine(dim, Offset(size.width, foot + u * 2f), Offset(size.width, foot + u * LANE_FOOT), u * 5f)
                 }
@@ -899,11 +898,12 @@ private fun laneKind(indication: String): String = when (indication) {
 
 // Google's lane glyph, measured off its turn card, in units of a glyph 97 tall (its pixels at 2.625x).
 internal const val LANE_GLYPH = 97f   // tip of a straight arrow above the lane's foot
-internal const val LANE_STROKE = 10.2f
+internal const val LANE_STROKE = 10.1f
 internal const val LANE_PITCH = 83f   // lane to lane
 internal const val LANE_TOP = 26f     // strip above the tallest tip
 internal const val LANE_FOOT = 25f    // strip under the foot, where the lane dashes are
-private const val LANE_BARB = 18.1f   // each side of the head, a 90 degree chevron
+internal const val LANE_BARB = 19.2f   // each side of the head, a 90 degree chevron
+internal const val LANE_ROUND = 3.3f   // radius of the corners at the barbs' ends; the point is sharp
 
 /** One arrow of a lane in canvas pixels: [body] runs from the lane's foot up through its bend to
  *  the head, and [head] is the chevron (barb end, point, barb end). */
@@ -916,9 +916,9 @@ internal class LaneGlyph(val indication: String, val body: List<Offset>, val hea
  * lane is a straight arrow with the right arrow's bend coming off its shaft, and that turn looks
  * the same as in the right-only lane beside it.
  *
- * In units, x out from the center and y up from the foot: a straight arrow's head is at 89.6. A
- * turn bends 90 degrees at 48.5 on a radius of 8 and its head is 49.7 out. A slight turn bends 45
- * degrees at 51.3 on a radius of 20, head 53 along. A sharp turn bends 135 degrees at 37.3 on a
+ * In units, x out from the center and y up from the foot: a straight arrow's head is at 89.9. A
+ * turn bends 90 degrees at 48.5 on a radius of 8 and its head is 49.4 out. A slight turn bends 45
+ * degrees at 50.6 on a radius of 20, head 52.8 along. A sharp turn bends 135 degrees at 37.3 on a
  * radius of 4 and its head, pointing down and out, is 44.7 along. A U-turn goes to the left: up to
  * 52, over a half circle of radius 12.5, and down to a head at 10. Unknown indications are
  * straight.
@@ -945,18 +945,47 @@ internal fun laneGlyphs(indications: List<String>, cx: Float, foot: Float, u: Fl
     }
     return indications.map(::laneKind).distinct().map { ind ->
         when (ind) {
-            "right" -> bent(ind, 90.0, 48.5, 8.0, 49.7)
-            "left" -> bent(ind, -90.0, 48.5, 8.0, 49.7)
-            "slight right" -> bent(ind, 45.0, 51.3, 20.0, 53.0)
-            "slight left" -> bent(ind, -45.0, 51.3, 20.0, 53.0)
+            "right" -> bent(ind, 90.0, 48.5, 8.0, 49.4)
+            "left" -> bent(ind, -90.0, 48.5, 8.0, 49.4)
+            "slight right" -> bent(ind, 45.0, 50.6, 20.0, 52.8)
+            "slight left" -> bent(ind, -45.0, 50.6, 20.0, 52.8)
             "sharp right" -> bent(ind, 135.0, 37.3, 4.0, 44.7)
             "sharp left" -> bent(ind, -135.0, 37.3, 4.0, 44.7)
             "uturn" -> {
                 val over = (0..12).map { k -> val a = Math.PI * k / 12; -12.5 + 12.5 * kotlin.math.cos(a) to 52.0 + 12.5 * kotlin.math.sin(a) }
                 glyph(ind, listOf(0.0 to 0.0) + over + listOf(-25.0 to 10.0), 0.0, -1.0)
             }
-            else -> glyph(ind, listOf(0.0 to 0.0, 0.0 to 89.6), 0.0, 1.0)
+            else -> glyph(ind, listOf(0.0 to 0.0, 0.0 to 89.9), 0.0, 1.0)
         }
+    }
+}
+
+/**
+ * The outline of [g]'s head in canvas pixels, [u] to the unit: a chevron one stroke wide with a
+ * sharp point and square barb ends whose four corners are rounded (radius [LANE_ROUND]), as on
+ * Google's card. It runs point, outer and inner corner of one barb, the inner vertex the shaft
+ * meets, then the other barb.
+ */
+internal fun laneHeadOutline(g: LaneGlyph, u: Float): List<Offset> {
+    val h = LANE_STROKE / 2f * u
+    val p = g.head[1]
+    fun unit(o: Offset): Offset { val l = kotlin.math.hypot(o.x, o.y); return Offset(o.x / l, o.y / l) }
+    val b = listOf(g.head[0], g.head[2]).map { unit(it - p) }
+    val d = unit(-(b[0] + b[1]))
+    val corners = listOf(0, 1).map { i ->
+        val e = if (i == 0) g.head[0] else g.head[2]
+        val other = if (i == 0) g.head[2] else g.head[0]
+        val n = Offset(-b[i].y, b[i].x).let { if ((it.x * (other.x - e.x) + it.y * (other.y - e.y)) > 0f) -it else it }
+        (e + n * h) to (e - n * h)
+    }
+    val miter = h * kotlin.math.sqrt(2f)
+    val poly = listOf(p + d * miter, corners[0].first, corners[0].second, p - d * miter, corners[1].second, corners[1].first)
+    val r = LANE_ROUND * u
+    return poly.flatMapIndexed { i, c ->
+        if (i == 0 || i == 3) return@flatMapIndexed listOf(c)
+        val from = unit(c - poly[i - 1]); val to = unit(poly[(i + 1) % poly.size] - c)
+        val a = c - from * r; val z = c + to * r
+        (0..4).map { k -> val t = k / 4f; a * ((1 - t) * (1 - t)) + c * (2 * t * (1 - t)) + z * (t * t) }
     }
 }
 

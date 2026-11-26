@@ -6891,11 +6891,13 @@ or last chip scrolls the row all the way to that end.
   foot, black at 22 percent over the card's color, centered, as on Google's card; in both layouts.
   The arrows are Google's, measured off its card (`laneGlyphs`), in units of a glyph 97 tall: 2.625
   px to the unit on a 420 dpi screen, so 37 dp on the card and 21 dp in the step list. Lanes are 83
-  apart, the stroke is 10.2 with a square-cut foot, and every head is a 90 degree chevron with sides
-  of 18.1. A straight arrow reaches 97. A turn bends 90 degrees at 48.5 on a radius of 8 and its
-  tip is 57 out. A slight turn bends 45 degrees at 51.3 on a radius of 20. A sharp turn bends 135
-  degrees at 37.3 and its head points down and out at the foot. A U-turn goes left, up to 52, over
-  a half circle of radius 12.5 and down to a head at 10. Every arrow a lane allows is its own whole
+  apart, the stroke is 10.1 with a square-cut foot, and every head is a 90 degree chevron with sides
+  of 19.2, a sharp point and the corners of its barb ends rounded on a radius of 3.3
+  (`laneHeadOutline`). A straight arrow reaches 96.8. A turn bends 90 degrees at 48.5 on a radius of
+  8 and its tip is 56.3 out. A slight turn bends 45 degrees at 50.6 on a radius of 20 and its tip is
+  at (42.5, 93). A sharp turn bends 135 degrees at 37.3 and its head points down and out at the
+  foot. A U-turn goes left, up to 52, over a half circle of radius 12.5 and down to a head at 10.
+  Every arrow a lane allows is its own whole
   glyph on the lane's center, and they are drawn over one another with the lit one last, so a turn
   looks the same in every lane. Glyphs reach past their lane to the side, inside the row's 8 dp
   ends. The card's strip has 26 above the glyphs and 25 under the foot, where a dim dash 5 wide
