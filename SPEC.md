@@ -6888,15 +6888,18 @@ or last chip scrolls the row all the way to that end.
   list. Beside a route shield the direction is the language's word (`NavStrings.shieldDirection`:
   "NORTH" in English, the letter where a language has none).
 - Lanes (`LaneDiagram`, or `LaneGuide` for the count-based hint) sit on a strip across the card's
-  foot, black at 22 percent over the card's color, centered, with 38 x 34 dp cells, as on
-  Google's card; in both layouts. A lane with several arrows forks as Google's does
-  (`laneShape`): the arrow nearest straight is the trunk, and every other arm leaves the shaft at
-  80 percent of the cell's height (a sharp turn at 66) at the same angle as that turn's arrow in
-  a lane of its own (slight 45 degrees, a turn 66, sharp 108), long enough that its head clears
-  the trunk. The shaft moves 16 percent of the cell away from the side the arms reach to, so the
-  glyph stays in its cell. No head touches another arrow of its lane at 38 x 34 or at the step
-  list's 30 x 26 (`LaneShapeTest`). A lane with one arrow, or with a U-turn, bends its arms from
-  one point at 44 percent.
+  foot, black at 22 percent over the card's color, centered, as on Google's card; in both layouts.
+  The arrows are Google's, measured off its card (`laneGlyphs`), in units of a glyph 97 tall: 2.625
+  px to the unit on a 420 dpi screen, so 37 dp on the card and 21 dp in the step list. Lanes are 83
+  apart, the stroke is 10.2 with a square-cut foot, and every head is a 90 degree chevron with sides
+  of 18.1. A straight arrow reaches 97. A turn bends 90 degrees at 48.5 on a radius of 8 and its
+  tip is 57 out. A slight turn bends 45 degrees at 51.3 on a radius of 20. A sharp turn bends 135
+  degrees at 37.3 and its head points down and out at the foot. A U-turn goes left, up to 52, over
+  a half circle of radius 12.5 and down to a head at 10. Every arrow a lane allows is its own whole
+  glyph on the lane's center, and they are drawn over one another with the lit one last, so a turn
+  looks the same in every lane. Glyphs reach past their lane to the side, inside the row's 8 dp
+  ends. The card's strip has 26 above the glyphs and 25 under the foot, where a dim dash 5 wide
+  parts the lanes: 56 dp in all. No two heads of one lane touch (`LaneGlyphTest`).
 - `roadSigns` keeps the longer of two labels for one route, so the text's "I 80 E" wins over the
   ref's "I 80" and the shield shows its direction. A sign toward both directions of one route
   ("toward I 5 N, I 5 S") gets one shield with no direction, and the card's line drops both.

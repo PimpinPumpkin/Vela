@@ -84,7 +84,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -522,7 +524,8 @@ fun ManeuverBanner(
         // it, else the count-based hint from Google's markup.
         if (laneOn) {
             Box(
-                Modifier.fillMaxWidth().background(Color.Black.copy(alpha = 0.22f)).padding(vertical = 4.dp),
+                // The per-lane diagram brings its own margins, Google's: the strip is 56 dp.
+                Modifier.fillMaxWidth().background(Color.Black.copy(alpha = 0.22f)).padding(vertical = if (lanes.isNotEmpty()) 0.dp else 4.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 if (lanes.isNotEmpty()) LaneDiagram(lanes, type, on = content, plain = true)
@@ -840,14 +843,17 @@ internal fun LaneDiagram(
     // ROUNDABOUT / arrive / unknown) — in that case we can't say WHICH allowed direction we're
     // taking, so a valid lane lights ALL its arrows rather than guessing (and lighting the wrong one).
     val target = maneuverBucket(maneuver)
+    // One unit of Google's lane glyph, which is 97 units tall: 37 dp on the turn card's strip, as
+    // Google's, and 21 dp in the step list and the glance card.
+    val unit = if (plain) (1f / 2.625f).dp else (21f / 97f).dp
+    val shown = lanes.take(8)
     Surface(color = if (plain) Color.Transparent else on.copy(alpha = 0.10f), shape = RoundedCornerShape(8.dp), modifier = modifier) {
         Row(
-            Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            Modifier.padding(start = 8.dp, end = 8.dp, top = if (plain) unit * LANE_TOP else 6.dp, bottom = if (plain) 0.dp else 2.dp),
+            verticalAlignment = Alignment.Top,
         ) {
-            lanes.take(8).forEach { lane ->
-                val inds = lane.indications.map(::laneIndication).ifEmpty { listOf("straight") }.distinct()
+            shown.forEachIndexed { i, lane ->
+                val inds = lane.indications.map { laneKind(laneIndication(it)) }.ifEmpty { listOf("straight") }.distinct()
                 // In a valid lane, ONLY the arrow for the turn we're taking lights up — the other
                 // directions the lane also allows stay dim (so a "go straight" turn doesn't light
                 // the right-turn head on a straight-or-right lane). The active one = the lane's
@@ -855,18 +861,21 @@ internal fun LaneDiagram(
                 // (target null), light all of a valid lane's arrows. Invalid lanes: all dim.
                 val active = if (lane.valid && target != null) inds.minByOrNull { kotlin.math.abs(laneBucket(it) - target) } else null
                 fun lit(ind: String) = lane.valid && (target == null || ind == active)
-                // One shared shaft and an arm per indication (laneShape); dim arms drawn first so the
-                // bright one sits on top where they meet. On the turn card's strip the arrows are
-                // Google's size.
-                Canvas(Modifier.size(width = if (plain) 38.dp else 30.dp, height = if (plain) 34.dp else 26.dp)) {
-                    val cw = size.width; val ch = size.height; val stroke = cw * 0.11f
-                    val shape = laneShape(inds, cw, ch)
-                    drawLine(if (lane.valid) bright else dim, shape.shaftFrom, shape.shaftTo, stroke, cap = StrokeCap.Round)
-                    shape.arms.sortedBy { if (lit(it.indication)) 1 else 0 }.forEach { arm ->
-                        val color = if (lit(arm.indication)) bright else dim
-                        arm.path.zipWithNext { a, b -> drawLine(color, a, b, stroke, cap = StrokeCap.Round) }
-                        laneBarbs(arm, cw).forEach { (a, b) -> drawLine(color, a, b, stroke, cap = StrokeCap.Round) }
+                // Every arrow the lane allows stands whole on the lane's center (laneGlyphs); dim
+                // ones are drawn first so the lit one lies on top where they share the shaft. Glyphs
+                // reach past the cell to the side, as Google's do; a short dash under the arrows
+                // parts the lanes.
+                Canvas(Modifier.size(width = unit * LANE_PITCH, height = unit * (LANE_GLYPH + LANE_FOOT))) {
+                    val u = unit.toPx()
+                    val foot = u * LANE_GLYPH
+                    val body = Stroke(u * LANE_STROKE, cap = StrokeCap.Butt, join = StrokeJoin.Round)
+                    val head = Stroke(u * LANE_STROKE, cap = StrokeCap.Butt, join = StrokeJoin.Miter)
+                    laneGlyphs(inds, size.width / 2f, foot, u).sortedBy { if (lit(it.indication)) 1 else 0 }.forEach { g ->
+                        val color = if (lit(g.indication)) bright else dim
+                        drawPath(lanePath(g.body), color, style = body)
+                        drawPath(lanePath(g.head), color, style = head)
                     }
+                    if (i < shown.lastIndex) drawLine(dim, Offset(size.width, foot + u * 2f), Offset(size.width, foot + u * LANE_FOOT), u * 5f)
                 }
             }
         }
@@ -882,87 +891,78 @@ private fun laneIndication(raw: String): String = when (val k = raw.trim().lower
     else -> k
 }
 
-/** One arrow of a lane glyph: [path] runs from where it leaves the shared shaft to its tip, and the
- *  head's barbs follow the last leg. */
-internal class LaneArm(val indication: String, val path: List<Offset>)
-
-/** One lane's arrows in a [LaneShape] cell: the shared shaft and an arm per indication. */
-internal class LaneShape(val shaftFrom: Offset, val shaftTo: Offset, val arms: List<LaneArm>)
-
-/** Draw angle of a lane indication, degrees clockwise from straight up. */
-private fun laneDeg(indication: String): Float = when (indication) {
-    "slight right" -> 45f
-    "slight left" -> -45f
-    "right" -> 66f
-    "left" -> -66f
-    "sharp right" -> 108f
-    "sharp left" -> -108f
-    "uturn" -> 155f
-    else -> 0f
+/** The glyph an indication draws: anything unknown is straight. */
+private fun laneKind(indication: String): String = when (indication) {
+    "slight right", "slight left", "right", "left", "sharp right", "sharp left", "uturn" -> indication
+    else -> "straight"
 }
+
+// Google's lane glyph, measured off its turn card, in units of a glyph 97 tall (its pixels at 2.625x).
+internal const val LANE_GLYPH = 97f   // tip of a straight arrow above the lane's foot
+internal const val LANE_STROKE = 10.2f
+internal const val LANE_PITCH = 83f   // lane to lane
+internal const val LANE_TOP = 26f     // strip above the tallest tip
+internal const val LANE_FOOT = 25f    // strip under the foot, where the lane dashes are
+private const val LANE_BARB = 18.1f   // each side of the head, a 90 degree chevron
+
+/** One arrow of a lane in canvas pixels: [body] runs from the lane's foot up through its bend to
+ *  the head, and [head] is the chevron (barb end, point, barb end). */
+internal class LaneGlyph(val indication: String, val body: List<Offset>, val head: List<Offset>)
 
 /**
- * The arrows of one lane in a [w] by [h] cell.
+ * The arrows of one lane whose foot is at ([cx], [foot]), [u] pixels to the unit (a glyph is 97
+ * units tall). They are Google's: every arrow the lane allows is its own whole glyph standing on
+ * the lane's center, and a lane with several draws them over one another. So a straight-or-right
+ * lane is a straight arrow with the right arrow's bend coming off its shaft, and that turn looks
+ * the same as in the right-only lane beside it.
  *
- * One arrow: a shaft up to a bend at 44% of the height and the head from there. A lane with several
- * arrows is drawn as Google draws it: the arrow nearest straight is the trunk, and every other arm
- * leaves the shaft low and runs out at the same angle as that turn's arrow in a lane of its own,
- * far enough that its head clears the trunk. Every arm bent from one point put a straight-or-right
- * lane's right head over its straight head; a flatter arm than the single arrow beside it read as a
- * different turn. Arms leave at 80% of the height (a sharp turn, which points down, at 66%), and
- * the shaft moves away from the side they reach to, so the glyph stays in its cell. A lane with a
- * U-turn keeps the single bend.
+ * In units, x out from the center and y up from the foot: a straight arrow's head is at 89.6. A
+ * turn bends 90 degrees at 48.5 on a radius of 8 and its head is 49.7 out. A slight turn bends 45
+ * degrees at 51.3 on a radius of 20, head 53 along. A sharp turn bends 135 degrees at 37.3 on a
+ * radius of 4 and its head, pointing down and out, is 44.7 along. A U-turn goes to the left: up to
+ * 52, over a half circle of radius 12.5, and down to a head at 10. Unknown indications are
+ * straight.
  */
-internal fun laneShape(indications: List<String>, w: Float, h: Float): LaneShape {
-    val inds = indications.distinctBy(::laneDeg)
-    val bottom = h * 0.92f
-    fun headAt(from: Offset, deg: Float, len: Float): Offset {
-        val a = Math.toRadians(deg.toDouble())
-        return Offset(from.x + (kotlin.math.sin(a) * len).toFloat(), from.y - (kotlin.math.cos(a) * len).toFloat())
-    }
-    if (inds.size < 2 || "uturn" in inds) {
-        val bend = Offset(w / 2f, h * 0.44f)
-        return LaneShape(Offset(w / 2f, bottom), bend, inds.map { LaneArm(it, listOf(bend, headAt(bend, laneDeg(it), h * 0.40f))) })
-    }
-    val trunk = inds.minBy { kotlin.math.abs(laneDeg(it)) }
-    val trunkTurns = laneDeg(trunk) != 0f
-    val sides = inds.map { kotlin.math.sign(laneDeg(it)) }.filter { it != 0f }.toSet()
-    val side = sides.singleOrNull() ?: 0f
-    val x0 = w / 2f - side * 0.16f * w
-    val arms = inds.filter { it != trunk }.map { ind ->
-        val deg = laneDeg(ind)
-        val turn = kotlin.math.abs(deg)
-        // How far out the head sits, as a share of the cell's width, and where the arm leaves.
-        val (reach, from) = when {
-            turn >= 90f -> 0.42f to 0.66f
-            trunkTurns -> 0.40f to 0.80f
-            turn < 55f -> 0.42f to 0.80f
-            else -> 0.46f to 0.80f
+internal fun laneGlyphs(indications: List<String>, cx: Float, foot: Float, u: Float): List<LaneGlyph> {
+    fun at(x: Double, y: Double) = Offset(cx + (x * u).toFloat(), foot - (y * u).toFloat())
+    fun glyph(ind: String, pts: List<Pair<Double, Double>>, dx: Double, dy: Double): LaneGlyph {
+        val (px, py) = pts.last()
+        val barbs = listOf(135.0, -135.0).map { d ->
+            val a = Math.toRadians(d)
+            at(px + LANE_BARB * (dx * kotlin.math.cos(a) - dy * kotlin.math.sin(a)), py + LANE_BARB * (dx * kotlin.math.sin(a) + dy * kotlin.math.cos(a)))
         }
-        val dx = (if (side == 0f) minOf(reach, 0.43f) else reach) * w
-        val start = Offset(x0, h * from)
-        LaneArm(ind, listOf(start, headAt(start, deg, dx / kotlin.math.sin(Math.toRadians(turn.toDouble())).toFloat())))
+        return LaneGlyph(ind, pts.map { (x, y) -> at(x, y) }, listOf(barbs[0], at(px, py), barbs[1]))
     }
-    val low = Offset(x0, arms.maxOf { it.path.first().y })
-    val trunkArm = if (!trunkTurns) {
-        LaneArm(trunk, listOf(low, Offset(x0, h * 0.06f)))
-    } else {
-        val bend = Offset(x0, h * 0.44f)
-        LaneArm(trunk, listOf(low, bend, headAt(bend, laneDeg(trunk), h * 0.40f)))
+    // Up the shaft, a bend of [deg] (clockwise, so a right turn is positive) at [corner] on [radius],
+    // and on [along] from the corner to the head.
+    fun bent(ind: String, deg: Double, corner: Double, radius: Double, along: Double): LaneGlyph {
+        val side = kotlin.math.sign(deg); val turn = Math.toRadians(kotlin.math.abs(deg))
+        val tangent = radius * kotlin.math.tan(turn / 2)
+        val ox = side * radius; val oy = corner - tangent
+        val arc = (0..8).map { k -> val a = turn * k / 8; ox - side * radius * kotlin.math.cos(a) to oy + radius * kotlin.math.sin(a) }
+        val dx = side * kotlin.math.sin(turn); val dy = kotlin.math.cos(turn)
+        return glyph(ind, listOf(0.0 to 0.0) + arc + listOf(dx * along to corner + dy * along), dx, dy)
     }
-    return LaneShape(Offset(x0, bottom), low, listOf(trunkArm) + arms)
+    return indications.map(::laneKind).distinct().map { ind ->
+        when (ind) {
+            "right" -> bent(ind, 90.0, 48.5, 8.0, 49.7)
+            "left" -> bent(ind, -90.0, 48.5, 8.0, 49.7)
+            "slight right" -> bent(ind, 45.0, 51.3, 20.0, 53.0)
+            "slight left" -> bent(ind, -45.0, 51.3, 20.0, 53.0)
+            "sharp right" -> bent(ind, 135.0, 37.3, 4.0, 44.7)
+            "sharp left" -> bent(ind, -135.0, 37.3, 4.0, 44.7)
+            "uturn" -> {
+                val over = (0..12).map { k -> val a = Math.PI * k / 12; -12.5 + 12.5 * kotlin.math.cos(a) to 52.0 + 12.5 * kotlin.math.sin(a) }
+                glyph(ind, listOf(0.0 to 0.0) + over + listOf(-25.0 to 10.0), 0.0, -1.0)
+            }
+            else -> glyph(ind, listOf(0.0 to 0.0, 0.0 to 89.6), 0.0, 1.0)
+        }
+    }
 }
 
-/** The two barbs of [arm]'s head, pointing back along its last leg. */
-internal fun laneBarbs(arm: LaneArm, w: Float): List<Pair<Offset, Offset>> {
-    val tip = arm.path.last()
-    val from = arm.path[arm.path.size - 2]
-    val a = kotlin.math.atan2((tip.x - from.x).toDouble(), (from.y - tip.y).toDouble())
-    val barb = w * 0.22f
-    return listOf(150.0, -150.0).map { d ->
-        val ba = a + Math.toRadians(d)
-        tip to Offset(tip.x + (kotlin.math.sin(ba) * barb).toFloat(), tip.y - (kotlin.math.cos(ba) * barb).toFloat())
-    }
+private fun lanePath(points: List<Offset>) = Path().apply {
+    moveTo(points[0].x, points[0].y)
+    points.drop(1).forEach { lineTo(it.x, it.y) }
 }
 
 /** Coarse signed direction level for a lane indication (straight 0, right +, left −); used to

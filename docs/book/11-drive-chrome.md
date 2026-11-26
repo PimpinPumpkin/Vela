@@ -52,9 +52,10 @@ in large type, joined as Google joins them ("Sacramento / Reno"). A town keeps i
 ("South Lake Tahoe"). "Take exit 4A toward I 5 S" is not repeated as words, since the chips say
 it. A ramp toward both directions of one route gets one shield with no direction. A historic
 route such as Historic US 40 gets no shield. Lanes sit on a darker strip across the card's foot.
-A lane that allows two moves forks like Google's: a straight-or-right lane keeps its straight
-arrow whole and the right arm leaves the shaft low, at the same angle as a right-only lane's
-arrow, so the two heads stand apart and the same turn looks the same in every lane.
+The lane arrows are Google's, measured off its card. Every arrow a lane allows is drawn whole from
+the lane's center and they lie over one another, the lit one on top, so a straight-or-right lane
+is a straight arrow with the right arrow's bend coming off its shaft, and a turn looks the same in
+every lane. A short dash under the arrows parts the lanes.
 A screen reader hears the whole instruction from the arrow. A roundabout keeps "take the 2nd
 exit onto" above the road. The road is found by its own text in any language; the sign
 destinations need the language's "toward" marker (`TurnCardText`, `NavStrings.signDestination`),
