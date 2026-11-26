@@ -847,7 +847,7 @@ internal fun LaneDiagram(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             lanes.take(8).forEach { lane ->
-                val inds = lane.indications.ifEmpty { listOf("straight") }.distinct()
+                val inds = lane.indications.map(::laneIndication).ifEmpty { listOf("straight") }.distinct()
                 // In a valid lane, ONLY the arrow for the turn we're taking lights up — the other
                 // directions the lane also allows stay dim (so a "go straight" turn doesn't light
                 // the right-turn head on a straight-or-right lane). The active one = the lane's
@@ -855,20 +855,107 @@ internal fun LaneDiagram(
                 // (target null), light all of a valid lane's arrows. Invalid lanes: all dim.
                 val active = if (lane.valid && target != null) inds.minByOrNull { kotlin.math.abs(laneBucket(it) - target) } else null
                 fun lit(ind: String) = lane.valid && (target == null || ind == active)
-                // One SHARED vertical shaft + a head per indication (not a whole arrow each — that
-                // double-drew the shaft). Wider cell + smaller heads so two forked heads don't
-                // overlap; dim heads drawn first so the bright active head sits on top of any touch.
-                // On the turn card's strip the arrows are Google's size.
+                // One shared shaft and an arm per indication (laneShape); dim arms drawn first so the
+                // bright one sits on top where they meet. On the turn card's strip the arrows are
+                // Google's size.
                 Canvas(Modifier.size(width = if (plain) 38.dp else 30.dp, height = if (plain) 34.dp else 26.dp)) {
-                    val cw = size.width; val ch = size.height
-                    val baseX = cw / 2f; val bendY = ch * 0.44f; val stroke = cw * 0.11f
-                    drawLine(if (lane.valid) bright else dim, Offset(baseX, ch * 0.92f), Offset(baseX, bendY), stroke, cap = StrokeCap.Round)
-                    inds.sortedBy { if (lit(it)) 1 else 0 }.forEach { ind ->
-                        laneHead(ind, if (lit(ind)) bright else dim, baseX, bendY, cw, ch, stroke)
+                    val cw = size.width; val ch = size.height; val stroke = cw * 0.11f
+                    val shape = laneShape(inds, cw, ch)
+                    drawLine(if (lane.valid) bright else dim, shape.shaftFrom, shape.shaftTo, stroke, cap = StrokeCap.Round)
+                    shape.arms.sortedBy { if (lit(it.indication)) 1 else 0 }.forEach { arm ->
+                        val color = if (lit(arm.indication)) bright else dim
+                        arm.path.zipWithNext { a, b -> drawLine(color, a, b, stroke, cap = StrokeCap.Round) }
+                        laneBarbs(arm, cw).forEach { (a, b) -> drawLine(color, a, b, stroke, cap = StrokeCap.Round) }
                     }
                 }
             }
         }
+    }
+}
+
+/** A lane indication as the diagram draws it: "none" is straight and a merge is a slight turn. */
+private fun laneIndication(raw: String): String = when (val k = raw.trim().lowercase().replace('_', ' ')) {
+    "", "none", "through" -> "straight"
+    "merge to left" -> "slight left"
+    "merge to right" -> "slight right"
+    "reverse" -> "uturn"
+    else -> k
+}
+
+/** One arrow of a lane glyph: [path] runs from where it leaves the shared shaft to its tip, and the
+ *  head's barbs follow the last leg. */
+internal class LaneArm(val indication: String, val path: List<Offset>)
+
+/** One lane's arrows in a [LaneShape] cell: the shared shaft and an arm per indication. */
+internal class LaneShape(val shaftFrom: Offset, val shaftTo: Offset, val arms: List<LaneArm>)
+
+/** Draw angle of a lane indication, degrees clockwise from straight up. */
+private fun laneDeg(indication: String): Float = when (indication) {
+    "slight right" -> 32f
+    "slight left" -> -32f
+    "right" -> 66f
+    "left" -> -66f
+    "sharp right" -> 108f
+    "sharp left" -> -108f
+    "uturn" -> 155f
+    else -> 0f
+}
+
+/**
+ * The arrows of one lane in a [w] by [h] cell.
+ *
+ * One arrow: a shaft up to a bend at 44% of the height and the head from there. A lane with several
+ * arrows is drawn as Google draws it: the arrow nearest straight is the trunk, and every other arm
+ * leaves the shaft low (72% of the height) and reaches out to its side, so no head touches another.
+ * Every arm bent from one point put a straight-or-right lane's right head over its straight head.
+ * The shaft moves away from the side the arms reach to, so the glyph stays in its cell. A lane with
+ * a U-turn keeps the single bend.
+ */
+internal fun laneShape(indications: List<String>, w: Float, h: Float): LaneShape {
+    val inds = indications.distinctBy(::laneDeg)
+    val bottom = h * 0.92f
+    fun headAt(from: Offset, deg: Float, len: Float): Offset {
+        val a = Math.toRadians(deg.toDouble())
+        return Offset(from.x + (kotlin.math.sin(a) * len).toFloat(), from.y - (kotlin.math.cos(a) * len).toFloat())
+    }
+    if (inds.size < 2 || "uturn" in inds) {
+        val bend = Offset(w / 2f, h * 0.44f)
+        return LaneShape(Offset(w / 2f, bottom), bend, inds.map { LaneArm(it, listOf(bend, headAt(bend, laneDeg(it), h * 0.40f))) })
+    }
+    val trunk = inds.minBy { kotlin.math.abs(laneDeg(it)) }
+    val sides = inds.map { kotlin.math.sign(laneDeg(it)) }.filter { it != 0f }.toSet()
+    val side = sides.singleOrNull() ?: 0f
+    val x0 = w / 2f - side * 0.16f * w
+    val split = Offset(x0, h * 0.72f)
+    val trunkArm = if (laneDeg(trunk) == 0f) {
+        LaneArm(trunk, listOf(split, Offset(x0, h * 0.06f)))
+    } else {
+        val bend = Offset(x0, h * 0.44f)
+        LaneArm(trunk, listOf(split, bend, headAt(bend, laneDeg(trunk), h * 0.40f)))
+    }
+    val arms = inds.filter { it != trunk }.map { ind ->
+        val deg = laneDeg(ind)
+        val turn = kotlin.math.abs(deg)
+        val (dx, ty) = when {
+            turn < 50f -> 0.44f to 0.36f
+            turn < 90f -> if (trunkArm.path.size == 2) 0.46f to 0.45f else 0.50f to 0.60f
+            else -> 0.36f to 0.80f
+        }
+        val reach = if (side == 0f) 0.43f else dx
+        LaneArm(ind, listOf(split, Offset(x0 + kotlin.math.sign(deg) * reach * w, ty * h)))
+    }
+    return LaneShape(Offset(x0, bottom), split, listOf(trunkArm) + arms)
+}
+
+/** The two barbs of [arm]'s head, pointing back along its last leg. */
+internal fun laneBarbs(arm: LaneArm, w: Float): List<Pair<Offset, Offset>> {
+    val tip = arm.path.last()
+    val from = arm.path[arm.path.size - 2]
+    val a = kotlin.math.atan2((tip.x - from.x).toDouble(), (from.y - tip.y).toDouble())
+    val barb = w * 0.22f
+    return listOf(150.0, -150.0).map { d ->
+        val ba = a + Math.toRadians(d)
+        tip to Offset(tip.x + (kotlin.math.sin(ba) * barb).toFloat(), tip.y - (kotlin.math.cos(ba) * barb).toFloat())
     }
 }
 
@@ -899,47 +986,6 @@ private fun maneuverBucket(type: ManeuverType): Int? = when (type) {
     ManeuverType.STRAIGHT, ManeuverType.CONTINUE, ManeuverType.DEPART -> 0
     // MERGE / ROUNDABOUT / EXIT_ROUNDABOUT / ARRIVE / UNKNOWN — side not encoded in the type.
     else -> null
-}
-
-/** Draw one lane HEAD: the angled stem rising from the shared bend point [bendY] to a tip, plus the
- *  two barbs. The vertical shaft (base→bend) is drawn once per lane by the caller, so several
- *  indications on one lane share it instead of each redrawing (and muddying) it. */
-private fun DrawScope.laneHead(indication: String, color: Color, baseX: Float, bendY: Float, w: Float, h: Float, stroke: Float) {
-    val deg = when (indication.trim().lowercase().replace('_', ' ')) {
-        "straight", "none", "" -> 0f
-        "slight right" -> 32f
-        "slight left" -> -32f
-        "right" -> 66f
-        "left" -> -66f
-        "sharp right" -> 108f
-        "sharp left" -> -108f
-        "uturn" -> 155f
-        "merge to left" -> -32f
-        "merge to right" -> 32f
-        else -> 0f
-    }
-    val a = Math.toRadians(deg.toDouble())
-    val headLen = h * 0.40f
-    val tip = Offset(
-        baseX + (kotlin.math.sin(a) * headLen).toFloat(),
-        bendY - (kotlin.math.cos(a) * headLen).toFloat(),
-    )
-    // the stem from the shared bend up to the tip (vertical when straight)
-    drawLine(color, Offset(baseX, bendY), tip, stroke, cap = StrokeCap.Round)
-    // arrowhead: two short barbs pointing back along the head direction (smaller than before so two
-    // forked heads in one cell don't collide)
-    val barb = w * 0.22f
-    listOf(150.0, -150.0).forEach { d ->
-        val ba = a + Math.toRadians(d)
-        drawLine(
-            color, tip,
-            Offset(
-                tip.x + (kotlin.math.sin(ba) * barb).toFloat(),
-                tip.y - (kotlin.math.cos(ba) * barb).toFloat(),
-            ),
-            stroke, cap = StrokeCap.Round,
-        )
-    }
 }
 
 /** In-nav search-along-route chips: one row above the controls bar while the search button is
