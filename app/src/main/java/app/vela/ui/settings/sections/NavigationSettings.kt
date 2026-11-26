@@ -85,6 +85,13 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 hint = stringResource(R.string.settings_wake_for_turns_hint),
             )
         }
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_turn_instruction_text),
+            checked = app.vela.ui.TurnInstructionText.show.value,
+            onCheckedChange = { app.vela.ui.TurnInstructionText.set(context, it) },
+            hint = stringResource(R.string.settings_turn_instruction_text_hint),
+        )
 
         // Which route chooser Directions opens. The Google-style picker graduated from an
         // experiment to the default on 2026-09-18; the classic panel stays one toggle away.

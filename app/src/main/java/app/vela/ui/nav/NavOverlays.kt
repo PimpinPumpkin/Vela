@@ -159,6 +159,7 @@ fun ManeuverBanner(
     // OpenStreetMap bans this turn and the way round was too long to take instead (TurnBans):
     // a warning line under the instruction.
     mayBeBanned: Boolean = false,
+    showInstructionText: Boolean = true,
     onPreviewNext: () -> Unit = {},
     onPreviewPrev: () -> Unit = {},
     onExitPreview: () -> Unit = {},
@@ -311,7 +312,7 @@ fun ManeuverBanner(
                     )
                 } else Icon(
                     if (isRoundabout(type)) rememberRoundaboutGlyph(roundabout) else maneuverIcon(type),
-                    contentDescription = null,
+                    contentDescription = if (showInstructionText) null else text,
                     modifier = Modifier.size(if (compact) 36.dp else 54.dp),
                 )
                 Spacer(Modifier.width(if (compact) 10.dp else 18.dp))
@@ -378,7 +379,7 @@ fun ManeuverBanner(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    if (!rerouting) {
+                    if (!rerouting && showInstructionText) {
                         val full = text.ifEmpty { stringResource(R.string.nav_maneuver_continue) }
                         val headline = app.vela.core.i18n.NavStringsRegistry.current().spokenSign(full)
                         Text(
@@ -398,12 +399,12 @@ fun ManeuverBanner(
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        if (mayBeBanned) TurnBanWarning(content)
                     }
+                    if (!rerouting && mayBeBanned) TurnBanWarning(content)
                     // The arrive step names WHERE you're arriving (Google-style): the business or
                     // label, and its address when that adds anything. Skip a line that would just
                     // repeat the instruction text.
-                    if (type == ManeuverType.ARRIVE) {
+                    if (showInstructionText && type == ManeuverType.ARRIVE) {
                         val name = destName?.trim().orEmpty()
                         val addr = destAddress?.trim()?.takeIf { it.isNotEmpty() && !it.equals(name, ignoreCase = true) }
                         if (name.isNotEmpty() && !text.contains(name, ignoreCase = true)) {
@@ -465,13 +466,15 @@ fun ManeuverBanner(
                     Spacer(Modifier.width(8.dp))
                     Icon(
                         if (isRoundabout(nextType)) rememberRoundaboutGlyph(nextRoundabout) else maneuverIcon(nextType),
-                        contentDescription = null,
+                        contentDescription = if (showInstructionText) null else nextText,
                         modifier = Modifier.size(24.dp),
                     )
-                    Spacer(Modifier.width(8.dp))
-                    // Vela says what the next step is; Google's tab shows the arrow alone. Two lines,
-                    // so a long street name wraps instead of running off the tab (issue #799).
-                    Text(nextText, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (showInstructionText) {
+                        Spacer(Modifier.width(8.dp))
+                        // Vela says what the next step is; Google's tab shows the arrow alone. Two lines,
+                        // so a long street name wraps instead of running off the tab (issue #799).
+                        Text(nextText, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
                 }
             }
         }
