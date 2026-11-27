@@ -23,6 +23,13 @@ private val LightColors = lightColorScheme(
     surfaceContainer = androidx.compose.ui.graphics.Color(0xFFE8EAED),
     surfaceContainerHigh = androidx.compose.ui.graphics.Color(0xFFDADCE0),
     surfaceContainerHighest = androidx.compose.ui.graphics.Color(0xFFDADCE0),
+    // Google's neutral grays for the roles Material otherwise fills with its stock purple-tinted
+    // baseline: lavender tiles and road-ahead track, purple-gray secondary text and borders.
+    onSurface = androidx.compose.ui.graphics.Color(0xFF1F1F1F),
+    surfaceVariant = androidx.compose.ui.graphics.Color(0xFFE8EAED),
+    onSurfaceVariant = androidx.compose.ui.graphics.Color(0xFF444746),
+    outline = androidx.compose.ui.graphics.Color(0xFF747775),
+    outlineVariant = androidx.compose.ui.graphics.Color(0xFFC4C7C5),
     primary = VelaTeal,
     onPrimary = androidx.compose.ui.graphics.Color.White,
     primaryContainer = androidx.compose.ui.graphics.Color(0xFFB6E7DF),
@@ -48,6 +55,8 @@ private val DarkColors = darkColorScheme(
     surfaceContainerHigh = androidx.compose.ui.graphics.Color(0xFF282A2C),
     surfaceContainerHighest = androidx.compose.ui.graphics.Color(0xFF333537),
     onSurface = androidx.compose.ui.graphics.Color(0xFFE8EAED),
+    // Material's baseline here is a purple-gray (#49454F); Google's neutral instead.
+    surfaceVariant = androidx.compose.ui.graphics.Color(0xFF444746),
     onSurfaceVariant = androidx.compose.ui.graphics.Color(0xFFE3E3E3),
     outline = androidx.compose.ui.graphics.Color(0xFF5F6368),
     outlineVariant = androidx.compose.ui.graphics.Color(0xFF5F6368),

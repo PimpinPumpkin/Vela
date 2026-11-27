@@ -4951,6 +4951,10 @@ shares (`widenStreets`, the road edges, label colors, the hide list, borders).
   (`navDayNightMatters`).
 - A build from before AUTO reads it from `theme_map_mode` as an unknown name and falls back to
   FOLLOW without rewriting the key (`mapModeFrom`), so the choice is back after an upgrade.
+- Vela's own light and dark schemes set every color role the app reads, with Google's neutral
+  grays where Material's baseline is purple-tinted: light `onSurface` #1F1F1F, `surfaceVariant`
+  #E8EAED, `onSurfaceVariant` #444746, `outline` #747775, `outlineVariant` #C4C7C5; dark
+  `surfaceVariant` #444746. The error roles keep Material's red.
 - `VelaTheme` puts the AMOLED surfaces on whichever dark scheme is in use
   (`ColorScheme.onTrueBlack`): Vela's own, or the wallpaper's with "Material You colors" on,
   whose accents are kept.
