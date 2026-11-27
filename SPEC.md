@@ -6939,7 +6939,8 @@ or last chip scrolls the row all the way to that end.
 - Lanes (`LaneDiagram`, or `LaneGuide` for the count-based hint) sit on a strip across the card's
   foot, centered, as on Google's card; in both layouts.
   The arrows are Google's, measured off its card (`laneGlyphs`), in units of a glyph 97 tall: 2.625
-  px to the unit on a 420 dpi screen, so 37 dp on the card and 21 dp in the step list. Lanes are 83
+  px to the unit on a 420 dpi screen, so 37 dp on the card, 24 dp on the compact card of a short
+  screen (under 500 dp tall, as in landscape) and 21 dp in the step list. Lanes are 83
   apart, the stroke is 10.1 with a square-cut foot, and every head is a 90 degree chevron with sides
   of 19.2, a sharp point and the corners of its barb ends rounded on a radius of 3.3
   (`laneHeadOutline`). A straight arrow reaches 96.8. A turn bends 90 degrees at 48.5 on a radius of

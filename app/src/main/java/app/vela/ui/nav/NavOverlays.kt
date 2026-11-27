@@ -534,7 +534,7 @@ fun ManeuverBanner(
                     .padding(vertical = if (lanes.isNotEmpty()) 0.dp else 4.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                if (lanes.isNotEmpty()) LaneDiagram(lanes, type, on = content, plain = true)
+                if (lanes.isNotEmpty()) LaneDiagram(lanes, type, on = content, plain = true, compact = compact)
                 else laneHint?.let { LaneGuide(it, type, on = content) }
             }
         }
@@ -852,6 +852,7 @@ internal fun LaneDiagram(
     on: Color = MaterialTheme.colorScheme.onPrimaryContainer,
     modifier: Modifier = Modifier,
     plain: Boolean = false, // no tile of its own: the turn card's lane strip is the background
+    compact: Boolean = false, // the compact card on a short screen: smaller lanes, like its arrow
 ) {
     val bright = on
     // Flat mid-gray for the arrows you're NOT taking — a solid color (not a translucent tint of
@@ -859,8 +860,13 @@ internal fun LaneDiagram(
     // On the turn card's strip it is Google's unlit arrow gray.
     val dim = if (plain) Color(0xFF909090) else Color(0xFF80868B)
     // One unit of Google's lane glyph, which is 97 units tall: 37 dp on the turn card's strip, as
-    // Google's, and 21 dp in the step list and the glance card.
-    val unit = if (plain) (1f / 2.625f).dp else (21f / 97f).dp
+    // Google's, 24 dp on the compact card of a short screen (landscape), whose arrow and text are
+    // smaller too, and 21 dp in the step list and the glance card.
+    val unit = when {
+        plain && compact -> (24f / 97f).dp
+        plain -> (1f / 2.625f).dp
+        else -> (21f / 97f).dp
+    }
     val shown = lanes.take(8)
     Surface(color = if (plain) Color.Transparent else on.copy(alpha = 0.10f), shape = RoundedCornerShape(8.dp), modifier = modifier) {
         Row(
