@@ -42,6 +42,16 @@ class AddressQueryTest {
         assertEquals("10", AddressQuery.parse("ul. Marszałkowska 10, Warszawa")?.first)
     }
 
+    @Test fun persianHebrewAndGreekStreetsWithTheirOwnDigitsAndCommas() {
+        assertEquals("12", AddressQuery.parse("خیابان ولیعصر ۱۲، تهران")?.first)
+        assertEquals("5", AddressQuery.parse("רחוב הרצל 5, תל אביב")?.first)
+        assertEquals("10", AddressQuery.parse("Οδός Ερμού 10, Αθήνα")?.first)
+        assertTrue(AddressQuery.matches("خیابان ولیعصر ۱۲، تهران", "خیابان ولیعصر ۱۲", "تهران"))
+        assertTrue(AddressQuery.matches("خیابان ولیعصر 12", "خیابان ولیعصر ۱۲", null))
+        assertEquals(listOf("ولیعصر"), AddressQuery.streetNameWords("خیابان ولیعصر ۱۲، تهران"))
+        assertEquals(listOf("Roma"), AddressQuery.streetNameWords("Via Roma 12, Milano"))
+    }
+
     @Test fun anAddressIsLookedForByItsStreetsOwnName() {
         assertEquals(listOf("Legislative"), AddressQuery.streetNameWords("Legislative Ave 411, Dover, DE 19901"))
         assertEquals(listOf("Legislative"), AddressQuery.streetNameWords("411 Legislative Ave, Dover, DE 19901"))

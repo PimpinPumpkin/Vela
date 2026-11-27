@@ -4288,8 +4288,9 @@ when the feature ids match. Two requests at most.
 - `AddressQuery.parse` reads a house number and the street's first word that is not a
   direction or a street type, in either number-first ("912 Miller Dr") or street-first
   ("Hauptstraße 42", "W Covell Blvd 1451, Davis") form. Street-first needs a street word (a type
-  such as Blvd, a suffix such as -straße, or a word such as Calle or Via) and takes a number of
-  up to five digits before any comma, so "Pier 39" and "Wien 1010, Austria" stay names and a ZIP
+  such as Blvd, a suffix such as -straße, or a word such as Calle, Via, خیابان or רחוב) and takes
+  a number of up to five digits before any comma; Persian and Arabic digits and the Arabic comma
+  read as their ASCII forms (`AddressQuery.normalize`), so "Pier 39" and "Wien 1010, Austria" stay names and a ZIP
   after a street is not a house. `matches` needs both as whole words of a result. The offline
   place search looks for an address by its street's own name words only
   (`AddressQuery.streetNameWords` in `OfflineRank.queryWords`), not its type, direction, number

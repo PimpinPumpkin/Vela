@@ -34,7 +34,25 @@ object AddressQuery {
         "via", "viale", "piazza", "corso", "calle", "avenida", "paseo", "plaza", "rua", "carrer", "rue",
         "gate", "vei", "veien", "gata", "ul", "ulica", "ulice", "út", "náměstí", "nám", "trida", "třída",
         "caddesi", "cad", "sokak", "sok", "strada", "bulevar", "улица", "ул", "проспект", "пр",
+        "οδός", "οδος", "λεωφόρος", "רחוב", "שדרות", "شارع", "خیابان", "کوچه", "بلوار",
     )
+
+    /** Persian, Arabic-Indic and full-width digits as ASCII, and the Arabic comma as a comma, so
+     *  "خیابان ولیعصر ۱۲، تهران" reads like "Main St 12, Town". */
+    fun normalize(text: String): String {
+        if (text.none { it in '\u0660'..'\u0669' || it in '\u06F0'..'\u06F9' || it in '\uFF10'..'\uFF19' || it == '\u060C' }) return text
+        return buildString(text.length) {
+            for (c in text) append(
+                when (c) {
+                    in '\u0660'..'\u0669' -> '0' + (c - '\u0660')
+                    in '\u06F0'..'\u06F9' -> '0' + (c - '\u06F0')
+                    in '\uFF10'..'\uFF19' -> '0' + (c - '\uFF10')
+                    '\u060C' -> ','
+                    else -> c
+                },
+            )
+        }
+    }
 
     private fun looksLikeStreetPrefix(streetPart: String, words: List<String>): Boolean =
         words.any { w -> w in TYPES || w in STREET_WORDS || STREET_SUFFIXES.any { s -> w == s || (w.length > s.length + 1 && w.endsWith(s)) } } ||
@@ -42,7 +60,8 @@ object AddressQuery {
 
     /** Returns `(houseNumber, streetPart)` for either number-first ("912 Miller Dr") or
      *  street-first ("Hauptstraße 42") addresses, or null if [query] is not one. */
-    internal fun splitAddress(query: String): Pair<String, String>? {
+    internal fun splitAddress(raw: String): Pair<String, String>? {
+        val query = normalize(raw)
         LEAD.find(query)?.let { return it.groupValues[1].lowercase() to it.groupValues[2] }
         TRAIL.find(query)?.let { m ->
             val streetPart = m.groupValues[1].trim()
@@ -73,7 +92,7 @@ object AddressQuery {
     fun streetNameWords(query: String): List<String>? {
         val (_, streetPart) = splitAddress(query) ?: return null
         return streetPart.substringBefore(',').split(SPLIT)
-            .filter { w -> w.isNotEmpty() && w.lowercase() !in DIRECTIONS && w.lowercase() !in TYPES && w.none(Char::isDigit) }
+            .filter { w -> w.isNotEmpty() && w.lowercase().let { it !in DIRECTIONS && it !in TYPES && it !in STREET_WORDS } && w.none(Char::isDigit) }
     }
 
     /** The house number and the street's first distinguishing word, lowercase; null when [query]
@@ -98,7 +117,7 @@ object AddressQuery {
     private val CANON_TYPES = TYPES.map { CANON[it] ?: it }.toSet() - setOf("apt", "unit", "suite", "ste")
 
     private fun canon(text: String): List<String> =
-        text.lowercase().split(SPLIT).filter { it.isNotEmpty() }.map { CANON[it] ?: it }
+        normalize(text).lowercase().split(SPLIT).filter { it.isNotEmpty() }.map { CANON[it] ?: it }
 
     /**
      * How well a matching result agrees with the whole typed street, direction and type included:
@@ -122,7 +141,7 @@ object AddressQuery {
      *  the query is not an address. */
     fun matches(query: String, name: String?, address: String?): Boolean {
         val (number, street) = parse(query) ?: return false
-        val words = ("${name.orEmpty()} ${address.orEmpty()}").lowercase().split(SPLIT)
+        val words = normalize("${name.orEmpty()} ${address.orEmpty()}").lowercase().split(SPLIT)
         return number in words && street in words
     }
 }
