@@ -227,8 +227,8 @@ setting off, the list ends in "Show other locations" and the requests run on a t
 ### A typed street address
 
 `AddressQuery.parse` recognizes both number-first ("912 Miller Dr") and street-first
-("Hauptstraße 42", "W Covell Blvd 1451, Davis") addresses. Street-first needs a street word or a
-town after a comma, so "Pier 39" stays a name. A result is that address when the house number and the street's
+("Hauptstraße 42", "W Covell Blvd 1451, Davis") addresses. Street-first needs a street word, such
+as Blvd, a -straße ending or Calle, so "Pier 39" stays a name. A result is that address when the house number and the street's
 first distinguishing word (not a direction, not "St" or "Ave") are both whole words of its name
 or address. A substring test found the digits in ZIP codes and in neighbors' numbers and took a
 list of businesses for the address.

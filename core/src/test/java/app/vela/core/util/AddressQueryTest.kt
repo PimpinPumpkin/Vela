@@ -32,6 +32,24 @@ class AddressQueryTest {
         assertNull(AddressQuery.parse("Apollo 13"))
         assertEquals("5", AddressQuery.parse("Calle Mayor 5")?.first)
         assertEquals("12" to "via", AddressQuery.parse("Via Roma 12, Milano"))
+        assertNull(AddressQuery.parse("Studio 54, New York"))
+        assertNull(AddressQuery.parse("Wien 1010, Austria"))
+        // Five-digit US house numbers street first; a ZIP after a street with no number is not one.
+        assertEquals("12345" to "covell", AddressQuery.parse("W Covell Blvd 12345, Davis, CA 95616"))
+        assertNull(AddressQuery.parse("Main St, Davis CA 95616"))
+        assertNull(AddressQuery.parse("Davis CA 95616"))
+        assertEquals("5", AddressQuery.parse("Karl Johans gate 5, Oslo")?.first)
+        assertEquals("10", AddressQuery.parse("ul. Marszałkowska 10, Warszawa")?.first)
+    }
+
+    @Test fun anAddressIsLookedForByItsStreetsOwnName() {
+        assertEquals(listOf("Legislative"), AddressQuery.streetNameWords("Legislative Ave 411, Dover, DE 19901"))
+        assertEquals(listOf("Legislative"), AddressQuery.streetNameWords("411 Legislative Ave, Dover, DE 19901"))
+        assertEquals(listOf("Covell"), AddressQuery.streetNameWords("W Covell Blvd 1451"))
+        assertNull(AddressQuery.streetNameWords("coffee near me"))
+        // One street word is not split, so only the whole query is matched against names.
+        assertEquals(emptyList<String>(), app.vela.core.data.OfflineRank.queryWords("Legislative Ave 411, Dover, DE 19901"))
+        assertEquals(listOf("Burger", "King"), app.vela.core.data.OfflineRank.queryWords("Burger King"))
     }
 
     @Test fun theAddressItselfMatches() {

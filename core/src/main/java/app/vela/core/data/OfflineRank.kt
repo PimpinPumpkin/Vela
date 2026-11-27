@@ -98,7 +98,11 @@ object OfflineRank {
      *  is a known category: "gas station" must not match on "station". */
     fun queryWords(term: String): List<String> {
         if (isCategoryQuery(term)) return emptyList()
-        return term.trim().split(Regex("\\s+")).filter { it.length >= 3 }.takeIf { it.size > 1 }.orEmpty()
+        // A typed address is looked for by its street's own name: its type, direction, number and
+        // town are not names, and "Ave" in "Legislative Ave 411" matched every Dave's and tavern
+        // near the view (the number-first form only escaped it because "Ave," kept its comma).
+        val words = app.vela.core.util.AddressQuery.streetNameWords(term) ?: term.trim().split(Regex("\\s+"))
+        return words.filter { it.length >= 3 }.takeIf { it.size > 1 }.orEmpty()
     }
 
     /** The same test the pack SQL runs: the query (or, multi-word, any word of 3+ letters) in the

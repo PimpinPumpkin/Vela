@@ -4287,9 +4287,13 @@ when the feature ids match. Two requests at most.
 - Every row except a contact has a fill-in arrow.
 - `AddressQuery.parse` reads a house number and the street's first word that is not a
   direction or a street type, in either number-first ("912 Miller Dr") or street-first
-  ("Hauptstraße 42", "W Covell Blvd 1451, Davis") form. Street-first needs a street word or a
-  town after a comma, so "Pier 39" stays a name. `matches` needs both as whole words of a
-  result.
+  ("Hauptstraße 42", "W Covell Blvd 1451, Davis") form. Street-first needs a street word (a type
+  such as Blvd, a suffix such as -straße, or a word such as Calle or Via) and takes a number of
+  up to five digits before any comma, so "Pier 39" and "Wien 1010, Austria" stay names and a ZIP
+  after a street is not a house. `matches` needs both as whole words of a result. The offline
+  place search looks for an address by its street's own name words only
+  (`AddressQuery.streetNameWords` in `OfflineRank.queryWords`), not its type, direction, number
+  or town: "Ave" matched every place with "ave" in its name.
 - A typed address is searched over at least `ADDRESS_SEARCH_SPAN_M` (40 km). When no matching
   result lies that near the view, the suggest request geocodes it. Matching rows lead, by
   `AddressQuery.score` (a point per typed street word, minus one for a different direction or

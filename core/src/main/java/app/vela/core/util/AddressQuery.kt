@@ -10,9 +10,9 @@ package app.vela.core.util
  */
 object AddressQuery {
     private val LEAD = Regex("""^\s*(\d+[a-zA-Z]?)\s+(.+)$""")
-    // Street-first addresses ("Hauptstraße 42", "Straße des 17. Juni 42", "Berliner Str. 15a, Berlin"):
-    // 1-4 digits so 5-digit postal codes ("Davis 95616") do not read as house numbers.
-    private val TRAIL = Regex("""^\s*(.+?\p{L}\.?)\s+(\d{1,4}[a-zA-Z]?)(?:\s*,.*)?$""")
+    // Street-first addresses ("Hauptstraße 42", "Straße des 17. Juni 42", "Berliner Str. 15a, Berlin",
+    // "W Covell Blvd 12345, Davis"): the number right after the street, before any comma.
+    private val TRAIL = Regex("""^\s*([^,]+?\p{L}\.?)\s+(\d{1,5}[a-zA-Z]?)(?:\s*,.*)?$""")
     // Street-first with trailing town and no comma ("Hauptstraße 42 Berlin").
     private val TRAIL_WITH_TOWN = Regex("""^\s*(.+?\p{L}\.?)\s+(\d{1,4}[a-zA-Z]?)\s+([\p{L}\s.-]{2,})$""")
     private val SPLIT = Regex("""[^\p{L}\p{N}]+""")
@@ -28,8 +28,13 @@ object AddressQuery {
         "steig", "pfad", "chaussee", "straat", "laan", "plein", "gracht", "gade", "vej",
         "gatan", "vägen", "katu", "tie", "ulica", "utca",
     )
-    // Words that open a street's name where the number comes after it ("Calle Mayor 5").
-    private val STREET_WORDS = setOf("via", "viale", "piazza", "corso", "calle", "avenida", "plaza", "rua", "carrer", "rue")
+    // Whole words that name a street where the number comes after it ("Calle Mayor 5",
+    // "Karl Johans gate 5", "ul. Marszałkowska 10", "Andrássy út 5").
+    private val STREET_WORDS = setOf(
+        "via", "viale", "piazza", "corso", "calle", "avenida", "paseo", "plaza", "rua", "carrer", "rue",
+        "gate", "vei", "veien", "gata", "ul", "ulica", "ulice", "út", "náměstí", "nám", "trida", "třída",
+        "caddesi", "cad", "sokak", "sok", "strada", "bulevar", "улица", "ул", "проспект", "пр",
+    )
 
     private fun looksLikeStreetPrefix(streetPart: String, words: List<String>): Boolean =
         words.any { w -> w in TYPES || w in STREET_WORDS || STREET_SUFFIXES.any { s -> w == s || (w.length > s.length + 1 && w.endsWith(s)) } } ||
@@ -45,9 +50,9 @@ object AddressQuery {
             val words = streetPart.lowercase().split(SPLIT).filter { it.isNotEmpty() }
             if (words.isEmpty()) return null
             if (words.none { it !in DIRECTIONS && it !in TYPES && it !in HIGHWAY_WORDS && it.length >= 2 }) return null
-            // A name and a number with no street word and no town after a comma is a name, not an
-            // address: "Pier 39", "Studio 54", and a town and its postal code ("Wien 1010").
-            if (',' !in query && !looksLikeStreetPrefix(streetPart, words)) return null
+            // A name and a number with no street word is a name, not an address: "Pier 39",
+            // "Studio 54, New York", and a town and its postal code ("Wien 1010, Austria").
+            if (!looksLikeStreetPrefix(streetPart, words)) return null
             return number.lowercase() to streetPart
         }
         TRAIL_WITH_TOWN.find(query)?.let { m ->
@@ -60,6 +65,15 @@ object AddressQuery {
             return number.lowercase() to streetPart
         }
         return null
+    }
+
+    /** The words of a typed address's street name, without its type, direction, number or town
+     *  ("Legislative" from "Legislative Ave 411, Dover" and from "411 Legislative Ave, Dover");
+     *  null when [query] is not an address. */
+    fun streetNameWords(query: String): List<String>? {
+        val (_, streetPart) = splitAddress(query) ?: return null
+        return streetPart.substringBefore(',').split(SPLIT)
+            .filter { w -> w.isNotEmpty() && w.lowercase() !in DIRECTIONS && w.lowercase() !in TYPES && w.none(Char::isDigit) }
     }
 
     /** The house number and the street's first distinguishing word, lowercase; null when [query]
