@@ -65,4 +65,52 @@ class TurnLaneFoldTest {
         val long = case(peelDeg = 25.0, turnDeg = 90.0, laneLen = 200.0)
         assertEquals(4, RouteGeometry.foldTurnLanes(long.first, long.second).size)
     }
+    /** Russell Boulevard into B Street: east, a 48 to 75 m connector at [connDeg], then [outDeg]. */
+    private fun connector(first: ManeuverType, firstRoad: String?, second: ManeuverType, connLen: Double = 60.0, connDeg: Double = 100.0, outDeg: Double = 166.0): Pair<List<LatLng>, List<Maneuver>> {
+        fun go(from: Pair<Double, Double>, brg: Double, len: Double) =
+            from.first + len * sin(Math.toRadians(brg)) to from.second + len * cos(Math.toRadians(brg))
+        val a = 300.0 to 0.0
+        val b = go(a, connDeg, connLen)
+        val c = go(b, outDeg, 300.0)
+        val line = listOf(pt(0.0, 0.0), pt(a.first, a.second), pt(b.first, b.second), pt(c.first, c.second))
+        val firstText = if (firstRoad == null) (if (first == ManeuverType.STRAIGHT) "Continue" else "Turn right") else "Turn right onto $firstRoad"
+        val secondText = if (second == ManeuverType.STRAIGHT) "Continue onto B Street" else "Turn right onto B Street"
+        val ms = listOf(
+            Maneuver(ManeuverType.TURN_LEFT, "Turn left onto Russell Boulevard", line[0], 300.0, 30.0, road = "Russell Boulevard"),
+            Maneuver(first, firstText, line[1], connLen, 6.0, road = firstRoad),
+            Maneuver(second, secondText, line[2], 300.0, 30.0, road = "B Street"),
+            Maneuver(ManeuverType.ARRIVE, "Arrive", line[3], 0.0, 0.0),
+        )
+        return line to ms
+    }
+
+    @Test fun `a connector split into two steps is one turn at the street`() {
+        for ((first, firstRoad, second) in listOf(
+            Triple(ManeuverType.STRAIGHT, null, ManeuverType.STRAIGHT),
+            Triple(ManeuverType.TURN_RIGHT, "B Street", ManeuverType.TURN_RIGHT),
+            Triple(ManeuverType.TURN_RIGHT, null, ManeuverType.TURN_RIGHT),
+        )) {
+            val (line, ms) = connector(first, firstRoad, second)
+            val out = RouteGeometry.foldTurnLanes(line, ms)
+            assertEquals("$first $firstRoad $second", 3, out.size)
+            val t = out[1]
+            assertEquals(ManeuverType.TURN_RIGHT, t.type)
+            assertEquals("Turn right onto B Street", t.instruction)
+            assertEquals("at the street, not the connector", ms[2].location, t.location)
+            assertEquals("the step before runs over the connector", 360.0, out[0].distanceMeters, 1e-9)
+            assertEquals(ms.sumOf { it.distanceMeters }, out.sumOf { it.distanceMeters }, 1e-9)
+        }
+    }
+
+    @Test fun `two real right turns a block apart stay two`() {
+        // Around the block: 90 degrees then 90 more is 180, past a turn.
+        val (line, ms) = connector(ManeuverType.TURN_RIGHT, null, ManeuverType.TURN_RIGHT, connLen = 100.0, connDeg = 180.0, outDeg = 270.0)
+        assertEquals(4, RouteGeometry.foldTurnLanes(line, ms).size)
+        // A connector that is itself a real turn, then a gentle one.
+        val (line2, ms2) = connector(ManeuverType.TURN_RIGHT, null, ManeuverType.TURN_RIGHT, connDeg = 150.0, outDeg = 170.0)
+        assertEquals(4, RouteGeometry.foldTurnLanes(line2, ms2).size)
+        // A first step onto a road of its own.
+        val (line3, ms3) = connector(ManeuverType.TURN_RIGHT, "Oak Avenue", ManeuverType.TURN_RIGHT)
+        assertEquals(4, RouteGeometry.foldTurnLanes(line3, ms3).size)
+    }
 }

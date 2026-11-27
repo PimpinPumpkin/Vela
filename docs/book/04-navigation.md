@@ -138,9 +138,11 @@ turn. The voice says "turn left" 25 m out either way.
 - Two steps close together are said on one line ("Keep slight left, then keep slight right").
   The second one's own line at its turn is left out when it would come within 5 seconds and say
   the same words; it still buzzes.
-- A turn lane mapped as its own way does not split a turn in two. A short unnamed slight turn
-  followed by a turn the same way, adding up to a real turn, is one "Turn right onto" the street,
-  said where the lane leaves the road.
+- A turn lane or a curving connector mapped as its own way does not split a turn in two. A short
+  unnamed slight turn followed by a turn the same way, adding up to a real turn, is one "Turn
+  right onto" the street, said where the lane leaves the road. A connector that leaves the road
+  straight and curves into the street is one turn said where the street begins: Russell
+  Boulevard into B Street in Davis is one "Turn right onto B Street", as Google says it.
 - The first instruction is spoken once by the drive's opener ("Starting navigation. Head east on
   ..."). The engine skips it.
 - A drive started while the car is already rolling along the route, within 40 m of it and going

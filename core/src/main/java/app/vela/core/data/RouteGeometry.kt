@@ -492,11 +492,76 @@ object RouteGeometry {
         val out = ArrayList<Maneuver>(list.size)
         var i = 0
         while (i < list.size) {
-            val one = list.getOrNull(i + 1)?.let { turnLane(poly, cum, list[i], along[i], it, along[i + 1]) }
-            if (one != null) { out += one; i += 2 } else { out += list[i]; i++ }
+            val b = list.getOrNull(i + 1)
+            val one = b?.let { turnLane(poly, cum, list[i], along[i], it, along[i + 1]) }
+            if (one != null) { out += one; i += 2; continue }
+            val split = if (out.isEmpty()) null else b?.let { splitTurn(poly, cum, list[i], along[i], it, along[i + 1]) }
+            if (split != null) {
+                // The pair becomes one turn at the second step, where the street begins: the step
+                // before it runs on over the connector.
+                val a = list[i]
+                val prev = out.removeAt(out.lastIndex)
+                out += prev.copy(distanceMeters = prev.distanceMeters + a.distanceMeters, durationSeconds = prev.durationSeconds + a.durationSeconds)
+                out += split; i += 2; continue
+            }
+            out += list[i]; i++
         }
         return out
     }
+
+    /**
+     * One turn the map splits in two at a curving connector, where a [turnLane] fold does not
+     * apply: an unnamed step that leaves the road straight ("Continue"), or a turn onto the
+     * connector (unnamed, or named as the next step's road), then the turn or straight onto the
+     * street. Russell Boulevard to B
+     * Street in Davis bends 77 degrees over 80 m of connector, and came out as "Continue" and
+     * "Continue onto B Street", or as "Turn right onto B Street" twice 48 m apart, where Google
+     * says "Turn right onto B St" once. Only when the first step runs at most [TURN_LANE_MAX_M] and
+     * bends the line at most [TURN_LANE_PEEL_DEG], the line turns [TURN_LANE_MIN_DEG] to
+     * [TURN_LANE_MAX_DEG] across both, and any turn the steps name is to that side.
+     */
+    private fun splitTurn(poly: List<LatLng>, cum: DoubleArray, a: Maneuver, atA: Double, b: Maneuver, atB: Double): Maneuver? {
+        val road = (b.road ?: b.ref)?.takeIf { it.isNotBlank() } ?: return null
+        val aRoad = (a.road ?: a.ref)?.takeIf { it.isNotBlank() }
+        val straight = setOf(ManeuverType.STRAIGHT, ManeuverType.CONTINUE)
+        val firstStraight = a.type in straight && aRoad == null
+        val firstTurn = a.type in RIGHT_TURNS + LEFT_TURNS && (aRoad == null || aRoad.equals(road, ignoreCase = true))
+        if (!firstStraight && !firstTurn) return null
+        if (b.type !in RIGHT_TURNS + LEFT_TURNS + straight || a.renames.isNotEmpty()) return null
+        // The way out is read past the curve's end: the second step can start mid-curve (B Street
+        // at 693 m of a bend that ends at 735 m), where the next 30 m still turn.
+        val outFrom = atB + minOf(TURN_LANE_LOOK_M, b.distanceMeters / 2)
+        val outTo = atB + minOf(2 * TURN_LANE_LOOK_M, b.distanceMeters - 3.0)
+        if (a.distanceMeters > TURN_LANE_MAX_M || atA < TURN_LANE_LOOK_M || outTo - outFrom < 10.0 || outTo > cum.last()) return null
+        val before = headingAlong(poly, cum, atA - TURN_LANE_LOOK_M, atA - 3.0)
+        val whole = turnDeg(before, headingAlong(poly, cum, outFrom, outTo))
+        // The connector leaves the road gently, as a lane does: a first step that bends more is a
+        // real turn of its own.
+        val peel = turnDeg(before, headingAlong(poly, cum, atA + 3.0, maxOf(atA + 6.0, atB - 3.0)))
+        val right = whole > 0
+        if (listOf(a.type, b.type).any { (it in RIGHT_TURNS && !right) || (it in LEFT_TURNS && right) }) return null
+        val fold = kotlin.math.abs(peel) <= TURN_LANE_PEEL_DEG && kotlin.math.abs(whole) in TURN_LANE_MIN_DEG..TURN_LANE_MAX_DEG
+        onTurnLane?.invoke(a, b, peel, whole, fold)
+        if (!fold) return null
+        val mod = if (right) "right" else "left"
+        return b.copy(
+            type = if (right) ManeuverType.TURN_RIGHT else ManeuverType.TURN_LEFT,
+            instruction = osrmPhrase("turn", mod, road, null, null, null),
+            instructionNoRoad = osrmPhrase("turn", mod, null, null, null, null),
+            lanes = b.lanes.ifEmpty { a.lanes },
+            laneHint = b.laneHint ?: a.laneHint,
+        )
+    }
+
+    /** The line's heading in degrees between two distances along it (0 north, 90 east). */
+    private fun headingAlong(poly: List<LatLng>, cum: DoubleArray, from: Double, to: Double): Double {
+        val p = app.vela.core.nav.RouteProjection.pointAt(poly, cum, from)
+        val q = app.vela.core.nav.RouteProjection.pointAt(poly, cum, to)
+        return Math.toDegrees(kotlin.math.atan2((q.lng - p.lng) * kotlin.math.cos(Math.toRadians(p.lat)), q.lat - p.lat))
+    }
+
+    /** The turn from heading [h1] to [h2], -180 to 180, right positive. */
+    private fun turnDeg(h1: Double, h2: Double) = ((h2 - h1 + 540.0) % 360.0) - 180.0
 
     private fun turnLane(poly: List<LatLng>, cum: DoubleArray, a: Maneuver, atA: Double, b: Maneuver, atB: Double): Maneuver? {
         val right = when (a.type) {
@@ -510,12 +575,8 @@ object RouteGeometry {
         val road = b.road ?: b.ref
         if (!(sameSide || joins) || road.isNullOrBlank() || !a.road.isNullOrBlank() || !a.ref.isNullOrBlank()) return null
         if (a.distanceMeters > TURN_LANE_MAX_M || atA < TURN_LANE_LOOK_M || atB + TURN_LANE_LOOK_M > cum.last()) return null
-        fun heading(from: Double, to: Double): Double {
-            val p = app.vela.core.nav.RouteProjection.pointAt(poly, cum, from)
-            val q = app.vela.core.nav.RouteProjection.pointAt(poly, cum, to)
-            return Math.toDegrees(kotlin.math.atan2((q.lng - p.lng) * kotlin.math.cos(Math.toRadians(p.lat)), q.lat - p.lat))
-        }
-        fun turn(h1: Double, h2: Double) = ((h2 - h1 + 540.0) % 360.0) - 180.0
+        fun heading(from: Double, to: Double) = headingAlong(poly, cum, from, to)
+        fun turn(h1: Double, h2: Double) = turnDeg(h1, h2)
         val before = heading(atA - TURN_LANE_LOOK_M, atA - 3.0)
         val lane = heading(atA + 3.0, maxOf(atA + 6.0, atB - 3.0))
         val after = heading(atB + 3.0, atB + TURN_LANE_LOOK_M)

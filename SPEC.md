@@ -1403,7 +1403,8 @@ Redding"). The card, the step list, the "Then" line and the voice then name the 
 goes, as Google's do. A language without a sign marker (`NavStrings.signDestination`) keeps its
 text.
 
-`RouteGeometry.foldTurnLanes`, all three routers. A turn lane mapped as its own way
+`RouteGeometry.foldTurnLanes`, all three routers, and the hybrid's steps against Google's line.
+A turn lane mapped as its own way
 splits one turn in two: an unnamed slight turn where the lane leaves the road, then the turn
 onto the street the same way ("Turn slight right, then turn slight right onto" a street, for one
 right turn at a divided corner). A slip lane that joins the street going straight (a STRAIGHT
@@ -1419,6 +1420,18 @@ mapped beside a one-way street, and a dual carriageway's approach to a junction
 (`NamingStudyTest.turnLanesOnCapturedLines`, and `replayCapturedLines` lists them). Every folded
 turn agrees with the line in `StepAudit`, and the simulated drives flag nothing new.
 `TurnLaneFoldTest`.
+
+A curving connector splits a turn in two the other way (`splitTurn`): an unnamed first step that
+leaves the road straight ("Continue"), or a turn onto the connector (unnamed, or named as the
+next step's road), then the turn or straight onto the street. Russell Boulevard into B Street on
+a Davis fixture came out as "Continue" and "Continue onto B Street", or as "Turn right onto B
+Street" twice 48 m apart, where Google says it once. The pair becomes one turn onto the street
+at the second step's place, where the street begins; the step before runs on over the
+connector. The same limits hold (first step at most 120 m and bending the line at most 45
+degrees, 60 to 135 across both), the way out is read 30 to 60 m past the second step because
+it can start mid-curve, and a turn the steps name must be to the line's side. On the stored
+Google lines it folds two pairs (San Francisco's 11th Street, Tokyo's 浅草通り), each a turn
+whose second half went unannounced, and the audit and simulated drives flag nothing new.
 
 #### Steps on the line
 
