@@ -334,6 +334,7 @@ class NamingStudyTest {
         val changed = java.util.Collections.synchronizedList(ArrayList<String>())
         app.vela.core.data.ValhallaRouter.onChanged = { stated, len, runs, out -> if (stated.isNotEmpty()) changed += "'$stated' (step ${len.toInt()} m) -> '$out' | $runs" }
         RouteGeometry.onTurnLane = { a, b, peel, whole, fold -> if (fold) changed += "turn lane folded: ${a.distanceMeters.toInt()} m bend ${peel.toInt()} whole ${whole.toInt()} | ${a.instruction} | ${b.instruction} @${"%.5f,%.5f".format(a.location.lat, a.location.lng)}" }
+        RouteGeometry.onExitToward = { a, b, out -> changed += "exit toward next: '${a.instruction}' -> '$out' (from '${b.instruction}', ${a.distanceMeters.toInt()} m) @${"%.5f,%.5f".format(a.location.lat, a.location.lng)}" }
         val src = IntArray(3); val audit = IntArray(5); val fitTotals = IntArray(3); val names = IntArray(3); var suspects = 0; var steps = 0; var lanes = 0; var turnsOnStretch = 0
         val notes = ArrayList<String>()
         for (f in dir.listFiles { x -> x.name.endsWith(".txt") }!!.sortedBy { it.name }) {
@@ -377,6 +378,13 @@ class NamingStudyTest {
             val hybrid = if (named.any { it.second == null }) null else HybridRoute.stitch(google, openChecked, named.map { it.first to it.second!! }, untrusted)
             if (hybrid == null) { notPlaced++; notes += "$tag: NOT PLACED (${st.size} stretches)"; continue }
             steps += hybrid.maneuvers.size; lanes += hybrid.maneuvers.count { it.lanes.isNotEmpty() }
+            // A sign still naming both directions of one route (RouteGeometry.exitTowardNext leaves
+            // it when no fork past it picks one).
+            val nav = app.vela.core.i18n.NavStringsRegistry.current()
+            hybrid.maneuvers.forEach { m ->
+                val ways = nav.signParts(m.instruction).mapNotNull { p -> app.vela.core.nav.routeKey(p)?.let { it to p } }
+                if (ways.groupBy({ it.first }, { it.second }).values.any { it.toSet().size >= 2 }) notes += "$tag: BOTH WAYS left ${m.type} '${m.instruction}'"
+            }
             val a = app.vela.core.nav.StepAudit.check(hybrid)
             audit[0] += a.turns; audit[1] += a.agree; audit[2] += a.otherWay; audit[3] += a.noBend; audit[4] += a.unsaid
             // What the final pass on a driving route (StepFit, in directions) would change here.

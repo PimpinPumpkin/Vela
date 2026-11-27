@@ -888,9 +888,13 @@ object RouteGeometry {
             fun swap(text: String?): String? = text?.let { t ->
                 if (t.endsWith(mine)) t.substring(0, t.length - mine.length) + theirs else t
             }
+            onExitToward?.invoke(m, next, swap(m.instruction)!!)
             m.copy(instruction = swap(m.instruction)!!, instructionNoRoad = swap(m.instructionNoRoad))
         }
     }
+
+    /** Study hook: each exit [exitTowardNext] rewrote, the step that gave the sign, and the new text. */
+    @Volatile internal var onExitToward: ((exit: Maneuver, next: Maneuver, rewritten: String) -> Unit)? = null
     private val BOTH_WAYS_TYPES = STAY_ON_TYPES + setOf(ManeuverType.RAMP_LEFT, ManeuverType.RAMP_RIGHT)
     /** A sign part's route and number ("I 5", "I-80", "US 50"), ahead of its direction words. */
     private val ROUTE_NUMBER_LEAD = Regex("""^\S+[\s-]*\d{1,4}[A-Za-z]?\b""")
