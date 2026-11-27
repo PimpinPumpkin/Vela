@@ -16,6 +16,7 @@ import androidx.compose.foundation.border
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.navigationBarsPadding
 import app.vela.ui.icons.Sym
@@ -178,14 +179,13 @@ fun ManeuverBanner(
     // app): white ink, Roboto (the app font - no brand font on the banner).
     // A swiped-ahead step is Google's preview gray, also with white ink, in every theme and
     // color mode, so it never reads as live guidance.
-    val container = if (previewing) NavPreviewGray else NavBannerGreen
+    // The live card is Google's day green, and its night teal while the map is dark; the "Then"
+    // tab under it is a darker shade of the same.
+    val night = app.vela.ui.theme.isMapDark()
+    val container = if (previewing) NavPreviewGray else if (night) NavBannerTeal else NavBannerGreen
     val content = androidx.compose.ui.graphics.Color.White
-    // The detached "then" strip under the card is darker than the banner (Google's reads
-    // as a dimmer tab); preview follows the main card's own treatment.
-    val thenContainer = if (previewing) NavPreviewGray
-    else MaterialTheme.colorScheme.surfaceContainerHigh
-    val thenContent = if (previewing) androidx.compose.ui.graphics.Color.White
-    else MaterialTheme.colorScheme.onSurface
+    val thenContainer = if (night) NavThenTeal else NavThenGreen
+    val previewSaid = stringResource(R.string.nav_preview_tap_resume)
     // The card tracks your finger as you drag (translationX = offsetX); on release
     // past a threshold it slides the rest of the way out, swaps to the next/prev
     // step, then the new card slides in from the opposite edge — like flicking a
@@ -194,8 +194,9 @@ fun ManeuverBanner(
     // Off the route the old route's next step and lanes are stale: neither shows while it asks
     // for a new one, nor with no signal to ask with.
     val offLine = (offRoute || backToRoute != null) && !previewing
+    // A swiped-ahead step shows no "Then" tab, as Google's does not.
     val thenShown = nextText != null && nextType != null && isCompoundNext(nextDistanceMeters) &&
-        (previewing || distanceMeters <= laneShowM) && !offLine
+        !previewing && distanceMeters <= laneShowM && !offLine
     // A long next step can make the tab as wide as the card: then the right corner squares off too.
     var cardW by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var tabW by remember { androidx.compose.runtime.mutableIntStateOf(0) }
@@ -282,7 +283,8 @@ fun ManeuverBanner(
                 }
             }
             .then(
-                if (previewing) Modifier.clickable(onClick = onExitPreview) else Modifier.focusable(),
+                // The gray says it is a preview, as on Google's card; a screen reader hears it.
+                if (previewing) Modifier.semantics { stateDescription = previewSaid }.clickable(onClick = onExitPreview) else Modifier.focusable(),
             ),
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomEnd = if (tabSpans) 0.dp else 24.dp, bottomStart = if (thenShown) 0.dp else 24.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
@@ -394,7 +396,7 @@ fun ManeuverBanner(
                         // the regular weight, as on Google's card.
                         val distStyle = when {
                             glance && compact -> MaterialTheme.typography.titleMedium
-                            glance -> MaterialTheme.typography.titleLarge.copy(fontSize = 23.sp)
+                            glance -> MaterialTheme.typography.titleLarge.copy(fontSize = 26.sp)
                             compact -> MaterialTheme.typography.titleLarge
                             else -> MaterialTheme.typography.headlineMedium
                         }
@@ -457,10 +459,11 @@ fun ManeuverBanner(
                             overflow = TextOverflow.Ellipsis,
                         )
                         // Empty when the sign named only the route the chips already show.
+                        // Google's sizes: the road in medium, a sign's towns in the regular weight.
                         if (parts.main.isNotEmpty()) Text(
                             roadNames(parts.main),
-                            style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium.copy(fontSize = 26.sp),
-                            fontWeight = FontWeight.Medium,
+                            style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium.copy(fontSize = 28.sp),
+                            fontWeight = if (parts.towns) FontWeight.Normal else FontWeight.Medium,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -508,14 +511,6 @@ fun ManeuverBanner(
                     }
                 }
             }
-            if (previewing) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    stringResource(R.string.nav_preview_tap_resume),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = content.copy(alpha = 0.85f),
-                )
-            }
         }
         // Lanes on a darker strip across the card's foot, centered, as on Google's card: the real
         // per-lane diagram from OSRM (a cell per lane, the arrows for THIS turn lit) when we have
@@ -537,13 +532,12 @@ fun ManeuverBanner(
         // card - just "then <arrow> <full instruction>", no shield chip, no distance.
         // Same compound + approach gates as the old inline row.
         if (thenShown) {
-            // Google's "Then" tab: hangs off the card's lower left in the card's own color,
-            // the word and the arrow only.
+            // Google's "Then" tab: hangs off the card's lower left, a shade darker than the card.
             Card(
                 // As wide as its text needs, up to the whole card.
                 Modifier.fillMaxWidth().wrapContentWidth(Alignment.Start).onSizeChanged { tabW = it.width },
                 shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
-                colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
+                colors = CardDefaults.cardColors(containerColor = thenContainer, contentColor = content),
             ) {
                 Row(
                     Modifier.padding(start = 18.dp, end = 18.dp, top = 6.dp, bottom = 8.dp),
@@ -586,6 +580,12 @@ internal fun bidiIsolate(text: String): String = "\u2068" + text + "\u2069"
 
 /** Google's nav-banner freeway green, pixel-sampled off the Maps app (#00654F). */
 internal val NavBannerGreen = androidx.compose.ui.graphics.Color(0xFF00654F)
+
+/** Google's night teal for the live card, and the darker "Then" tab under each card: the night tab
+ *  is sampled off Google Maps; the day tab is the day green darkened by the same ratio. */
+internal val NavBannerTeal = androidx.compose.ui.graphics.Color(0xFF015F61)
+internal val NavThenTeal = androidx.compose.ui.graphics.Color(0xFF005153)
+internal val NavThenGreen = androidx.compose.ui.graphics.Color(0xFF005643)
 
 /** Google's card for a swiped-ahead step and the lane strip under it, sampled off Google Maps. */
 internal val NavPreviewGray = androidx.compose.ui.graphics.Color(0xFF5F6368)
@@ -632,7 +632,9 @@ private fun roadNames(text: String): androidx.compose.ui.text.AnnotatedString =
             val t = app.vela.core.util.RoadNameShort.trailingType(name)
             if (t == null) append(name)
             else {
-                append(name.substring(0, name.length - t.length))
+                // A no-break space keeps the small word on the line with the last word of the name:
+                // a wrap left "Hwy" alone under "Dwight D. Eisenhower".
+                append(name.substring(0, name.length - t.length).trimEnd()); append('\u00A0')
                 pushStyle(androidx.compose.ui.text.SpanStyle(fontSize = 0.6.em)); append(t); pop()
             }
         }
@@ -749,7 +751,8 @@ internal fun SignChip(sign: Sign, onBanner: Boolean = false, exitLeft: Boolean =
         RouteShield(
             sign.label,
             ink = if (onBanner) bannerInk else MaterialTheme.colorScheme.onPrimaryContainer,
-            dim = (if (onBanner) bannerInk else MaterialTheme.colorScheme.onPrimaryContainer).copy(alpha = 0.7f),
+            // On the card the direction word is as white as the rest, as on Google's.
+            dim = if (onBanner) bannerInk else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
         )
     }
 }

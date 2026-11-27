@@ -6856,8 +6856,8 @@ or last chip scrolls the row all the way to that end.
   While paused, one tap resumes. A long press steps the voice (on, alerts only, off). The
   slide-out is the key path to the voice. The glyph shows pause or resume, the accent fill a held
   drive, a crossed speaker a muted one, a bell "Alerts only" (4.9).
-- The "Then" tab hangs off the turn card's lower left in the card's color and names the next
-  step. The card's lower-left corner is square while the tab shows, and the lower-right too when
+- The "Then" tab hangs off the live turn card's lower left, a shade darker than the card, and
+  names the next step. A swiped-ahead step has none, as on Google's card. The card's lower-left corner is square while the tab shows, and the lower-right too when
   the tab is as wide as the card. Both widths are measured.
 - In portrait the turn card and its "Then" tab stay within `BANNER_MAX_FRACTION` (a third) of the
   screen height. Past it the card's font scale steps down, by `BANNER_FIT_STEP` (0.9) or down to
@@ -6869,10 +6869,12 @@ or last chip scrolls the row all the way to that end.
 - Glance layout (`TurnCardText.of`, `core/nav`): when the step can be taken apart, the card is
   placed as Google's card is (compared step by step on a Davis to Sacramento route, 2026-11-25):
   a 72 dp glyph near the card's edge (6 dp start padding and gap), then a column of the distance
-  (`titleLarge` at 23 sp, regular weight) with the current road's shield beside it, the chips
-  row, and one large line (26 sp, medium weight; `titleLarge` when compact; at most 2 lines) for
-  where you are going. Each name's closing street word is drawn at 0.6 em
-  (`RoadNameShort.trailingType`: "Russell Blvd"). For a turn whose text contains
+  (`titleLarge` at 26 sp, regular weight) with the current road's shield beside it, the chips
+  row, and one large line (28 sp; a road in medium weight, a sign's towns regular,
+  `TurnCardText.towns`; `titleLarge` when compact; at most 2 lines) for where you are going: the
+  sizes of Google's text, measured on a 4a. Each name's closing street word is drawn at 0.6 em
+  (`RoadNameShort.trailingType`: "Russell Blvd"), tied to the name's last word by a no-break space
+  so a wrap never leaves it alone. For a turn whose text contains
   `Maneuver.road` whole-word, that line is the road, with the words after it small below (at
   most 1 line); the words before it are not shown, except at a roundabout, where they carry the
   exit number (at most 2 lines). Otherwise, when the language gives the sign destinations
@@ -6891,9 +6893,15 @@ or last chip scrolls the row all the way to that end.
   toward the exit's side (`exitOnLeft` from the maneuver type), on the card and in the step
   list. Beside a route shield the direction is the language's word (`NavStrings.shieldDirection`:
   "NORTH" in English, the letter where a language has none). On the card both take the card's
-  text color.
-- The live card is Google's green (`NavBannerGreen`, #00654F) and a swiped-ahead step is Google's
-  preview gray (`NavPreviewGray`, #5F6368), both with white text in every theme and color mode.
+  text color, the direction word too (it is 70 percent in the step list).
+- The live card is Google's green (`NavBannerGreen`, #00654F), or its night teal
+  (`NavBannerTeal`, #015F61) while the map is dark (`isMapDark`), and its "Then" tab is #005643 by
+  day and #005153 at night (the night tab sampled off Google Maps, the day one the day green
+  darkened by the same ratio). A swiped-ahead step is Google's preview gray (`NavPreviewGray`,
+  #5F6368) with no "Preview" line, as on Google's card; a screen reader hears "Preview, tap to
+  resume" as the card's state. All of them carry white text in every theme and color mode.
+- A drive's first step shows Google's straight arrow with a dashed tail (`HeadToward` in
+  `StepsSheet.kt`).
   The lane strip under a preview is #474747 (`NavPreviewStrip`), under the live card black at 22
   percent, and the card's unlit lane arrows are #909090.
 - Lanes (`LaneDiagram`, or `LaneGuide` for the count-based hint) sit on a strip across the card's

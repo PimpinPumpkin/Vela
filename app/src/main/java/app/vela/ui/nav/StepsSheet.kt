@@ -702,8 +702,24 @@ private const val PASSED_ALPHA = 0.5f
  * type-only entry point can only produce the neutral form - callers holding the whole [Maneuver]
  * should use [maneuverIconFor] so the real exit angle is shown.
  */
+/** Google's glyph for a drive's first step: the straight arrow with its tail dashed. A ring read as
+ *  a record button. */
+private val HeadToward: ImageVector by lazy {
+    ImageVector.Builder(name = "HeadToward", defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 960f, viewportHeight = 960f)
+        .addGroup(translationY = 960f)
+        .addPath(
+            pathData = androidx.compose.ui.graphics.vector.addPathNodes(
+                "M440-687l-36 36q-11 11-27.5 11T348-652q-11-11-11-28t11-28l104-104q12-12 28-12t28 12l104 104q11 11 11.5 27.5T612-652q-11 11-28 11t-28-11l-36-35v217h-80v-217Z" +
+                    "M440-420h80v80h-80v-80ZM440-290h80v80h-80v-80Z",
+            ),
+            fill = androidx.compose.ui.graphics.SolidColor(androidx.compose.ui.graphics.Color.Black),
+        )
+        .clearGroup()
+        .build()
+}
+
 fun maneuverIcon(type: ManeuverType): ImageVector = when (maneuverGlyph(type)) {
-    ManeuverGlyph.ORIGIN -> Sym.TripOrigin
+    ManeuverGlyph.ORIGIN -> HeadToward
     ManeuverGlyph.FLAG -> Sym.Flag
     ManeuverGlyph.LEFT -> Sym.TurnLeft
     ManeuverGlyph.RIGHT -> Sym.TurnRight

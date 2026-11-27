@@ -42,9 +42,10 @@ number and route numbers in the text. Lane arrows and the "Then" tab appear with
 Off route the headline reads "Rerouting". In landscape the banner and the bar are a column on
 the left.
 
-The card leads with where you are going and is laid out the way Google's is: a large arrow on
-the left, then the distance, the exit tab and shields on a row of their own, and the place in
-large type. A turn shows the road ("W Covell Blvd", the "Blvd" smaller) and one small line for
+The card leads with where you are going and is laid out the way Google's is, at Google's text
+sizes: green by day and teal at night, and a swiped-ahead step on Google's gray with no "Then"
+tab and no "Preview" line. It has a large arrow on the left, then the distance, the exit tab
+and shields on a row of their own, and the place in large type. A turn shows the road ("W Covell Blvd", the "Blvd" smaller) and one small line for
 what follows it ("toward Downtown"). "Turn right onto" is not shown; the arrow says it. An exit
 or a ramp shows the exit tab ("4A" in an outlined box with an arrow to the exit's side) and the
 route shields ("5 NORTH"), a street on the sign beside them ("519B J St") and the sign's towns

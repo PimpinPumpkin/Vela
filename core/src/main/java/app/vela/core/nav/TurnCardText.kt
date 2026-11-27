@@ -5,14 +5,15 @@ import app.vela.core.util.RoadNameShort
 /**
  * What the turn card shows in place of the instruction sentence, so the step reads at a glance
  * the way Google's card does: [main] is the one large line, the place you are going (the road
- * entered, or the sign's towns), [lead] is a short line above it and [sub] a short line below.
+ * entered, or the sign's towns, which [towns] says), [lead] is a short line above it and [sub] a
+ * short line below.
  * [signRoads] are the sign's streets, which Google's card writes beside the exit tab ("519B J St"
  * over "Downtown"). Route numbers the card already draws as shields are left out of the text.
  *
  * [of] works on the finished instruction text in any language. The road is found by its own
  * text; the sign destinations come from the language's marker ([app.vela.core.i18n.NavStrings.signDestination]).
  */
-data class TurnCardText(val lead: String, val main: String, val sub: String, val signRoads: String = "") {
+data class TurnCardText(val lead: String, val main: String, val sub: String, val signRoads: String = "", val towns: Boolean = false) {
     companion object {
         /**
          * The card text for [full] (the whole instruction, sign cities after a colon included), or
@@ -48,7 +49,7 @@ data class TurnCardText(val lead: String, val main: String, val sub: String, val
             val (streets, towns) = places.partition(RoadNameShort::isStreet)
             val shortStreets = streets.map(RoadNameShort::shorten)
             return if (towns.isEmpty()) TurnCardText(lead = "", main = shortStreets.joinToString(SEP), sub = "")
-            else TurnCardText(lead = "", main = towns.joinToString(SEP), sub = "", signRoads = shortStreets.joinToString(SEP))
+            else TurnCardText(lead = "", main = towns.joinToString(SEP), sub = "", signRoads = shortStreets.joinToString(SEP), towns = true)
         }
 
         /**
