@@ -214,13 +214,89 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
 
     private var limitCtx: RoutingContext? = null
     private var limitCtxKey = ""
+    @Volatile private var lastMatchedRoad: RouteDataObject? = null
 
-    /** The posted limit (km/h) of the road nearest [lat],[lng] from the installed obf files, or
+    override fun clearRoadLimitContinuity() {
+        lastMatchedRoad = null
+    }
+
+    private data class RoadSnap(
+        val road: RouteDataObject,
+        val segStart: Int,
+        val segEnd: Int,
+        val forward: Boolean,
+        val preciseX: Int,
+        val preciseY: Int,
+        val dist2: Double,
+    )
+
+    private data class BranchCand(
+        val road: RouteDataObject,
+        val vertexIdx: Int,
+        val forward: Boolean,
+        val turnDeg: Double,
+    )
+
+    private fun getOrBuildLimitContext(readers: List<BinaryMapIndexReader>, key: String): RoutingContext =
+        limitCtx?.takeIf { limitCtxKey == key } ?: RoutePlannerFrontEnd().buildRoutingContext(
+            builder().build(
+                profileFor(TravelMode.DRIVE)!!,
+                RoutingConfiguration.RoutingMemoryLimits(LIMIT_MEMORY_MB, NATIVE_MEMORY_MB),
+                emptyMap(),
+            ),
+            null, readers.toTypedArray(), RoutePlannerFrontEnd.RouteCalculationMode.NORMAL,
+        ).also { limitCtx = it; limitCtxKey = key }
+
+    /** Snap ([lat],[lng]) to the best matching drivable road within [LIMIT_SNAP_M], honoring
+     *  [headingDeg] when known and preferring a road connected to [prevRoad] within [CONTINUITY_SNAP_M]
+     *  to avoid brief swaps onto crossing bridges/underpasses. */
+    private fun snapRoad(
+        fe: RoutePlannerFrontEnd,
+        ctx: RoutingContext,
+        lat: Double,
+        lng: Double,
+        headingDeg: Double?,
+        prevRoad: RouteDataObject?,
+    ): RoadSnap? {
+        val first = fe.findRouteSegment(lat, lng, ctx, null, true, false) ?: return null
+        val router = ctx.router
+        val profile = ctx.config.router.profile
+        var bestAny: RoadSnap? = null
+        var bestConnected: RoadSnap? = null
+        val all = buildList {
+            add(first)
+            first.others?.let { addAll(it) }
+        }
+        for (c in all) {
+            if (c.distToProj > LIMIT_SNAP_M * LIMIT_SNAP_M) break
+            val r = c.road ?: continue
+            if (!router.acceptLine(r) || r.hasPrivateAccess(profile)) continue
+            val s0 = c.segmentStart.toInt()
+            val s1 = c.segmentEnd.toInt()
+            if (s0 !in 0 until r.pointsLength || s1 !in 0 until r.pointsLength || s0 == s1) continue
+            val segFwdDeg = segmentBearing31(
+                r.getPoint31XTile(s0), r.getPoint31YTile(s0),
+                r.getPoint31XTile(s1), r.getPoint31YTile(s1),
+            )
+            val fwd = matchDirection(headingDeg, segFwdDeg, router.isOneWay(r), SNAP_BEARING_TOL_DEG) ?: continue
+            val snap = RoadSnap(r, s0, s1, fwd, c.preciseX, c.preciseY, c.distToProj)
+            if (bestAny == null) bestAny = snap
+            if (bestConnected == null && prevRoad != null &&
+                c.distToProj <= CONTINUITY_SNAP_M * CONTINUITY_SNAP_M &&
+                roadsConnected31(prevRoad, r)
+            ) {
+                bestConnected = snap
+                break
+            }
+        }
+        return bestConnected ?: bestAny
+    }
+
+    /** The posted limit (km/h) of the road nearest [lat],[lng] matching [headingDeg] when known, or
      *  null when no file covers the point, no road lies within [LIMIT_SNAP_M], the way carries no
      *  maxspeed, or it is derestricted (`maxspeed=none`, which OsmAnd stores as
-     *  [RouteDataObject.NONE_MAX_SPEED]; a wrong number on an autobahn is worse than a blank).
-     *  Forward direction, like the GraphHopper lookup: few ways tag a directional limit. */
-    override fun currentRoadLimit(lat: Double, lng: Double): Double? {
+     *  [RouteDataObject.NONE_MAX_SPEED]; a wrong number on an autobahn is worse than a blank). */
+    override fun currentRoadLimit(lat: Double, lng: Double, headingDeg: Double?): Double? {
         val p = LatLng(lat, lng)
         val cands = regions().filter { it.id !in failed && it.covers(p) }.sortedBy { (it.n - it.s) * (it.e - it.w) }
         if (cands.isEmpty()) return null
@@ -229,21 +305,209 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
         return runCatching {
             synchronized(routeLock) {
                 val key = cands.joinToString(",") { it.id }
-                val ctx = limitCtx?.takeIf { limitCtxKey == key } ?: RoutePlannerFrontEnd().buildRoutingContext(
-                    builder().build(
-                        profileFor(TravelMode.DRIVE)!!,
-                        RoutingConfiguration.RoutingMemoryLimits(LIMIT_MEMORY_MB, NATIVE_MEMORY_MB),
-                        emptyMap(),
-                    ),
-                    null, readers.toTypedArray(), RoutePlannerFrontEnd.RouteCalculationMode.NORMAL,
-                ).also { limitCtx = it; limitCtxKey = key }
-                val seg = RoutePlannerFrontEnd().findRouteSegment(lat, lng, ctx, null) ?: return@synchronized null
-                // distToProj is the SQUARED distance in meters from the point to its projection.
-                if (seg.distToProj > LIMIT_SNAP_M * LIMIT_SNAP_M) return@synchronized null
-                val mps = seg.road.getMaximumSpeed(true)
-                if (mps <= 0f || mps >= RouteDataObject.NONE_MAX_SPEED - 0.5f) return@synchronized null
-                val kmh = mps * 3.6
-                if (kmh < 150.0) kmh else null
+                val ctx = getOrBuildLimitContext(readers, key)
+                val snap = snapRoad(RoutePlannerFrontEnd(), ctx, lat, lng, headingDeg, lastMatchedRoad)
+                    ?: return@synchronized null
+                lastMatchedRoad = snap.road
+                roadLimitKmh(snap.road, snap.forward)
+            }
+        }.getOrNull()
+    }
+
+    override fun upcomingRoadLimit(
+        poly: List<LatLng>,
+        startMeters: Double,
+        lookAheadMeters: Double,
+        currentLimitKmh: Double?,
+    ): Pair<Double, Double>? {
+        val base = currentLimitKmh ?: return null
+        if (poly.size < 2 || lookAheadMeters < 40.0) return null
+        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+        val total = cum.last()
+        if (startMeters >= total - 30.0) return null
+        val startPt = app.vela.core.nav.RouteProjection.pointAt(poly, cum, startMeters)
+        val cands = regions().filter { it.id !in failed && it.covers(startPt) }.sortedBy { (it.n - it.s) * (it.e - it.w) }
+        if (cands.isEmpty()) return null
+        val readers = cands.mapNotNull { reader(it) }
+        if (readers.isEmpty()) return null
+        return runCatching {
+            synchronized(routeLock) {
+                val key = cands.joinToString(",") { it.id }
+                val ctx = getOrBuildLimitContext(readers, key)
+                val fe = RoutePlannerFrontEnd()
+                val startBrg = app.vela.core.nav.RouteProjection.bearingAt(poly, cum, startMeters)
+                var prevRoad: RouteDataObject? = snapRoad(fe, ctx, startPt.lat, startPt.lng, startBrg, lastMatchedRoad)?.road
+                fun limitAtSample(m: Double): Double? {
+                    val pt = app.vela.core.nav.RouteProjection.pointAt(poly, cum, m)
+                    val brg = app.vela.core.nav.RouteProjection.bearingAt(poly, cum, m)
+                    val snap = snapRoad(fe, ctx, pt.lat, pt.lng, brg, prevRoad) ?: return null
+                    prevRoad = snap.road
+                    return roadLimitKmh(snap.road, snap.forward)
+                }
+                val endM = minOf(total, startMeters + lookAheadMeters)
+                var d = startMeters + 45.0
+                while (d <= endM) {
+                    val kmh = limitAtSample(d)
+                    if (kmh != null && kotlin.math.abs(kmh - base) >= 3.0) {
+                        val confirmM = minOf(total, d + 25.0)
+                        val confirmKmh = if (confirmM > d + 5.0) limitAtSample(confirmM) else kmh
+                        if (confirmKmh != null && kotlin.math.abs(confirmKmh - kmh) < 3.0) {
+                            return@synchronized kmh to (d - startMeters)
+                        }
+                    }
+                    d += 40.0
+                }
+                null
+            }
+        }.getOrNull()
+    }
+
+    override fun upcomingRoadLimitAhead(
+        lat: Double,
+        lng: Double,
+        headingDeg: Double,
+        lookAheadMeters: Double,
+        currentLimitKmh: Double?,
+    ): Pair<Double, Double>? {
+        val base = currentLimitKmh ?: return null
+        if (lookAheadMeters < 40.0) return null
+        val startPt = LatLng(lat, lng)
+        val cands = regions().filter { it.id !in failed && it.covers(startPt) }.sortedBy { (it.n - it.s) * (it.e - it.w) }
+        if (cands.isEmpty()) return null
+        val readers = cands.mapNotNull { reader(it) }
+        if (readers.isEmpty()) return null
+        return runCatching {
+            synchronized(routeLock) {
+                val key = cands.joinToString(",") { it.id }
+                val ctx = getOrBuildLimitContext(readers, key)
+                val fe = RoutePlannerFrontEnd()
+                val start = snapRoad(fe, ctx, lat, lng, headingDeg, lastMatchedRoad) ?: return@synchronized null
+                var road = start.road
+                var forward = start.forward
+                var curX = start.preciseX
+                var curY = start.preciseY
+                var nextIdx = if (forward) start.segEnd else start.segStart
+                var prevBrg = headingDeg
+                var distM = 0.0
+                var pendingKmh: Double? = null
+                var pendingAtM = 0.0
+                var pendingSpanM = 0.0
+                val visited = HashSet<Long>()
+                visited.add((road.id shl 1) or (if (forward) 1L else 0L))
+
+                while (distM <= lookAheadMeters + 30.0 && visited.size <= 24) {
+                    val step = if (forward) 1 else -1
+                    while (nextIdx in 0 until road.pointsLength) {
+                        val vx = road.getPoint31XTile(nextIdx)
+                        val vy = road.getPoint31YTile(nextIdx)
+                        val segLen = MapUtils.squareRootDist31(curX, curY, vx, vy)
+                        if (segLen > 2.0) {
+                            val segBrg = segmentBearing31(curX, curY, vx, vy)
+                            if (directedAngleDiff(headingDeg, segBrg) > FREE_DRIVE_MAX_DRIFT_DEG ||
+                                directedAngleDiff(prevBrg, segBrg) > FREE_DRIVE_MAX_TURN_DEG
+                            ) {
+                                return@synchronized if (pendingKmh != null && pendingSpanM >= 20.0) pendingKmh to pendingAtM else null
+                            }
+                            prevBrg = segBrg
+                        }
+                        val kmh = roadLimitKmh(road, forward)
+                        if (kmh != null && kotlin.math.abs(kmh - base) >= 3.0) {
+                            if (pendingKmh == null || kotlin.math.abs(kmh - pendingKmh) >= 3.0) {
+                                if (distM > lookAheadMeters) return@synchronized null
+                                pendingKmh = kmh
+                                pendingAtM = maxOf(1.0, distM)
+                                pendingSpanM = segLen
+                            } else {
+                                pendingSpanM += segLen
+                            }
+                            if (pendingSpanM >= 20.0) return@synchronized pendingKmh to pendingAtM
+                        } else {
+                            pendingKmh = null
+                            pendingSpanM = 0.0
+                        }
+                        distM += segLen
+                        curX = vx
+                        curY = vy
+                        if (distM > lookAheadMeters + 30.0) break
+                        nextIdx += step
+                    }
+                    if (distM > lookAheadMeters + 30.0) break
+
+                    val endLat = MapUtils.get31LatitudeY(curY)
+                    val endLng = MapUtils.get31LongitudeX(curX)
+                    val first = fe.findRouteSegment(endLat, endLng, ctx, null, true, false) ?: break
+                    val router = ctx.router
+                    val profile = ctx.config.router.profile
+                    val branches = ArrayList<BranchCand>()
+                    val seenCand = HashSet<Long>()
+                    val near = buildList {
+                        add(first)
+                        first.others?.let { addAll(it) }
+                    }
+                    for (c in near) {
+                        if (c.distToProj > 4.0) break
+                        val cr = c.road ?: continue
+                        if (!router.acceptLine(cr) || cr.hasPrivateAccess(profile)) continue
+                        var matchK = -1
+                        var bestKDist2 = 4.0001
+                        for (k in 0 until cr.pointsLength) {
+                            val d2 = MapUtils.squareDist31TileMetric(cr.getPoint31XTile(k), cr.getPoint31YTile(k), curX, curY)
+                            if (d2 < bestKDist2) {
+                                bestKDist2 = d2
+                                matchK = k
+                            }
+                        }
+                        if (matchK < 0) continue
+                        val oneway = router.isOneWay(cr)
+                        for (candFwd in listOf(true, false)) {
+                            val candStep = if (candFwd) 1 else -1
+                            val adjIdx = matchK + candStep
+                            if (adjIdx !in 0 until cr.pointsLength) continue
+                            if (candFwd && oneway < 0) continue
+                            if (!candFwd && oneway > 0) continue
+                            if (cr.id == road.id && candFwd == !forward) continue
+                            val vKey = (cr.id shl 1) or (if (candFwd) 1L else 0L)
+                            if (vKey in visited) continue
+                            val dedupKey = (cr.id shl 12) or (matchK.toLong() shl 1) or (if (candFwd) 1L else 0L)
+                            if (!seenCand.add(dedupKey)) continue
+
+                            val kx = cr.getPoint31XTile(matchK)
+                            val ky = cr.getPoint31YTile(matchK)
+                            var probe = adjIdx
+                            var ox = cr.getPoint31XTile(probe)
+                            var oy = cr.getPoint31YTile(probe)
+                            while (probe + candStep in 0 until cr.pointsLength &&
+                                MapUtils.squareRootDist31(kx, ky, ox, oy) < 2.0
+                            ) {
+                                probe += candStep
+                                ox = cr.getPoint31XTile(probe)
+                                oy = cr.getPoint31YTile(probe)
+                            }
+                            if (MapUtils.squareRootDist31(kx, ky, ox, oy) < 0.5) continue
+                            val outBrg = segmentBearing31(kx, ky, ox, oy)
+                            val turnDeg = directedAngleDiff(prevBrg, outBrg)
+                            if (turnDeg <= FREE_DRIVE_NODE_TURN_DEG &&
+                                directedAngleDiff(headingDeg, outBrg) <= FREE_DRIVE_MAX_DRIFT_DEG
+                            ) {
+                                branches += BranchCand(cr, matchK, candFwd, turnDeg)
+                            }
+                        }
+                    }
+
+                    val chosen = when (branches.size) {
+                        0 -> null
+                        1 -> branches[0]
+                        else -> branches.filter { sameRoadContinuation(road, forward, it.road, it.forward) }.singleOrNull()
+                    } ?: break
+
+                    road = chosen.road
+                    forward = chosen.forward
+                    curX = road.getPoint31XTile(chosen.vertexIdx)
+                    curY = road.getPoint31YTile(chosen.vertexIdx)
+                    nextIdx = chosen.vertexIdx + (if (forward) 1 else -1)
+                    visited.add((road.id shl 1) or (if (forward) 1L else 0L))
+                }
+                if (pendingKmh != null && pendingSpanM >= 20.0) pendingKmh to pendingAtM else null
             }
         }.getOrNull()
     }
@@ -278,6 +542,7 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
         synchronized(routeLock) {
             limitCtx = null
             limitCtxKey = ""
+            lastMatchedRoad = null
             readers.values.forEach { runCatching { it.close() } }
             readers.clear()
             failed.clear()
@@ -455,7 +720,79 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
             return if (hasLatinLetter && noForeignLetter) v else null
         }
         const val LIMIT_SNAP_M = 25.0 // a fix farther than this from any road is off the network (a lot, a driveway)
+        const val CONTINUITY_SNAP_M = 15.0
+        const val SNAP_BEARING_TOL_DEG = 35.0
+        const val FREE_DRIVE_MAX_DRIFT_DEG = 45.0
+        const val FREE_DRIVE_MAX_TURN_DEG = 35.0
+        const val FREE_DRIVE_NODE_TURN_DEG = 30.0
         const val LIMIT_MEMORY_MB = 32 // the lookup context only ever holds the tiles around the puck
+
+        internal fun directedAngleDiff(aDeg: Double, bDeg: Double): Double =
+            kotlin.math.abs(((aDeg - bDeg) % 360.0 + 540.0) % 360.0 - 180.0)
+
+        internal fun segmentBearing31(x0: Int, y0: Int, x1: Int, y1: Int): Double {
+            val lat0 = MapUtils.get31LatitudeY(y0)
+            val lng0 = MapUtils.get31LongitudeX(x0)
+            val lat1 = MapUtils.get31LatitudeY(y1)
+            val lng1 = MapUtils.get31LongitudeX(x1)
+            val dy = lat1 - lat0
+            val dx = (lng1 - lng0) * kotlin.math.cos(Math.toRadians((lat0 + lat1) * 0.5))
+            return (Math.toDegrees(kotlin.math.atan2(dx, dy)) + 360.0) % 360.0
+        }
+
+        /** Match travel heading [headingDeg] against a segment whose forward direction is
+         *  [segFwdDeg] and one-way sense is [oneway] (`> 0` forward only, `< 0` reverse only, `0`
+         *  both). Returns `true` for forward, `false` for backward, or `null` when rejected. */
+        internal fun matchDirection(
+            headingDeg: Double?,
+            segFwdDeg: Double,
+            oneway: Int,
+            toleranceDeg: Double = SNAP_BEARING_TOL_DEG,
+        ): Boolean? {
+            if (headingDeg == null) return oneway >= 0
+            val fwdDiff = if (oneway >= 0) directedAngleDiff(headingDeg, segFwdDeg) else Double.MAX_VALUE
+            val bwdDiff = if (oneway <= 0) directedAngleDiff(headingDeg, (segFwdDeg + 180.0) % 360.0) else Double.MAX_VALUE
+            val best = minOf(fwdDiff, bwdDiff)
+            return if (best > toleranceDeg) null else fwdDiff <= bwdDiff
+        }
+
+        internal fun roadsConnected31(a: RouteDataObject, b: RouteDataObject): Boolean {
+            if (a.id == b.id) return true
+            for (i in 0 until a.pointsLength) {
+                val ax = a.getPoint31XTile(i)
+                val ay = a.getPoint31YTile(i)
+                for (j in 0 until b.pointsLength) {
+                    if (MapUtils.squareDist31TileMetric(ax, ay, b.getPoint31XTile(j), b.getPoint31YTile(j)) <= 4.0) {
+                        return true
+                    }
+                }
+            }
+            return false
+        }
+
+        internal fun roadLimitKmh(r: RouteDataObject, forward: Boolean): Double? {
+            val mps = r.getMaximumSpeed(forward)
+            if (mps <= 0f || mps >= RouteDataObject.NONE_MAX_SPEED - 0.5f) return null
+            val kmh = mps * 3.6
+            return if (kmh < 150.0) kmh else null
+        }
+
+        private fun sameRoadContinuation(
+            prev: RouteDataObject,
+            prevForward: Boolean,
+            cand: RouteDataObject,
+            candForward: Boolean,
+        ): Boolean {
+            val pn = prev.getName()?.takeIf { it.isNotBlank() }
+            val cn = cand.getName()?.takeIf { it.isNotBlank() }
+            if (pn != null && cn != null) return pn.equals(cn, ignoreCase = true)
+            val pr = runCatching { prev.getRef(null, false, prevForward) }.getOrNull()?.takeIf { it.isNotBlank() }
+            val cr = runCatching { cand.getRef(null, false, candForward) }.getOrNull()?.takeIf { it.isNotBlank() }
+            if (pr != null && cr != null) return pr.equals(cr, ignoreCase = true)
+            val ph = prev.getHighway()
+            val ch = cand.getHighway()
+            return ph != null && ch != null && !ph.endsWith("_link") && ph == ch
+        }
         private const val TAG = "VelaObf"
         private const val JCL_LOG_PROP = "org.apache.commons.logging.Log"
 

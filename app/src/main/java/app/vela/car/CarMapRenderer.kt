@@ -61,6 +61,8 @@ class CarMapRenderer(
     private val locationProvider: LocationProvider,
     private val navSession: NavSession,
     private val routeEngine: RouteEngine? = null,
+    private val maxspeedStore: app.vela.offline.MaxspeedOverlayStore? = null,
+    private val http: okhttp3.OkHttpClient? = null,
 ) : SurfaceCallback {
 
     private val scope = CoroutineScope(Dispatchers.Main.immediate)
@@ -85,6 +87,14 @@ class CarMapRenderer(
     @Volatile private var targetPuck: LatLng? = null
     @Volatile private var speedMps: Double = 0.0
     @Volatile private var speedLimitKmh: Double? = null
+    @Volatile private var upcomingLimitKmh: Double? = null
+    @Volatile private var upcomingLimitDistM: Double? = null
+    private var limitJob: Job? = null
+    private var lastLimitLoc: LatLng? = null
+    private var lastLimitMs: Long = 0L
+    private var lastLimitHitLoc: LatLng? = null
+    private var lastMaxspeedCenter: LatLng? = null
+    @Volatile private var maxspeedUris: List<String> = emptyList()
     private var center: LatLng? = null
     private var zoom = 16.5
     private var showingWorld = false // the no-location placeholder view is up
@@ -475,12 +485,6 @@ class CarMapRenderer(
                     zoom = 16.5; zoomTarget = 16.5
                     center = here
                 }
-                // Posted speed limit (offline graph's max_speed) while navigating — null off-graph/online.
-                // The graph LocationIndex snap runs OFF the main thread (this collector is on
-                // Main.immediate; a synchronous mmap snap every fix would jank the render loop).
-                speedLimitKmh = if ((navigating() || driveScreen) && app.vela.ui.SpeedDisplay.on.value) // hidden: no lookup either
-                    withContext(Dispatchers.Default) { runCatching { routeEngine?.currentRoadLimit(here.lat, here.lng) }.getOrNull() }
-                else null
                 // The arrow's heading (the ticker eases toward this, so it never snap-rotates):
                 //  1. Moving with a TRUSTWORTHY GPS course → the actual travel direction (what the
                 //     phone nav uses; correct even when off-route). A stationary or low-confidence
@@ -500,6 +504,18 @@ class CarMapRenderer(
                 // fix at driving speed.
                 if (!following) driving = false
                 else if (!driving && driveSpeed > DRIVE_LATCH_MPS && courseKnown) driving = true
+                // Posted + upcoming speed limit: offline obf graph first, then the streamed
+                // maxspeed PMTiles overlay when no offline graph covers the spot (matching the phone).
+                if ((navigating() || driveScreen || driving) && app.vela.ui.SpeedDisplay.on.value) {
+                    updateSpeedLimit(here, nowMs)
+                } else {
+                    limitJob?.cancel()
+                    lastLimitLoc = null
+                    lastLimitHitLoc = null
+                    speedLimitKmh = null
+                    upcomingLimitKmh = null
+                    upcomingLimitDistM = null
+                }
                 // Render once per fix too (not only from the ticker): draw() reads LIVE state, so a
                 // route swap / reroute / faster-route adoption, per-span traffic recolor, the speed
                 // badge, and the auto-recenter flip must repaint even when the puck is momentarily
@@ -509,6 +525,88 @@ class CarMapRenderer(
             }
         }
         startTicker()
+    }
+
+    private fun updateSpeedLimit(here: LatLng, nowMs: Long) {
+        if (limitJob?.isActive == true) return
+        val last = lastLimitLoc
+        if (last != null && last.distanceTo(here) < 15.0 && nowMs - lastLimitMs < 2500L) return
+        lastLimitLoc = here
+        lastLimitMs = nowMs
+        val ns = navSession.state.value
+        val lookAheadM = app.vela.ui.SpeedDisplay.upcomingMeters.value.toDouble()
+        val wantUpcoming = app.vela.ui.SpeedDisplay.upcomingOn.value
+        val brg = if (courseKnown) targetHeading else null
+        val poly = ns.route?.polyline
+        val effectiveBrg = brg ?: if (ns.navigating && poly != null && poly.size >= 2) {
+            app.vela.core.nav.RouteProjection.bearingAt(
+                poly,
+                app.vela.core.nav.RouteProjection.cumulative(poly),
+                ns.nav.traveledM,
+            )
+        } else null
+        limitJob = scope.launch(Dispatchers.IO) {
+            val onDevice = app.vela.ui.AppTune.local("streamLimits") != 1.0 &&
+                runCatching { routeEngine?.covers(here, here, app.vela.core.model.TravelMode.DRIVE) == true }.getOrDefault(false)
+            val offlineCur = runCatching { routeEngine?.currentRoadLimit(here.lat, here.lng, effectiveBrg) }.getOrNull()
+            if (!onDevice && offlineCur == null && maxspeedStore != null) {
+                val prevC = lastMaxspeedCenter
+                if (prevC == null || prevC.distanceTo(here) > 5000.0 || maxspeedUris.isEmpty()) {
+                    val fetched = runCatching {
+                        maxspeedStore.sourcesFor(here, app.vela.core.config.VelaLinks.maxspeedManifest())
+                    }.getOrDefault(emptyList())
+                    if (fetched.isNotEmpty()) {
+                        maxspeedUris = fetched
+                        lastMaxspeedCenter = here
+                    }
+                }
+            } else if (onDevice && maxspeedUris.isNotEmpty()) {
+                maxspeedUris = emptyList()
+            }
+            val uris = if (onDevice) emptyList() else maxspeedUris
+            val cur = offlineCur ?: if (uris.isNotEmpty()) {
+                runCatching { app.vela.data.StreamedSpeedLimit.limitAt(uris, here.lat, here.lng, effectiveBrg) }.getOrNull()
+            } else null
+            // Keep the last resolved limit across brief untagged gaps: 300 m offline, 150 m online.
+            val forgetM = if (onDevice) 300.0 else 150.0
+            val resolvedCur: Double? = if (cur != null) {
+                lastLimitHitLoc = here
+                cur
+            } else {
+                val hit = lastLimitHitLoc
+                if (speedLimitKmh != null && hit != null && hit.distanceTo(here) <= forgetM) speedLimitKmh else null
+            }
+            val upPair = if (resolvedCur != null && wantUpcoming) {
+                when {
+                    ns.navigating && poly != null && poly.size >= 2 -> if (onDevice) {
+                        runCatching { routeEngine?.upcomingRoadLimit(poly, ns.nav.traveledM, lookAheadM, resolvedCur) }.getOrNull()
+                    } else {
+                        runCatching { routeEngine?.upcomingRoadLimit(poly, ns.nav.traveledM, lookAheadM, resolvedCur) }.getOrNull()
+                            ?: if (uris.isNotEmpty()) {
+                                runCatching {
+                                    app.vela.data.StreamedSpeedLimit.upcomingLimitAlong(uris, poly, ns.nav.traveledM, lookAheadM, resolvedCur)
+                                }.getOrNull()
+                            } else null
+                    }
+                    effectiveBrg != null -> if (onDevice) {
+                        runCatching { routeEngine?.upcomingRoadLimitAhead(here.lat, here.lng, effectiveBrg, lookAheadM, resolvedCur) }.getOrNull()
+                    } else {
+                        runCatching { routeEngine?.upcomingRoadLimitAhead(here.lat, here.lng, effectiveBrg, lookAheadM, resolvedCur) }.getOrNull()
+                            ?: if (uris.isNotEmpty()) {
+                                runCatching {
+                                    app.vela.data.StreamedSpeedLimit.upcomingLimitAhead(uris, here.lat, here.lng, effectiveBrg, lookAheadM, resolvedCur)
+                                }.getOrNull()
+                            } else null
+                    }
+                    else -> null
+                }
+            } else null
+            val changed = resolvedCur != speedLimitKmh || upPair?.first != upcomingLimitKmh || upPair?.second != upcomingLimitDistM
+            speedLimitKmh = resolvedCur
+            upcomingLimitKmh = upPair?.first
+            upcomingLimitDistM = upPair?.second
+            if (changed) withContext(Dispatchers.Main.immediate) { requestRender() }
+        }
     }
 
     /** Steady loop that eases the displayed puck/bearing toward the GPS targets, so the map glides
@@ -566,6 +664,21 @@ class CarMapRenderer(
         collectJob = null
         tickerJob?.cancel()
         tickerJob = null
+        limitJob?.cancel()
+        limitJob = null
+        lastLimitHitLoc = null
+        app.vela.data.StreamedSpeedLimit.clearContinuity()
+        routeEngine?.clearRoadLimitContinuity()
+        carCorridorJob?.cancel()
+        carCorridorJob = null
+        carCorridorKey = null
+        if (carCorridorOwned) {
+            app.vela.car.CarBridge.controls.value = emptyList()
+            app.vela.car.CarBridge.speedCameras.value = emptyList()
+            carCorridorOwned = false
+        }
+        carRouteBarJob?.cancel()
+        carRouteBarJob = null
         // Session teardown: release the native snapshotter too (onSurfaceDestroyed may not fire on an
         // abnormal projection end). Safe here because stop() is session-scoped, not per-screen.
         runCatching { snapshotter?.cancel() }
@@ -1001,6 +1114,7 @@ class CarMapRenderer(
             // Each overlay guarded so a projection hiccup in one can't blank the rest.
             val preview = previewRoute
             if (navigating()) {
+                navSession.state.value.route?.let { ensureCarCorridor(it) }
                 runCatching { drawRoute(canvas, snap, sx, sy) }
                 // Under the light and sign glyphs, as on the phone: the stop sign or light at a
                 // turn stays visible on top of its arrow.
@@ -1017,9 +1131,12 @@ class CarMapRenderer(
             }
             if (!navigating()) resultPins.forEachIndexed { i, at -> runCatching { drawResultPin(canvas, snap, at, i + 1, sx, sy) } }
             runCatching { drawPuck(canvas, snap, sx, sy, camUsed) } // puck always drawn
-            // The speed badge on the drive screen and the map-only landing, unless Settings > Navigation
+            if (navigating() && !overview && app.vela.ui.RouteBarPref.on.value && app.vela.ui.RouteBarPref.carOn.value) {
+                runCatching { drawRouteBar(canvas) }
+            }
+            // The speed badge on the drive screen, in drive mode, and in free-drive, unless Settings > Navigation
             // "Show speed and speed limit" is off (issue #625).
-            if ((navigating() || driveScreen) && app.vela.ui.SpeedDisplay.on.value) runCatching { drawSpeed(canvas) }
+            if ((navigating() || driveScreen || driving) && app.vela.ui.SpeedDisplay.on.value) runCatching { drawSpeed(canvas) }
             if (navigating()) runCatching { drawRoadName(canvas) }
             runCatching { drawAttribution(canvas) }
         } finally {
@@ -1266,6 +1383,7 @@ class CarMapRenderer(
             if (limit <= 0) return
             limitNum.color = if (v > limit + (if (imperial) 3 else 5)) LIMIT_OVER else LIMIT_INK
             val ly = cy
+            val mainLeftEdge: Float
             if (imperial) {
                 val hw = 34f * k; val hh = 44f * k
                 val lx = if (badge) cx - rad - 14f * k - hw else vis.right - 16f - hw
@@ -1275,12 +1393,53 @@ class CarMapRenderer(
                 canvas.drawText("SPEED", lx, ly - 24f * k, limitWord)
                 canvas.drawText("LIMIT", lx, ly - 10f * k, limitWord)
                 canvas.drawText(limit.toString(), lx, ly + 30f * k, limitNum)
+                mainLeftEdge = lx - hw
             } else {
                 val lr = 42f * k
                 val lx = if (badge) cx - rad - 14f * k - lr else vis.right - 16f - lr
                 canvas.drawCircle(lx, ly, lr, limitDisc)
                 canvas.drawCircle(lx, ly, lr, limitRing)
                 canvas.drawText(limit.toString(), lx, ly + 14f * k, limitNum)
+                mainLeftEdge = lx - lr
+            }
+            val upKmh = upcomingLimitKmh
+            val upDist = upcomingLimitDistM
+            if (app.vela.ui.SpeedDisplay.upcomingOn.value && upKmh != null && upDist != null && upDist > 0.0) {
+                val upLimit = (if (imperial) upKmh / 1.609344 else upKmh).roundToInt()
+                if (upLimit > 0 && upLimit != limit) {
+                    val distText = app.vela.ui.formatDistance(upDist)
+                    limitNum.color = LIMIT_INK
+                    limitNum.textSize = 25f * k
+                    val upCy = ly - 8f * k
+                    val upX: Float
+                    if (imperial) {
+                        val uw = 25f * k; val uh = 24f * k
+                        upX = mainLeftEdge - 12f * k - uw
+                        val sign = RectF(upX - uw, upCy - uh, upX + uw, upCy + uh)
+                        limitEdge.strokeWidth = 2.2f * k
+                        canvas.drawRoundRect(sign, 7f * k, 7f * k, limitDisc)
+                        canvas.drawRoundRect(sign, 7f * k, 7f * k, limitEdge)
+                        canvas.drawText(upLimit.toString(), upX, upCy + 9f * k, limitNum)
+                    } else {
+                        val ur = 28f * k
+                        upX = mainLeftEdge - 12f * k - ur
+                        limitRing.strokeWidth = 5f * k
+                        canvas.drawCircle(upX, upCy, ur, limitDisc)
+                        canvas.drawCircle(upX, upCy, ur, limitRing)
+                        canvas.drawText(upLimit.toString(), upX, upCy + 9f * k, limitNum)
+                    }
+                    badgeUnit.textSize = 15f * k
+                    val tw = badgeUnit.measureText(distText)
+                    val pillPadX = 6f * k
+                    canvas.drawRoundRect(
+                        RectF(upX - tw * 0.5f - pillPadX, ly + 22f * k, upX + tw * 0.5f + pillPadX, ly + 44f * k),
+                        8f * k, 8f * k, badgeBg,
+                    )
+                    val prevCol = badgeUnit.color
+                    badgeUnit.color = Color.WHITE
+                    canvas.drawText(distText, upX, ly + 38f * k, badgeUnit)
+                    badgeUnit.color = prevCol
+                }
             }
         }
     }
@@ -1303,8 +1462,10 @@ class CarMapRenderer(
         val k = (minOf(width, height) / 18f).coerceIn(22f, 46f) / 46f // the speed badge's scale
         roadText.textSize = 26f * k
         val padX = 18f * k
-        // The speed corner: the badge (92) and the limit sign (up to 84) with their gaps, at k = 1.
-        val reserve = 200f * k + 16f
+        // The speed corner: the badge (92), limit sign (up to 84), and optional upcoming sign (~68) with gaps.
+        val hasUpcoming = app.vela.ui.SpeedDisplay.upcomingOn.value &&
+            upcomingLimitKmh != null && (upcomingLimitDistM ?: 0.0) > 0.0
+        val reserve = (if (hasUpcoming) 272f else 200f) * k + 16f
         val room = vis.width() - 2f * reserve - 2f * padX
         if (room < 60f * k) return
         var text = android.text.TextUtils.ellipsize(road, roadText, room, android.text.TextUtils.TruncateAt.END).toString()
@@ -1394,6 +1555,295 @@ class CarMapRenderer(
                 flockAlong = runCatching { app.vela.data.FlockCameras.along(route.polyline).map { it.loc } }.getOrDefault(emptyList())
             }
             flockAlong.forEach { dot(it, Color.parseColor("#8E24AA")) }
+        }
+    }
+
+    private var carCorridorKey: String? = null
+    private var carCorridorJob: Job? = null
+    private var carCorridorOwned = false
+
+    /** Populate [CarBridge.controls] and [CarBridge.speedCameras] when a drive runs on Android Auto
+     *  without the phone UI's `NavController` having fetched them yet. */
+    private fun ensureCarCorridor(route: Route) {
+        val poly = route.polyline
+        if (poly.size < 2) return
+        val f = poly.first(); val l = poly.last()
+        val key = String.format(
+            java.util.Locale.US, "%.4f,%.4f|%.4f,%.4f|%d",
+            f.lat, f.lng, l.lat, l.lng, (route.distanceMeters / 500).toInt(),
+        )
+        if (key == carCorridorKey) return
+        carCorridorKey = key
+        carCorridorJob?.cancel()
+        if (carCorridorOwned) {
+            app.vela.car.CarBridge.controls.value = emptyList()
+            app.vela.car.CarBridge.speedCameras.value = emptyList()
+            carCorridorOwned = false
+        }
+        carCorridorJob = scope.launch {
+            // Give the phone's NavController a moment to populate CarBridge first if it is alive.
+            kotlinx.coroutines.delay(400)
+            if (carCorridorKey != key) return@launch
+            val manifestUrl = app.vela.core.config.VelaLinks.roadFeaturesManifest()
+            val covered = runCatching { app.vela.data.RoadFeatures.ensureAlong(carContext, manifestUrl, poly) }.getOrDefault(false)
+            if (app.vela.car.CarBridge.controls.value.isEmpty()) {
+                val raw = if (covered) {
+                    withContext(Dispatchers.Default) { app.vela.data.RoadFeatures.controlsAlong(poly, 120.0) }
+                } else {
+                    val hasRegion = runCatching { app.vela.data.RoadFeatures.hasRegion(carContext, manifestUrl, f.lat, f.lng) }.getOrDefault(false)
+                    if (!hasRegion && http != null) {
+                        runCatching {
+                            withContext(Dispatchers.IO) {
+                                app.vela.core.data.OverpassTrafficSignals.fetchControlsAlongCorridor(http, poly)
+                            }
+                        }.getOrNull()
+                    } else null
+                }
+                if (raw != null && carCorridorKey == key && app.vela.car.CarBridge.controls.value.isEmpty()) {
+                    val merged = withContext(Dispatchers.Default) {
+                        val onRoute = app.vela.ui.map.controlsOnRoute(poly, raw)
+                        onRoute.groupBy { it.kind }.flatMap { (kind, group) ->
+                            app.vela.core.data.MapDeclutter.cluster(group, app.vela.ui.map.MapViewModel.CONTROLS_CLUSTER_M) { it.loc }
+                                .map { c -> app.vela.core.data.TrafficControl(c.centroid, kind) }
+                        }
+                    }
+                    app.vela.car.CarBridge.controls.value = merged
+                    carCorridorOwned = true
+                    requestRender()
+                }
+            }
+            if (app.vela.ui.SpeedCams.on.value && app.vela.car.CarBridge.speedCameras.value.isEmpty()) {
+                val cams = if (covered) {
+                    withContext(Dispatchers.Default) { app.vela.data.RoadFeatures.camerasAlong(poly, 150.0) }
+                } else {
+                    val hasRegion = runCatching { app.vela.data.RoadFeatures.hasRegion(carContext, manifestUrl, f.lat, f.lng) }.getOrDefault(false)
+                    if (!hasRegion && http != null) {
+                        runCatching {
+                            withContext(Dispatchers.IO) {
+                                app.vela.core.data.OverpassSpeedCameras.fetchAlongCorridor(http, poly)
+                            }
+                        }.getOrNull()
+                    } else null
+                }
+                if (cams != null && carCorridorKey == key && app.vela.car.CarBridge.speedCameras.value.isEmpty()) {
+                    app.vela.car.CarBridge.speedCameras.value = cams.map { it.loc }
+                    carCorridorOwned = true
+                    requestRender()
+                }
+            }
+        }
+    }
+
+    private var carRouteBarKey: String? = null
+    private var carRouteBarJob: Job? = null
+    @Volatile private var carRouteBarMarks: List<Pair<app.vela.core.nav.RouteBar.Mark, Double>> = emptyList()
+    @Volatile private var carRouteBarTotalM: Double? = null
+    private val routeBarTrackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val routeBarStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+    private val routeBarLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+        isFakeBoldText = true
+    }
+
+    private fun ensureRouteBarMarks(route: Route) {
+        val poly = route.polyline
+        if (poly.size < 2) return
+        val controls = app.vela.car.CarBridge.controls.value
+        val speedCams = app.vela.car.CarBridge.speedCameras.value
+        val flockOn = app.vela.ui.Flock.on.value && app.vela.data.FlockCameras.isLoaded
+        val key = "${poly.first()}|${poly.last()}|${route.distanceMeters.toInt()}|" +
+            "${System.identityHashCode(controls)}|${System.identityHashCode(speedCams)}|$flockOn"
+        if (key == carRouteBarKey) return
+        carRouteBarKey = key
+        carRouteBarJob?.cancel()
+        carRouteBarJob = scope.launch(Dispatchers.Default) {
+            val cum = app.vela.core.nav.RouteBar.cumulative(poly)
+            val marks = buildList {
+                for (c in controls) {
+                    val m = app.vela.core.nav.RouteBar.alongMeters(poly, cum, c.loc) ?: continue
+                    add(
+                        when (c.kind) {
+                            app.vela.core.data.TrafficControl.Kind.SIGNAL -> app.vela.core.nav.RouteBar.Mark.SIGNAL
+                            app.vela.core.data.TrafficControl.Kind.STOP -> app.vela.core.nav.RouteBar.Mark.STOP
+                            app.vela.core.data.TrafficControl.Kind.RAIL_CROSSING -> app.vela.core.nav.RouteBar.Mark.RAIL_CROSSING
+                            app.vela.core.data.TrafficControl.Kind.SPEED_HUMP -> app.vela.core.nav.RouteBar.Mark.SPEED_HUMP
+                        } to m,
+                    )
+                }
+                for (loc in speedCams) {
+                    val m = app.vela.core.nav.RouteBar.alongMeters(poly, cum, loc) ?: continue
+                    add(app.vela.core.nav.RouteBar.Mark.CAMERA to m)
+                }
+                if (flockOn) {
+                    val cams = runCatching { app.vela.data.FlockCameras.along(poly, 40.0) }.getOrDefault(emptyList())
+                    for (c in cams) {
+                        val m = app.vela.core.nav.RouteBar.alongMeters(poly, cum, c.loc) ?: continue
+                        add(app.vela.core.nav.RouteBar.Mark.CAMERA to m)
+                    }
+                }
+            }
+            if (carRouteBarKey == key) {
+                carRouteBarMarks = marks
+                carRouteBarTotalM = cum.last()
+                withContext(Dispatchers.Main.immediate) { requestRender() }
+            }
+        }
+    }
+
+    /** The road-ahead bar along the left edge of the car surface: traffic congestion bands, traffic
+     *  lights and stop signs on the track, and round icon badges for cameras, rail crossings and humps. */
+    private fun drawRouteBar(canvas: Canvas) {
+        val st = navSession.state.value
+        val route = st.route ?: return
+        if (route.polyline.size < 2) return
+        ensureRouteBarMarks(route)
+        val model = app.vela.core.nav.RouteBar.build(route, st.nav.traveledM, carRouteBarMarks, totalM = carRouteBarTotalM)
+        if (model.isEmpty) return
+
+        val vis = safeArea()
+        val k = (minOf(width, height) / 720f).coerceIn(0.65f, 1.15f)
+
+        val trackColW = 28f * k
+        val trackW = 9f * k
+        val badgeD = 28f * k
+        val badgeR = badgeD * 0.5f
+        val miniH = 18f * k
+        // Anchor horizontally to the surface's left edge rather than safeArea().left: in
+        // full-screen Android Auto the turn card (top-left) and ETA card (bottom-left) push
+        // safeArea().left to the right of their column near the middle of the screen, while the
+        // vertical band between them along the left wall is open.
+        val leftX = 12f * k
+        val leftColumn = vis.left > leftX + trackColW + badgeD
+        val (topY, botY) = CarFraming.routeBarBounds(
+            visTop = vis.top.toFloat(),
+            visBottom = vis.bottom.toFloat(),
+            surfaceHeight = height,
+            k = k,
+            leftColumn = leftColumn,
+        ) ?: return
+        val trackCx = leftX + trackColW * 0.5f
+        val badgeCx = leftX + trackColW + 3f * k + badgeR
+
+        val labelOffset = if (model.reachesDestination) 0f else 22f * k
+        val trackTop = topY + labelOffset + badgeR
+        val trackBot = botY - badgeR
+        val trackH = (trackBot - trackTop).coerceAtLeast(1f)
+        fun yAt(f: Double): Float = trackBot - (f.toFloat() * trackH)
+
+        val night = isNight()
+        if (!model.reachesDestination) {
+            val distText = app.vela.ui.formatDistance(model.spanM)
+            routeBarLabelPaint.textSize = 13f * k
+            val tw = routeBarLabelPaint.measureText(distText)
+            val padX = 6f * k
+            val cy = topY + 12f * k
+            routeBarTrackPaint.color = Color.parseColor(if (night) "#d91b1f2b" else "#d9ffffff")
+            canvas.drawRoundRect(
+                RectF(trackCx - tw * 0.5f - padX, cy - 10f * k, trackCx + tw * 0.5f + padX, cy + 6f * k),
+                7f * k, 7f * k, routeBarTrackPaint,
+            )
+            routeBarLabelPaint.color = if (night) Color.parseColor("#e8eaed") else Color.parseColor("#202124")
+            canvas.drawText(distText, trackCx, cy + 2f * k, routeBarLabelPaint)
+        }
+
+        val halfT = trackW * 0.5f
+        val trackRect = RectF(trackCx - halfT, trackTop, trackCx + halfT, trackBot)
+        routeBarTrackPaint.color = Color.parseColor(if (night) "#e62b3142" else "#e6e1e5eb")
+        canvas.drawRoundRect(trackRect, halfT, halfT, routeBarTrackPaint)
+        routeBarStrokePaint.color = Color.parseColor(if (night) "#66ffffff" else "#44000000")
+        routeBarStrokePaint.strokeWidth = 1.2f * k
+        canvas.drawRoundRect(trackRect, halfT, halfT, routeBarStrokePaint)
+
+        for (b in model.bands) {
+            val yTop = yAt(b.to)
+            val yBot = maxOf(yAt(b.from), yTop + trackW)
+            routeBarTrackPaint.color = when {
+                b.level >= 3 -> Color.parseColor("#9C1C1C")
+                b.level == 2 -> Color.parseColor("#D93025")
+                else -> Color.parseColor("#F9AB00")
+            }
+            canvas.drawRoundRect(RectF(trackCx - halfT, yTop, trackCx + halfT, yBot), halfT, halfT, routeBarTrackPaint)
+        }
+
+        for (p in model.pins) {
+            val py = yAt(p.at).coerceIn(trackTop, trackBot)
+            when (p.kind) {
+                app.vela.core.nav.RouteBar.Mark.SIGNAL -> {
+                    val bmp = lightGlyph
+                    val h = miniH
+                    val w = h * bmp.width / bmp.height
+                    glyphRect.set(trackCx - w * 0.5f, py - h * 0.5f, trackCx + w * 0.5f, py + h * 0.5f)
+                    canvas.drawBitmap(bmp, null, glyphRect, glyphBlit)
+                }
+                app.vela.core.nav.RouteBar.Mark.STOP -> {
+                    val bmp = stopGlyph
+                    val h = miniH
+                    glyphRect.set(trackCx - h * 0.5f, py - h * 0.5f, trackCx + h * 0.5f, py + h * 0.5f)
+                    canvas.drawBitmap(bmp, null, glyphRect, glyphBlit)
+                }
+                else -> {
+                    routeBarTrackPaint.color = when (p.kind) {
+                        app.vela.core.nav.RouteBar.Mark.CAMERA -> Color.parseColor("#8E24AA")
+                        app.vela.core.nav.RouteBar.Mark.RAIL_CROSSING -> Color.parseColor("#37474F")
+                        else -> Color.parseColor("#FFA000")
+                    }
+                    canvas.drawCircle(badgeCx, py, badgeR, routeBarTrackPaint)
+                    routeBarStrokePaint.color = Color.WHITE
+                    routeBarStrokePaint.strokeWidth = 1.5f * k
+                    canvas.drawCircle(badgeCx, py, badgeR, routeBarStrokePaint)
+                    drawRouteBarBadgeGlyph(canvas, p.kind, badgeCx, py, badgeR * 0.52f)
+                }
+            }
+        }
+
+        routeBarTrackPaint.color = if (night) Color.parseColor("#1b1f2b") else Color.WHITE
+        canvas.drawCircle(trackCx, trackBot, badgeR, routeBarTrackPaint)
+        routeBarStrokePaint.color = if (night) Color.parseColor("#55ffffff") else Color.parseColor("#33000000")
+        routeBarStrokePaint.strokeWidth = 1.5f * k
+        canvas.drawCircle(trackCx, trackBot, badgeR, routeBarStrokePaint)
+        val ar = badgeR * 0.48f
+        val navPath = Path().apply {
+            moveTo(trackCx, trackBot - ar)
+            lineTo(trackCx + ar * 0.78f, trackBot + ar * 0.85f)
+            lineTo(trackCx, trackBot + ar * 0.42f)
+            lineTo(trackCx - ar * 0.78f, trackBot + ar * 0.85f)
+            close()
+        }
+        routeBarTrackPaint.color = if (night) Color.WHITE else Color.parseColor("#202124")
+        canvas.drawPath(navPath, routeBarTrackPaint)
+    }
+
+    private fun drawRouteBarBadgeGlyph(canvas: Canvas, kind: app.vela.core.nav.RouteBar.Mark, cx: Float, cy: Float, r: Float) {
+        routeBarTrackPaint.color = Color.WHITE
+        when (kind) {
+            app.vela.core.nav.RouteBar.Mark.CAMERA -> {
+                val bw = r * 0.75f
+                val bh = r * 0.52f
+                canvas.drawRoundRect(RectF(cx - bw, cy - bh, cx + bw * 0.35f, cy + bh), r * 0.2f, r * 0.2f, routeBarTrackPaint)
+                val lens = Path().apply {
+                    moveTo(cx + bw * 0.35f, cy)
+                    lineTo(cx + bw, cy - bh * 0.8f)
+                    lineTo(cx + bw, cy + bh * 0.8f)
+                    close()
+                }
+                canvas.drawPath(lens, routeBarTrackPaint)
+            }
+            app.vela.core.nav.RouteBar.Mark.RAIL_CROSSING -> {
+                routeBarStrokePaint.color = Color.WHITE
+                routeBarStrokePaint.strokeWidth = r * 0.32f
+                routeBarStrokePaint.strokeCap = Paint.Cap.ROUND
+                canvas.drawLine(cx - r * 0.75f, cy - r * 0.75f, cx + r * 0.75f, cy + r * 0.75f, routeBarStrokePaint)
+                canvas.drawLine(cx + r * 0.75f, cy - r * 0.75f, cx - r * 0.75f, cy + r * 0.75f, routeBarStrokePaint)
+            }
+            else -> {
+                val tri = Path().apply {
+                    moveTo(cx, cy - r * 0.85f)
+                    lineTo(cx + r * 0.85f, cy + r * 0.75f)
+                    lineTo(cx - r * 0.85f, cy + r * 0.75f)
+                    close()
+                }
+                canvas.drawPath(tri, routeBarTrackPaint)
+            }
         }
     }
 
