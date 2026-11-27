@@ -7,14 +7,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -129,7 +133,90 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             }
         }
 
+        if (AppTheme.mode.value == app.vela.ui.theme.ThemeMode.SYSTEM) {
         Spacer(Modifier.height(8.dp))
+        SettingsGroup {
+            val scheduleEnabled = app.vela.ui.NavSchedule.enabled.value
+            var pickingStart by remember { androidx.compose.runtime.mutableStateOf(false) }
+            var pickingEnd by remember { androidx.compose.runtime.mutableStateOf(false) }
+            ToggleRow(
+                label = stringResource(R.string.settings_nav_schedule_enable),
+                checked = scheduleEnabled,
+                onCheckedChange = { app.vela.ui.NavSchedule.setEnabled(context, it) },
+                hint = stringResource(R.string.settings_nav_schedule_enable_hint),
+            )
+            if (scheduleEnabled) {
+                GroupDivider()
+                val sunTimes = app.vela.ui.theme.AppTheme.sunriseSunset.value
+                val sunTimesText = if (sunTimes != null) {
+                    val rise = app.vela.ui.formatClock(sunTimes.first)
+                    val set = app.vela.ui.formatClock(sunTimes.second)
+                    " ($set - $rise)"
+                } else ""
+                ToggleRow(
+                    label = stringResource(R.string.settings_nav_schedule_sun) + sunTimesText,
+                    checked = app.vela.ui.NavSchedule.useSun.value,
+                    onCheckedChange = { app.vela.ui.NavSchedule.setUseSun(context, it) },
+                )
+                if (!app.vela.ui.NavSchedule.useSun.value) {
+                    GroupDivider()
+                    val startLabel = app.vela.ui.formatHourMinute(
+                        app.vela.ui.NavSchedule.startHour.value,
+                        app.vela.ui.NavSchedule.startMinute.value,
+                    )
+                    SelectableRow(
+                        label = stringResource(R.string.settings_nav_schedule_start, startLabel),
+                        selected = false,
+                        onClick = { pickingStart = true },
+                    )
+                    GroupDivider()
+                    val endLabel = app.vela.ui.formatHourMinute(
+                        app.vela.ui.NavSchedule.endHour.value,
+                        app.vela.ui.NavSchedule.endMinute.value,
+                    )
+                    SelectableRow(
+                        label = stringResource(R.string.settings_nav_schedule_end, endLabel),
+                        selected = false,
+                        onClick = { pickingEnd = true },
+                    )
+                }
+            }
+            if (pickingStart) {
+                val startLabel = app.vela.ui.formatHourMinute(
+                    app.vela.ui.NavSchedule.startHour.value,
+                    app.vela.ui.NavSchedule.startMinute.value,
+                )
+                ScheduleTimePickerDialog(
+                    title = stringResource(R.string.settings_nav_schedule_start, startLabel),
+                    initialHour = app.vela.ui.NavSchedule.startHour.value,
+                    initialMinute = app.vela.ui.NavSchedule.startMinute.value,
+                    onConfirm = { h, m ->
+                        app.vela.ui.NavSchedule.setStart(context, h, m)
+                        pickingStart = false
+                    },
+                    onDismiss = { pickingStart = false },
+                )
+            }
+            if (pickingEnd) {
+                val endLabel = app.vela.ui.formatHourMinute(
+                    app.vela.ui.NavSchedule.endHour.value,
+                    app.vela.ui.NavSchedule.endMinute.value,
+                )
+                ScheduleTimePickerDialog(
+                    title = stringResource(R.string.settings_nav_schedule_end, endLabel),
+                    initialHour = app.vela.ui.NavSchedule.endHour.value,
+                    initialMinute = app.vela.ui.NavSchedule.endMinute.value,
+                    onConfirm = { h, m ->
+                        app.vela.ui.NavSchedule.setEnd(context, h, m)
+                        pickingEnd = false
+                    },
+                    onDismiss = { pickingEnd = false },
+                )
+            }
+        }
+        }
+
+        Spacer(Modifier.height(16.dp))
         SettingsGroup {
             ToggleRow(
                 label = stringResource(R.string.settings_page_transitions),
@@ -429,3 +516,31 @@ private fun queryDisplayName(context: android.content.Context, uri: android.net.
     context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
         ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
 }.getOrNull()
+
+/** Material 3 TimePicker in a [app.vela.ui.VelaDialog] shell (D-pad compliant, scrollable on
+ *  small screens, and 12/24-hour mode following [app.vela.ui.Clock24]). */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun ScheduleTimePickerDialog(
+    title: String,
+    initialHour: Int,
+    initialMinute: Int,
+    onConfirm: (Int, Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val tp = androidx.compose.material3.rememberTimePickerState(
+        initialHour = initialHour,
+        initialMinute = initialMinute,
+        is24Hour = app.vela.ui.Clock24.on.value,
+    )
+    app.vela.ui.VelaDialog(
+        onDismissRequest = onDismiss,
+        title = title,
+        confirmText = stringResource(android.R.string.ok),
+        onConfirm = { onConfirm(tp.hour, tp.minute) },
+        dismissText = stringResource(android.R.string.cancel),
+        onDismiss = onDismiss,
+    ) {
+        androidx.compose.material3.TimePicker(state = tp)
+    }
+}

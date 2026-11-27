@@ -291,7 +291,7 @@ adb:
 | Settings page | The Back button | Back, to the hub |
 | Welcome, then the Google choice page | Get started, then Continue | OK. Back on the choice page returns to Welcome |
 | The first run's "What Google is used for" list | The Back button, as on a Settings page | Back, to the choice page |
-| `VelaDialog` | The dismiss button. Arrows reach confirm | Back |
+| `VelaDialog` (including `ScheduleTimePickerDialog`) | The dismiss button. Arrows reach confirm | Back |
 | `VelaMenu` | The first item | Back |
 | Layers panel (`LayersPanel`) | The first map type tile. Arrows move across the tile rows and down to the switch row, OK picks or toggles and keeps the panel open; OK on the Driving mode row closes it | Back |
 | Time and date picker (`PickerDialog`), Your lists (`ListsSheet`), voice capture (`VoiceCaptureDialog`) | Their OK, New list and Done buttons | Back |

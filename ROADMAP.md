@@ -263,6 +263,23 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- Upcoming speed-limit change preview (`SpeedDisplay.upcomingOn`), streamed online speed limits and
+  the road-ahead bar on Android Auto (`CarMapRenderer`, `StreamedSpeedLimit`; SPEC 4.4, 10.6):
+  unit-tested only. Not yet driven on a road or head unit to verify the car road-name pill
+  clearance, road-ahead bar spacing beside turn cards, and free-drive fork/bend look-ahead.
+
+- Custom route line width multiplier and camera-tilt foreshortening (`NavLineWidth`,
+  `scaleRouteStops`, `CarMapRenderer.drawPerspectiveRoute`; SPEC 3.8, 6.5, 10.6): compiled and
+  visually checked in static tests, not yet checked across a drive at `0.1x` to `2.0x` on phone
+  and Android Auto.
+
+- Custom guidance volume slider up to 5x and two-band de-harshing above 3.2x (`VoiceLevel.apply`,
+  `PiperSynth`; SPEC 9.1): unit-tested only. Not yet heard on a phone speaker or car Bluetooth at
+  high multipliers (`3x` to `5x`).
+
+- Dark mode startup schedule (`NavSchedule`; SPEC 3.8, 6.2): unit-tested for car and phone
+  overrides. Not yet checked across a real sunset/sunrise transition or head-unit day/night switch.
+
 - Toll prices from the toll file (#954, from #965; SPEC 4.3): on the API 26 emulator a Vaughan to
   Markham drive showed "Toll about $8.94 + $5.30 fee" and "$10.00 + $5.30 fee" on its two 407
   routes (the overnight band, so one price each). Not yet seen: a range at rush hour, the
@@ -1181,7 +1198,7 @@ Asked for, possible, and not being built. Each says what it would take.
 
 - An arrival time fitted to the driver's own pace (under the limit, or 5 or 10 over). Vela's
   times are Google's: one figure for the route and colored congestion stretches, with no speed
-  per road, and Vela knows the limit only of the road the car is on. A driver's pace matters
+  per road, and Vela reads speed limits only near the car, not along the whole route. A driver's pace matters
   only where traffic is free, so a flat percentage is wrong in traffic, and the two-minute
   re-check pulls the time back to Google's. It becomes possible when Vela computes its own
   route times (Less to Google, routes computed on the phone).

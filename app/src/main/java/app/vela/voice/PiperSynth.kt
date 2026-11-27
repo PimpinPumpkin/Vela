@@ -123,7 +123,7 @@ class PiperSynth @Inject constructor(
      *  louder, 2.2 loudest. [VoiceLevel] turns it into the gain for this voice. */
     private fun volume(): Float =
         context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
-            .getFloat("voice_volume", 1.0f).coerceIn(0.2f, 3.0f)
+            .getFloat("voice_volume", 1.0f).coerceIn(0.2f, 5.0f)
 
     // Each voice's average level, by voice and speaker ([VoiceLevel.Meter]), kept between sessions
     // so a voice plays at the same loudness from its first line.
@@ -289,7 +289,7 @@ class PiperSynth @Inject constructor(
                     if (chunk.isEmpty()) return
                     synchronized(level) { level.add(chunk) }
                     if (gain.isNaN() && level.rms > 0f) gain = VoiceLevel.gain(level.rms, vol)
-                    VoiceLevel.apply(chunk, if (gain.isNaN()) vol else gain)
+                    VoiceLevel.apply(chunk, if (gain.isNaN()) vol else gain, rate)
                     if (made == 0) sampleRate = rate
                     made += chunk.size
                     queue.put(chunk)
@@ -301,7 +301,7 @@ class PiperSynth @Inject constructor(
                     val rate = sampleRate
                     player = playerThread.submit<Long> { play(at, rate, queue, aborted) }
                 }
-                if (ready != null) { feed(ready.first, ready.second); start() }
+                if (ready != null) { for (c in ready.first) feed(c, ready.second); start() }
                 else {
                     val frags = SpeechText.speechFragments(text, PAUSE_SEC, CLAUSE_PAUSE_SEC)
                     // Played once the audio made covers the rest's expected render time
@@ -377,7 +377,7 @@ class PiperSynth @Inject constructor(
 
     /** Synthesize [text] the way [speak] voices it: phrase fragments, each with terminal
      *  punctuation, and a spliced silence after each. Null when [aborted] turns true mid-way. */
-    private fun synthesize(engine: OfflineTts, text: String, sid: Int, spd: Float, aborted: () -> Boolean): Pair<FloatArray, Int>? {
+    private fun synthesize(engine: OfflineTts, text: String, sid: Int, spd: Float, aborted: () -> Boolean): Pair<List<FloatArray>, Int>? {
         // Synthesize each sentence on its own and splice a fixed silence gap between them, so
         // periods get a real, controllable beat. sherpa-onnx's own `silenceScale` config is a
         // no-op for this Piper/VITS path (measured on-device: 0.2 vs 1.4 gave identical audio
@@ -400,7 +400,7 @@ class PiperSynth @Inject constructor(
             if (audio.isNotEmpty()) chunks.add(audio)
             if (gapAfter > 0f) chunks.add(FloatArray(gapFrames(sampleRate, gapAfter, spd))) // spliced silence
         }
-        return concat(chunks) to sampleRate
+        return chunks to sampleRate
     }
 
     /** A spliced pause in frames. The pause lengths were tuned by ear at [PAUSE_TUNED_SPEED], so
@@ -484,7 +484,7 @@ class PiperSynth @Inject constructor(
                     prepared[key] = made
                     while (prepared.size > MAX_PREPARED) prepared.remove(prepared.keys.first())
                 }
-                Log.i(TAG, "prepared ${"%.1f".format(made.first.size / made.second.toFloat())}s of audio ahead")
+                Log.i(TAG, "prepared ${"%.1f".format(made.first.sumOf { it.size } / made.second.toFloat())}s of audio ahead")
             } catch (t: Throwable) {
                 Log.w(TAG, "prepare failed: ${t.message}")
             } finally {
@@ -495,19 +495,8 @@ class PiperSynth @Inject constructor(
         }
     }
 
-    private val prepared = LinkedHashMap<String, Pair<FloatArray, Int>>()
+    private val prepared = LinkedHashMap<String, Pair<List<FloatArray>, Int>>()
     private fun preparedKey(text: String, sid: Int, spd: Float) = "$loadedVoiceId|$sid|$spd|$text"
-
-    /** Concatenate audio + spliced-silence chunks into one buffer (the gaps are already silence chunks
-     *  inserted by the caller). Single chunk → returned as-is. */
-    private fun concat(chunks: List<FloatArray>): FloatArray {
-        if (chunks.isEmpty()) return FloatArray(0)
-        if (chunks.size == 1) return chunks[0]
-        val out = FloatArray(chunks.sumOf { it.size })
-        var pos = 0
-        for (c in chunks) { c.copyInto(out, pos); pos += c.size }
-        return out
-    }
 
     private fun ensureTrack(sampleRate: Int): AudioTrack {
         track?.let {

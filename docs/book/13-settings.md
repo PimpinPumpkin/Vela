@@ -6,16 +6,16 @@ Settings opens over the map as a list of twelve pages with a search field above 
 
 - Appearance: theme, the map's own light or dark, font, interface size, map look (the Vela look
   on Liberty, or OpenFreeMap's Bright, Positron, Fiord or Black as served), map colors, map
-  buttons (round or square), units, clock, language, directions language, Page transitions.
+  buttons (round or square), units, clock, language, directions language, dark mode startup schedule, Page transitions.
 - Map: traffic, transit lines, terrain, tilt, "Keep north up", "Turn the map as you drive", 3D buildings, map buttons, house
   numbers, names on the map (English then romanized, English then local, local only, or local
   and English), where the map opens.
 - Places: "Place icons on the map", which places the map draws, how far out place names show,
   what a place page loads.
-- Navigation: route picker, road-ahead bar, arrow, speed limit and the over-the-limit warning,
-  lane guidance on the car screen, road numbers first, map keys, cameras
-  ([chapter 3](03-cameras.md)), traffic rechecks.
-- Voice: spoken directions, street names, the voice library, speed and volume.
+- Navigation: route picker, road-ahead bar, arrow, speed limit (and upcoming speed limit changes),
+  and the over-the-limit warning, lane guidance on the car screen, road numbers first, custom route
+  line width, map keys, cameras ([chapter 3](03-cameras.md)), traffic rechecks.
+- Voice: spoken directions, street names, the voice library, speed and custom volume multiplier.
 - Search: voice search, on-device speech engines, contact search, and Quick search buttons,
   a page of its own under Search for which category chips show and in what order.
 - Saved places: export and import of places and lists, saved routes, parking history.
@@ -25,7 +25,7 @@ Settings opens over the map as a list of twelve pages with a search field above 
   Google session, the request counter, Clear history
   ([chapter 7](07-talking-to-google.md)).
 - Performance: what loads ahead of time, how the map is drawn.
-- Diagnostics: diagnostics export, saved trips, the location and driving simulators.
+- Diagnostics: diagnostics export, settings backup (export and import), saved trips, the location and driving simulators.
 - About: version, update channel and checks ([chapter 12](12-releases.md)), map data credits,
   support, the project on GitHub.
 

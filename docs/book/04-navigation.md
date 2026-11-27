@@ -605,13 +605,16 @@ recording was off then or the file is gone, it starts one.
 
 ### The speed-limit badge and the speeding alert
 
-With a downloaded region, the fix is snapped to the nearest road within `LIMIT_SNAP_M = 25` and
-its forward `maxspeed` is read. No limit, and anything 150 km/h or over, shows blank. The lookup
-reruns after 18 m of travel, off the main thread. An untagged stretch keeps the last limit for
-`SPEED_LIMIT_FORGET_M = 300`, so the badge does not flicker between tagged segments and does not
-carry a 45 onto the side street you turned onto. Where the region has no limit, or there is no
-region, the badge reads the hosted tiles: the nearest tagged road within 20 m, from the one tile
-the car is in.
+With a downloaded region, the fix is snapped to the nearest heading-aligned road, preferring a road
+connected to the previous match so an overpass does not briefly swap to a road below, and its
+directional `maxspeed` is read. No limit, and anything 150 km/h or over, shows blank. An untagged
+stretch keeps the last limit for a short distance so the badge does not flicker between tagged
+segments and does not carry a limit onto the side street you turned onto. Where the region has no
+limit, or there is no region, the badge reads the hosted tiles from the one tile the car is in.
+When "Show upcoming speed limit changes" is on without an active route, Vela walks the connected
+road geometry ahead instead of casting a straight line and stops at sharp bends or ambiguous forks.
+[SPEC section 4.4 and 10.6](../../SPEC.md#4-routing-and-navigation) list the snap, continuity,
+look-ahead and forget distances.
 
 The hosted tiles also carry timed limits (`maxspeed:conditional`). Most Dutch motorways are
 tagged `maxspeed=100` with `130 @ (19:00-06:00)`: 100 km/h by day, 130 in the evening and at

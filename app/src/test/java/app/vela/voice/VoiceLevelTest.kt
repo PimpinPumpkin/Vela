@@ -77,4 +77,16 @@ class VoiceLevelTest {
         assertTrue(softer < normal && normal < louder && louder < loudest)
         assertEquals("normal lands on the target", VoiceLevel.TARGET_RMS.toDouble(), normal, 0.005)
     }
+
+    @Test fun `high custom multiplier compresses cleanly without clipping`() {
+        val chunk = FloatArray(2400) { i ->
+            (0.28 * Math.sin(i * 0.05) + 0.08 * Math.sin(i * 0.85)).toFloat()
+        }
+        val g = VoiceLevel.gain(0.055f, 4.5f)
+        VoiceLevel.apply(chunk, g)
+        for (x in chunk) {
+            assertTrue("sample $x within bounds", x in -1f..1f)
+        }
+        assertTrue("peak stays below hard rail", VoiceLevel.peak(chunk) < 0.99f)
+    }
 }

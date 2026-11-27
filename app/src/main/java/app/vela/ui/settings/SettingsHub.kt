@@ -298,6 +298,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_directions_language to SettingsSection.APPEARANCE,
     R.string.settings_theme_auto to SettingsSection.APPEARANCE,
     R.string.settings_nav_day_night to SettingsSection.APPEARANCE,
+    R.string.settings_nav_schedule_enable to SettingsSection.APPEARANCE,
     R.string.settings_font to SettingsSection.APPEARANCE,
     R.string.settings_app_name_title to SettingsSection.APPEARANCE,
     // Map
@@ -365,7 +366,9 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_toll_option to SettingsSection.NAVIGATION,
     R.string.settings_turn_arrows to SettingsSection.NAVIGATION,
     R.string.settings_route_bar to SettingsSection.NAVIGATION,
+    R.string.settings_car_route_bar to SettingsSection.NAVIGATION,
     R.string.settings_route_trail to SettingsSection.NAVIGATION,
+    R.string.settings_nav_line_custom to SettingsSection.NAVIGATION,
     R.string.settings_turn_declutter to SettingsSection.PERFORMANCE,
     R.string.settings_category_chips to SettingsSection.MAP,
     R.string.settings_road_label to SettingsSection.NAVIGATION,
@@ -393,6 +396,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_speed_display to SettingsSection.NAVIGATION,
     R.string.settings_car_speed to SettingsSection.NAVIGATION,
     R.string.settings_car_lanes to SettingsSection.NAVIGATION,
+    R.string.settings_speed_upcoming to SettingsSection.NAVIGATION,
     R.string.settings_speeding_alert to SettingsSection.NAVIGATION,
     R.string.settings_puck_size to SettingsSection.NAVIGATION,
     R.string.settings_puck_style to SettingsSection.NAVIGATION,
@@ -447,6 +451,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     // Diagnostics
     R.string.settings_share_diagnostics to SettingsSection.DIAGNOSTICS,
     R.string.settings_diag_redact to SettingsSection.DIAGNOSTICS,
+    R.string.settings_backup_title to SettingsSection.DIAGNOSTICS,
     R.string.settings_name_trips to SettingsSection.DIAGNOSTICS,
     R.string.settings_texture_render to SettingsSection.PERFORMANCE,
     R.string.settings_speech_preload to SettingsSection.PERFORMANCE,

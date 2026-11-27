@@ -187,14 +187,14 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   1, 5 or 15 minutes into a new trip, for sharing when the dot misbehaves.
 - A faster route is offered when traffic changes. "Take faster routes automatically" accepts an
   unanswered offer.
-- The route line is colored by congestion. "Road behind you" keeps the driven part in gray.
+- The route line is colored by congestion. "Road behind you" keeps the driven part in gray. "Custom route line width" can scale its width from 0.1x to 2x, tapering with camera tilt and distance.
 - The route line is drawn down the middle of the map's roads, where Google's own line would sit a
   lane to one side.
-- Your speed and the posted limit. "Show speed and speed limit" hides them.
+- Your speed and the posted limit. "Show speed and speed limit" hides them, and "Show upcoming speed limit changes" previews the next speed limit and distance ahead on your route or current road (100 m to 1 km).
 - Timed limits follow the clock, such as 100 by day and 130 at night on Dutch motorways. Online
   only for now.
 - "Road ahead bar" is a strip with the traffic, lights, stop signs, crossings and cameras still
-  ahead.
+  ahead, on the phone and in Android Auto ("Road ahead bar on the car screen").
 - Arrows on the route through the turns ahead while you drive, the way Google draws them, on the
   phone and the car screen; off under Navigation.
 - "Current road name" goes above the bottom bar, under the arrow, inside the bar, or off. A
@@ -301,7 +301,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Spoken directions use a neural voice that runs on the phone. The Vela voice downloads once.
 - The "Voice library" has about 40 Piper voices. Any text-to-speech voice on the phone works too.
 - "Spoken directions" is the on and off switch, the same as mute in a drive.
-- "Guidance volume", "Voice speed" and "Test voice". The Vela voice is leveled to a standard
+- "Guidance volume" (with a custom multiplier slider up to 5x for the Vela voice), "Voice speed" and "Test voice". The Vela voice is leveled to a standard
   loudness, and the volume setting scales from there. Louder and Loudest also raise a voice
   from the phone, such as Google's or Samsung's.
 - The voice follows the directions language. Vela offers a download when a language has no
@@ -376,7 +376,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 ## Look and settings
 
 - Themes are follow the system, Light, Dark, "AMOLED black" and "Day and night". "Day and night
-  while navigating" applies it to drives only.
+  while navigating" applies it to drives only. "Start dark mode on a schedule" sets the initial day/night state at launch (sunset to sunrise or custom hours) until the system or car switches on its own.
 - "Map" sets the map light, dark or "Day and night" apart from the app, so a dark app can sit
   over a map that follows the sun. "Map look" picks the basemap style: the Vela look on
   OpenFreeMap Liberty, or OpenFreeMap's Bright, Positron, Fiord or Black (its Dark style) as
@@ -402,8 +402,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   results show their fuel price.
 - The drive screen has the map, a turn card with the next turn however far off it is (lanes from
   half a mile out), the road you are on under the arrow, the arrival estimate and the posted
-  limit; your speed too if you switch it on, since the car has its own speedometer. The map turns
-  with the car, tilts and zooms out with speed.
+  limit (plus the upcoming limit change and the road ahead bar when turned on); your speed too
+  if you switch it on, since the car has its own speedometer. The map turns with the car, tilts
+  and zooms out with speed.
 - The car opens on the map alone, as Google Maps does: tilted, turning with the car, with the
   speed badge, Search, Saved and Settings. A list button brings up Home, Work, recents and nearby
   categories, and Search with nothing typed lists them too.
@@ -455,6 +456,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   the drive decided and ran on are kept for the whole drive; they hold no place.
 - Diagnostics, off by default, keeps a local log that "Export debug session" shares where you
   choose.
+- "Settings backup" exports your settings to a JSON file and restores them on another phone.
 - A recorded trip can be saved to the phone as its full trace, in a folder you pick, besides
   shared trimmed or whole.
 - "Redact places in exports" hides searches, destinations and place names.

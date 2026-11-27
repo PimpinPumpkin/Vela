@@ -43,10 +43,20 @@ object OsmMaxspeed {
         parseKmh(maxspeed) ?: parseKmh(forward) ?: parseKmh(backward)
 
     /** [fromTags] with a `maxspeed:conditional` applied at local time [at]: the conditional value
-     *  when one of its time rules holds, else the plain limit. A road with only a conditional limit
-     *  and no rule in force has no known limit. */
-    fun fromTags(maxspeed: String?, forward: String?, backward: String?, conditional: String?, at: LocalDateTime): Double? =
-        conditionalKmh(conditional, at) ?: fromTags(maxspeed, forward, backward)
+     *  when one of its time rules holds, else the directional limit for [isForward] when known, else
+     *  the plain limit. A road with only a conditional limit and no rule in force has no known limit. */
+    fun fromTags(
+        maxspeed: String?,
+        forward: String?,
+        backward: String?,
+        conditional: String?,
+        at: LocalDateTime,
+        isForward: Boolean? = null,
+    ): Double? = conditionalKmh(conditional, at) ?: when (isForward) {
+        true -> parseKmh(forward) ?: parseKmh(maxspeed)
+        false -> parseKmh(backward) ?: parseKmh(maxspeed)
+        null -> fromTags(maxspeed, forward, backward)
+    }
 
     /**
      * The km/h a `maxspeed:conditional` value sets at local time [at], or null when no rule holds.

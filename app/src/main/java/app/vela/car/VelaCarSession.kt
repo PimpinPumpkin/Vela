@@ -40,6 +40,7 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var feedJob: Job? = null
+    private var nightJob: Job? = null
 
     init {
         lifecycle.addObserver(this)
@@ -48,6 +49,18 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
     override fun onCreate(owner: LifecycleOwner) {
         CarBridge.live = true
         ManeuverMapper.bannedNote = runCatching { carContext.getString(app.vela.R.string.nav_turn_may_be_banned_short) }.getOrDefault("")
+        // Reset the startup dark-mode schedule override once per car projection session (not on
+        // each screen transition) and seed it with the head unit's initial day/night state.
+        app.vela.ui.NavSchedule.resetToggle()
+        app.vela.ui.theme.AppTheme.refreshNight()
+        runCatching { carContext.isDarkMode }.getOrNull()?.let { app.vela.ui.NavSchedule.onCarDarkSignal(it) }
+        nightJob?.cancel()
+        nightJob = scope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(60_000L)
+                app.vela.ui.theme.AppTheme.refreshNight()
+            }
+        }
         // Feed live GPS into NavSession while the car session is alive. Mirrors the phone's fix gate:
         // GPS fixes with accuracy ≤ 50 m drive guidance; coarser fixes are ignored for nav.
         // Cancel any prior collector first so a re-delivered onCreate can't leak a second one.
@@ -163,6 +176,15 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
         } catch (e: androidx.car.app.HostException) {
             android.util.Log.i("VelaCar", "car host call failed: ${e.message}")
         }
+    }
+
+    override fun onCarConfigurationChanged(newConfiguration: android.content.res.Configuration) {
+        val sysDark = runCatching { carContext.isDarkMode }.getOrDefault(
+            (newConfiguration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES,
+        )
+        app.vela.ui.NavSchedule.onCarDarkSignal(sysDark)
+        deps.mapRenderer(carContext).onConfigurationChanged()
     }
 
     /** A navigation intent delivered while the app is already running (the host reuses the session). */
