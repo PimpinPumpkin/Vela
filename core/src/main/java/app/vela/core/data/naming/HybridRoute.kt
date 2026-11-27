@@ -401,7 +401,7 @@ object HybridRoute {
             ) m.copy(instruction = m.instructionNoRoad) else m
         }
         return google.copy(
-            legs = listOf(RouteLeg(google.distanceMeters, google.durationSeconds, google.durationInTrafficSeconds, RouteGeometry.foldSameRoadMerges(said))),
+            legs = listOf(RouteLeg(google.distanceMeters, google.durationSeconds, google.durationInTrafficSeconds, RouteGeometry.exitTowardNext(RouteGeometry.foldSameRoadMerges(said)))),
             provisional = false,
             abbreviatedSteps = false,
             source = RouteSource.GOOGLE_HYBRID,

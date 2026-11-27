@@ -49,9 +49,10 @@ and shields on a row of their own, and the place in large type. A turn shows the
 what follows it ("toward Downtown"). "Turn right onto" is not shown; the arrow says it. An exit
 or a ramp shows the exit tab ("4A" in an outlined box with an arrow to the exit's side) and the
 route shields ("5 NORTH"), a street on the sign beside them ("519B J St") and the sign's towns
-in large type, joined as Google joins them ("Sacramento / Reno"). A town keeps its whole name
-("South Lake Tahoe"). "Take exit 4A toward I 5 S" is not repeated as words, since the chips say
-it. A ramp toward both directions of one route gets one shield with no direction. A historic
+in large type, joined as Google joins them ("Sacramento / Reno"), as many as fit on one line. A
+town keeps its whole name ("South Lake Tahoe"). "Take exit 4A toward I 5 S" is not repeated as
+words, since the chips say it. A ramp toward both directions of one route gets one shield with no
+direction, unless the fork just past it picks one, as at exit 4A. A historic
 route such as Historic US 40 gets no shield. Lanes sit on a darker strip across the card's foot.
 The lane arrows are Google's, measured off its card. Every arrow a lane allows is drawn whole from
 the lane's center and they lie over one another, the lit one on top, so a straight-or-right lane

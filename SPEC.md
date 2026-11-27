@@ -1395,6 +1395,14 @@ its number, however written) is the road the car is on, the end of the step befo
 sounded like a road to join. Only the instruction changes; the no-street form keeps "Keep left".
 English only; a language without `stayOn` keeps its text.
 
+`RouteGeometry.exitTowardNext`, all three routers and the hybrid, last. An exit, ramp, fork or
+keep whose sign names both directions of one route ("Take exit 4A toward I 5 North, I 5 South:
+Redding, Los Angeles") takes the sign of the next step when that step is a ramp, fork or keep
+within `BOTH_WAYS_FORK_M` (2 km) naming one direction of the same route ("toward I 5 North:
+Redding"). The card, the step list, the "Then" line and the voice then name the way the route
+goes, as Google's do. A language without a sign marker (`NavStrings.signDestination`) keeps its
+text.
+
 `RouteGeometry.foldTurnLanes`, all three routers. A turn lane mapped as its own way
 splits one turn in two: an unnamed slight turn where the lane leaves the road, then the turn
 onto the street the same way ("Turn slight right, then turn slight right onto" a street, for one
@@ -6892,7 +6900,9 @@ or last chip scrolls the row all the way to that end.
   direction letter allowed), and joined with " / " as Google writes them. A street among them
   (`RoadNameShort.isStreet`: a street word, long or short, after its first word) is shortened and
   goes on the chips row after the exit tab (`TurnCardText.signRoads`: "519B J St"); the towns are
-  the large line ("Downtown", "Sacramento / South Lake Tahoe"). A sign with streets only puts
+  the large line ("Downtown", "Sacramento / Reno"), as many as fit on one line and the first at
+  least, so "Sacramento / South Lake Tahoe" shows "Sacramento" as Google's card does. The voice
+  reads the whole sign. A sign with streets only puts
   them in the large line. A sign that named only the chips leaves the line out. Depart, the
   arrival, rerouting and a step neither rule fits keep the sentence layout above. In the glance
   layout the arrow carries the whole instruction as its content description and the large lines

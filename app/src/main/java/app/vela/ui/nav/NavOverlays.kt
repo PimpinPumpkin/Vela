@@ -460,13 +460,25 @@ fun ManeuverBanner(
                         )
                         // Empty when the sign named only the route the chips already show.
                         // Google's sizes: the road in medium, a sign's towns in the regular weight.
-                        if (parts.main.isNotEmpty()) Text(
-                            roadNames(parts.main),
-                            style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium.copy(fontSize = 28.sp),
-                            fontWeight = if (parts.towns) FontWeight.Normal else FontWeight.Medium,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        if (parts.main.isNotEmpty()) {
+                            val mainStyle = (if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium.copy(fontSize = 28.sp))
+                                .copy(fontWeight = if (parts.towns) FontWeight.Normal else FontWeight.Medium)
+                            if (parts.towns && " / " in parts.main) {
+                                // A sign's towns keep to one line, as Google's card does: as many as fit,
+                                // the first at least (it may wrap). The voice still reads the whole sign.
+                                androidx.compose.foundation.layout.BoxWithConstraints {
+                                    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+                                    val w = constraints.maxWidth
+                                    val shown = remember(parts.main, w, mainStyle) {
+                                        val towns = parts.main.split(" / ")
+                                        (towns.size downTo 2).map { towns.take(it).joinToString(" / ") }.firstOrNull { t ->
+                                            !measurer.measure(roadNames(t), mainStyle, maxLines = 1, constraints = Constraints(maxWidth = w)).hasVisualOverflow
+                                        } ?: towns.first()
+                                    }
+                                    Text(roadNames(shown), style = mainStyle, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                }
+                            } else Text(roadNames(parts.main), style = mainStyle, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
                         if (parts.sub.isNotEmpty()) Text(
                             parts.sub,
                             style = MaterialTheme.typography.bodyLarge,

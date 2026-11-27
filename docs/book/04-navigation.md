@@ -116,6 +116,9 @@ turn. The voice says "turn left" 25 m out either way.
   50 East"), because that is where the choice is made and the banner shows it.
 - A fork or keep that heads for the road the car is already on says so: "Keep left to stay on I
   80 West", on the banner and in the voice.
+- An exit whose sign names both directions of a route takes the direction of the fork just past
+  it on the ramp: "Take exit 4A toward I 5 North: Redding", not "I 5 North, I 5 South: Redding,
+  Los Angeles".
 - A merge is said once, on its near prompt or as the "then" of the step before it, and only
   buzzes where it joins. The destination gets one near prompt, and so does each stop
   (see Stops below).

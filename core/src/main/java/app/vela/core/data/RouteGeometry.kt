@@ -438,7 +438,7 @@ object RouteGeometry {
                 maneuvers += prev.copy(distanceMeters = prev.distanceMeters + m.distanceMeters, durationSeconds = prev.durationSeconds + m.durationSeconds)
             }
         }
-        val consolidated = stayOnForks(foldTurnLanes(poly, rampTurns(foldSameRoadMerges(foldRenames(consolidateExits(bentRenames(poly, maneuvers)))))))
+        val consolidated = exitTowardNext(stayOnForks(foldTurnLanes(poly, rampTurns(foldSameRoadMerges(foldRenames(consolidateExits(bentRenames(poly, maneuvers))))))))
         maneuvers.clear(); maneuvers.addAll(consolidated)
         if (maneuvers.size < 2) return null
         return Route(
@@ -796,6 +796,46 @@ object RouteGeometry {
     private val STAY_ON_TYPES = setOf(
         ManeuverType.FORK_LEFT, ManeuverType.FORK_RIGHT, ManeuverType.KEEP_LEFT, ManeuverType.KEEP_RIGHT,
     )
+
+    /**
+     * An exit or fork whose sign names both directions of one route ("Take exit 4A toward I 5
+     * North, I 5 South: Redding, Los Angeles") takes the sign of the fork right after it on the
+     * ramp when that one names a single direction of the same route ("Keep slight left toward I 5
+     * North: Redding"): the card, the step list, the "Then" line and the voice then name the way
+     * the route goes, as Google's do. The fork must start within [BOTH_WAYS_FORK_M] of the exit.
+     * Languages without a sign marker keep their text.
+     */
+    internal fun exitTowardNext(list: List<Maneuver>): List<Maneuver> {
+        val nav = app.vela.core.i18n.NavStringsRegistry.current()
+        /** A sign part's route and the words after its number ("I 5 North" to (I, 5) and "north"). */
+        fun routeWay(part: String): Pair<Pair<String, String>, String>? {
+            val key = app.vela.core.nav.routeKey(part) ?: return null
+            val way = part.trim().replace(ROUTE_NUMBER_LEAD, "").trim().lowercase()
+            return key to way
+        }
+        return list.mapIndexed { i, m ->
+            val next = list.getOrNull(i + 1) ?: return@mapIndexed m
+            if (m.type !in BOTH_WAYS_TYPES || next.type !in BOTH_WAYS_TYPES || m.distanceMeters > BOTH_WAYS_FORK_M) return@mapIndexed m
+            val mine = nav.signDestination(m.instruction) ?: return@mapIndexed m
+            val theirs = nav.signDestination(next.instruction) ?: return@mapIndexed m
+            val ways = nav.signParts(m.instruction).mapNotNull(::routeWay)
+            val bothWays = ways.groupBy({ it.first }, { it.second }).filterValues { w -> w.filter { it.isNotEmpty() }.toSet().size >= 2 }.keys
+            if (bothWays.isEmpty()) return@mapIndexed m
+            val nextWays = nav.signParts(next.instruction).mapNotNull(::routeWay)
+            val taken = nextWays.filter { it.first in bothWays && it.second.isNotEmpty() }
+            if (taken.isEmpty() || taken.map { it.second }.toSet().size != 1) return@mapIndexed m
+            fun swap(text: String?): String? = text?.let { t ->
+                if (t.endsWith(mine)) t.substring(0, t.length - mine.length) + theirs else t
+            }
+            m.copy(instruction = swap(m.instruction)!!, instructionNoRoad = swap(m.instructionNoRoad))
+        }
+    }
+    private val BOTH_WAYS_TYPES = STAY_ON_TYPES + setOf(ManeuverType.RAMP_LEFT, ManeuverType.RAMP_RIGHT)
+    /** A sign part's route and number ("I 5", "I-80", "US 50"), ahead of its direction words. */
+    private val ROUTE_NUMBER_LEAD = Regex("""^\S+[\s-]*\d{1,4}[A-Za-z]?\b""")
+    /** How far along an exit the fork that picks its direction may come: a ramp to both ways of
+     *  a route splits well within this (exit 4A's fork on the US 50 fixture is 322 m in). */
+    private const val BOTH_WAYS_FORK_M = 2000.0
 
     internal fun foldRenames(list: List<Maneuver>): List<Maneuver> {
         val out = mutableListOf<Maneuver>()

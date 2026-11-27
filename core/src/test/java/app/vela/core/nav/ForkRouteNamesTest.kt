@@ -121,4 +121,29 @@ class ForkRouteNamesTest {
         assertTrue("$said", said.none { it.split("I 80 West").size > 2 })
         assertTrue("$said", said.any { it == "Keep slight left toward I 80 West, then keep slight left" })
     }
+    private fun exitThenFork(exitSign: String, forkSign: String, exitLen: Double = 322.0) = listOf(
+        Maneuver(ManeuverType.FORK_LEFT, "Keep slight left toward Sacramento, South Lake Tahoe", pt(0.0), 5000.0, 200.0),
+        Maneuver(ManeuverType.RAMP_RIGHT, "Take exit 4A toward $exitSign", pt(5000.0), exitLen, 20.0, instructionNoRoad = "Take exit 4A toward $exitSign"),
+        Maneuver(ManeuverType.FORK_LEFT, "Keep slight left toward $forkSign", pt(5000.0 + exitLen), 1300.0, 60.0),
+        Maneuver(ManeuverType.ARRIVE, "Arrive", pt(6700.0), 0.0, 0.0),
+    )
+
+    @Test fun `an exit to both directions of a route names the one the fork after it takes`() {
+        val out = RouteGeometry.exitTowardNext(exitThenFork("I 5 North, I 5 South: Redding, Los Angeles", "I 5 North: Redding"))
+        assertEquals("Take exit 4A toward I 5 North: Redding", out[1].instruction)
+        assertEquals("Take exit 4A toward I 5 North: Redding", out[1].instructionNoRoad)
+        assertEquals("Take exit 4A toward I 5 North", en.spokenSign(out[1].instruction))
+        assertEquals("the fork itself is untouched", "Keep slight left toward I 5 North: Redding", out[2].instruction)
+    }
+
+    @Test fun `an exit keeps its sign when it names one direction, the fork names no route, or the fork is far`() {
+        val oneWay = exitThenFork("I 5 North: Redding", "I 5 North: Redding")
+        assertEquals(oneWay, RouteGeometry.exitTowardNext(oneWay))
+        val townsOnly = exitThenFork("I 5 North, I 5 South: Redding, Los Angeles", "Redding")
+        assertEquals(townsOnly, RouteGeometry.exitTowardNext(townsOnly))
+        val far = exitThenFork("I 5 North, I 5 South: Redding, Los Angeles", "I 5 North: Redding", exitLen = 3000.0)
+        assertEquals(far, RouteGeometry.exitTowardNext(far))
+        val otherRoute = exitThenFork("I 5 North, I 5 South: Redding, Los Angeles", "US 50 East: Sacramento")
+        assertEquals(otherRoute, RouteGeometry.exitTowardNext(otherRoute))
+    }
 }
