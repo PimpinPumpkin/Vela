@@ -1525,10 +1525,12 @@ class MapViewModel @Inject constructor(
                     } else auto.places
                     fun carries(p: Place) = parsedAddr != null && app.vela.core.util.AddressQuery.matches(term, p.name, p.address)
                     fun coveredByGoogle(p: Place): Boolean {
-                        // Drop approximate OSM estimates (interpolated, neighbor house, or street
-                        // centerline) whenever Google autocomplete answered, so a fallback point
-                        // 200 m away at an intersection never leads Google's exact house.
-                        if (app.vela.core.data.OfflineAddressStore.isApproximate(p)) return autoPlaces.isNotEmpty()
+                        // An approximate OSM estimate (interpolated, a neighbor house, or the street's
+                        // centerline) goes when a Google row is the address itself, so a fallback
+                        // point 200 m off at an intersection never leads Google's exact house. Rows
+                        // that are only nearby places do not count: for a house Google does not
+                        // know, the estimate is the one answer.
+                        if (app.vela.core.data.OfflineAddressStore.isApproximate(p)) return autoPlaces.any(::carries)
                         return houseNo != null && autoPlaces.any { g ->
                             g.location.distanceTo(p.location) < 120.0 &&
                                 (carries(g) || g.name.contains(houseNo) || g.address?.contains(houseNo) == true)

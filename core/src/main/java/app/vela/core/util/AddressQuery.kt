@@ -28,9 +28,11 @@ object AddressQuery {
         "steig", "pfad", "chaussee", "straat", "laan", "plein", "gracht", "gade", "vej",
         "gatan", "vägen", "katu", "tie", "ulica", "utca",
     )
+    // Words that open a street's name where the number comes after it ("Calle Mayor 5").
+    private val STREET_WORDS = setOf("via", "viale", "piazza", "corso", "calle", "avenida", "plaza", "rua", "carrer", "rue")
 
     private fun looksLikeStreetPrefix(streetPart: String, words: List<String>): Boolean =
-        words.any { w -> w in TYPES || STREET_SUFFIXES.any { s -> w == s || (w.length > s.length + 1 && w.endsWith(s)) } } ||
+        words.any { w -> w in TYPES || w in STREET_WORDS || STREET_SUFFIXES.any { s -> w == s || (w.length > s.length + 1 && w.endsWith(s)) } } ||
             streetPart.trimEnd().endsWith(".")
 
     /** Returns `(houseNumber, streetPart)` for either number-first ("912 Miller Dr") or
@@ -43,10 +45,9 @@ object AddressQuery {
             val words = streetPart.lowercase().split(SPLIT).filter { it.isNotEmpty() }
             if (words.isEmpty()) return null
             if (words.none { it !in DIRECTIONS && it !in TYPES && it !in HIGHWAY_WORDS && it.length >= 2 }) return null
-            // Reject single-word "City 1010" / "City 8001" 4-digit postal codes unless the word is clearly a street name.
-            if (words.size == 1 && ',' !in query && number.length >= 4 && number.all { it.isDigit() } && !looksLikeStreetPrefix(streetPart, words)) {
-                return null
-            }
+            // A name and a number with no street word and no town after a comma is a name, not an
+            // address: "Pier 39", "Studio 54", and a town and its postal code ("Wien 1010").
+            if (',' !in query && !looksLikeStreetPrefix(streetPart, words)) return null
             return number.lowercase() to streetPart
         }
         TRAIL_WITH_TOWN.find(query)?.let { m ->

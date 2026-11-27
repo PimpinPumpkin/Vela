@@ -4287,14 +4287,16 @@ when the feature ids match. Two requests at most.
 - Every row except a contact has a fill-in arrow.
 - `AddressQuery.parse` reads a house number and the street's first word that is not a
   direction or a street type, in either number-first ("912 Miller Dr") or street-first
-  ("Hauptstraße 42") form; `matches` needs both as whole words of a result.
+  ("Hauptstraße 42", "W Covell Blvd 1451, Davis") form. Street-first needs a street word or a
+  town after a comma, so "Pier 39" stays a name. `matches` needs both as whole words of a
+  result.
 - A typed address is searched over at least `ADDRESS_SEARCH_SPAN_M` (40 km). When no matching
   result lies that near the view, the suggest request geocodes it. Matching rows lead, by
   `AddressQuery.score` (a point per typed street word, minus one for a different direction or
   street type: "1451 W Covell Blvd" before "1451 East Covell Boulevard"), then nearest.
 - The on-device geocoder's estimates (ids `addr~`, `OfflineAddressStore.isApproximate`, covering
-  interpolated positions, neighbor-house fallbacks and street centerlines) are dropped when
-  Google autocomplete answers or when another search result has the address. Bracketing house
+  interpolated positions, neighbor-house fallbacks and street centerlines) are dropped when a
+  Google autocomplete row or another search result has the address. Bracketing house
   numbers over `INTERP_MAX_GAP_M` (300 m) apart are not blended; the nearer one's point is used.
 - A place named by a street line whose address holds only the town shows and copies the two
   joined (`Place.fullAddress`). A listing keeps its own address when the first part of that has

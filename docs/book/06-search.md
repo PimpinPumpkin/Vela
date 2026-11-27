@@ -85,7 +85,7 @@ pharmacy hours"), and tapping it runs that text as a search. At most eight place
 query rows show. Exact on-device address hits lead them when they are within `SUGGEST_NEAR_M`
 (80 km) of the bias point and no Google row within 120 m carries the same house number;
 approximate on-device estimates (interpolated positions, neighbor houses or street centerlines)
-are dropped when Google autocomplete returns places.
+are dropped when a Google row is the address itself.
 
 When the view is 50 km or more from you and no suggestion's name starts with what you typed,
 `homeSuggestions` sends one more autocomplete request around you and puts up to three matching
@@ -227,7 +227,8 @@ setting off, the list ends in "Show other locations" and the requests run on a t
 ### A typed street address
 
 `AddressQuery.parse` recognizes both number-first ("912 Miller Dr") and street-first
-("Hauptstraße 42") addresses. A result is that address when the house number and the street's
+("Hauptstraße 42", "W Covell Blvd 1451, Davis") addresses. Street-first needs a street word or a
+town after a comma, so "Pier 39" stays a name. A result is that address when the house number and the street's
 first distinguishing word (not a direction, not "St" or "Ave") are both whole words of its name
 or address. A substring test found the digits in ZIP codes and in neighbors' numbers and took a
 list of businesses for the address.
