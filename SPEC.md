@@ -6335,7 +6335,7 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   `SpeechText.spokenClock` (English) spells out clock times, which otherwise read as a
   measurement. A new spoken string with numbers, units or punctuation needs the same look, and
   a test.
-- `voice_volume` (0.6 softer, 1 normal, 1.6 louder, 2.2 loudest) scales the neural voice from a
+- `voice_volume` (0.6 softer, 1 normal, 1.6 louder, 2.2 loudest, or a custom multiplier from 0.5 to 5) scales the neural voice from a
   leveled base (`VoiceLevel`). The voices render well under full scale: the default Vela voice
   (Piper `en_US-hfc_female-medium`) has a long-run RMS of about 0.053 on a Pixel 4a, a gain of
   2.43 at Normal. Each line gets one gain, `TARGET_RMS` (0.13) over
@@ -6345,7 +6345,11 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   preferences, so the level is the same from the first line of a session. It is not set from
   the loudest sample: that rose from 0.23 to 0.42 over the first minute of a drive and took the
   gain from 3.8 to 2.0. Samples past `KNEE` (0.8) are bent toward full scale by a tanh curve,
-  so nothing clips flat.
+  so nothing clips flat. Above a gain of 3.2 (with custom multipliers up to 5x), `VoiceLevel.apply`
+  high-passes around 85 Hz, applies two-band dynamic de-harshing across upper-mid (~1.2 to 3.4 kHz)
+  and sibilance (>3.4 kHz) bands scaled to the voice's sample rate, and rides a 32-sample
+  look-ahead peak envelope follower before the soft limiter. System TTS caps at Loudest
+  (`SystemVoiceBoost.MAX_SETTING`, 2.2, +6.8 dB).
 - A system TTS takes the setting as `KEY_PARAM_VOLUME` at Normal and below. The framework clips
   that parameter to 0..1, so above Normal the parameter is 1 and the line plays on an audio
   session of Vela's (`AudioManager.generateAudioSessionId`, passed as `KEY_PARAM_SESSION_ID`)

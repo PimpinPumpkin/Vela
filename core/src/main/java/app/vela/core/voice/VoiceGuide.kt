@@ -38,7 +38,7 @@ class VoiceGuide @Inject constructor(
     // KEY_PARAM_VOLUME at Normal and below, and the louder steps through [boostSessionFor].
     @Volatile private var volume = 1.0f
     fun setVolume(v: Float) {
-        volume = v.coerceIn(0.2f, 3.0f)
+        volume = v.coerceIn(0.2f, 5.0f)
         if (SystemVoiceBoost.gainMb(volume) == 0) synchronized(boostLock) { releaseBoostLocked() }
     }
 

@@ -115,8 +115,7 @@ outdoors.
 
 Directions are spoken in Vela's language, by a voice of that language. A Spanish voice with
 Vela in English is kept but not used, and its row in the voice library says so. Set the
-language in Settings > Appearance and the voice speaks. A directions language apart from the
-app's is not built yet.
+language in Settings > Appearance, or pick a separate language under Directions language.
 
 ## Where do updates come from?
 

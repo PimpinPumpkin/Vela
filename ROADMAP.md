@@ -263,6 +263,10 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- Custom guidance volume slider up to 5x and two-band de-harshing above 3.2x (`VoiceLevel.apply`,
+  `PiperSynth`; SPEC 9.1): unit-tested only. Not yet heard on a phone speaker or car Bluetooth at
+  high multipliers (`3x` to `5x`).
+
 - Toll prices from the toll file (#954, from #965; SPEC 4.3): on the API 26 emulator a Vaughan to
   Markham drive showed "Toll about $8.94 + $5.30 fee" and "$10.00 + $5.30 fee" on its two 407
   routes (the overnight band, so one price each). Not yet seen: a range at rush hour, the
