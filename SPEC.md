@@ -6886,7 +6886,8 @@ or last chip scrolls the row all the way to that end.
 - The exit tab (`SignChip`) is Google's: the number alone in an outlined box with a small arrow
   toward the exit's side (`exitOnLeft` from the maneuver type), on the card and in the step
   list. Beside a route shield the direction is the language's word (`NavStrings.shieldDirection`:
-  "NORTH" in English, the letter where a language has none).
+  "NORTH" in English, the letter where a language has none). On the card both take the card's
+  text color, so a previewed step's light card in the light theme draws them dark.
 - Lanes (`LaneDiagram`, or `LaneGuide` for the count-based hint) sit on a strip across the card's
   foot, black at 22 percent over the card's color, centered, as on Google's card; in both layouts.
   The arrows are Google's, measured off its card (`laneGlyphs`), in units of a glyph 97 tall: 2.625

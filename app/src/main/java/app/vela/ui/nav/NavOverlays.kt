@@ -711,9 +711,9 @@ internal fun TurnBanWarning(color: Color, modifier: Modifier = Modifier) {
 
 @Composable
 internal fun SignChip(sign: Sign, onBanner: Boolean = false, exitLeft: Boolean = false) {
-    // White on the green banner + in step rows; the theme ink only when SignChip is
-    // used OFF a sheet surface that already supplies it (default keeps callers unchanged).
-    val bannerInk = androidx.compose.ui.graphics.Color.White
+    // On the turn card the tab and the shield's direction take the card's own ink: white on the
+    // live green card, dark on a previewed step's light card in the light theme.
+    val bannerInk = LocalContentColor.current
     if (sign.isExit) {
         // Google's exit tab: the number in an outlined box with an arrow to the exit's side
         // ("4A" and an arrow up and to the right).
@@ -742,7 +742,7 @@ internal fun SignChip(sign: Sign, onBanner: Boolean = false, exitLeft: Boolean =
     } else {
         // Real highway-shield shapes (interstate / US-route / state marker), inferred from the
         // ref; falls back to the plain bordered chip for anything unrecognized. `onBanner`
-        // carries the banner content color (white); elsewhere it defaults to the theme ink.
+        // carries the card's content color; elsewhere it defaults to the theme ink.
         RouteShield(
             sign.label,
             ink = if (onBanner) bannerInk else MaterialTheme.colorScheme.onPrimaryContainer,
