@@ -410,8 +410,17 @@ class CarMapRenderer(
             app.vela.ui.theme.ThemeMode.LIGHT -> false
             app.vela.ui.theme.ThemeMode.DARK, app.vela.ui.theme.ThemeMode.AMOLED -> true
             app.vela.ui.theme.ThemeMode.AUTO -> app.vela.ui.theme.AppTheme.night.value
-            else -> runCatching { carContext.isDarkMode }.getOrDefault(false)
+            else -> {
+                val sysDark = runCatching { carContext.isDarkMode }.getOrDefault(false)
+                app.vela.ui.NavSchedule.carDarkOverride(sysDark)
+            }
         }
+    }
+
+    fun onConfigurationChanged() {
+        val sysDark = runCatching { carContext.isDarkMode }.getOrDefault(false)
+        app.vela.ui.NavSchedule.onCarDarkSignal(sysDark)
+        requestRender()
     }
 
     fun start() {
@@ -429,6 +438,7 @@ class CarMapRenderer(
                     (!loc.hasAccuracy() || loc.accuracy <= 50f)
                 if (!goodGps && puck != null) return@collect
                 val raw = LatLng(loc.latitude, loc.longitude)
+                app.vela.ui.theme.AppTheme.rememberLocation(carContext, raw.lat, raw.lng)
                 // Map-match to the route while navigating so the puck rides the road (Google/Waze do
                 // this); off-route/far falls back to the raw fix.
                 val here = if (navigating()) snapToRoute(raw) ?: raw else raw
@@ -544,6 +554,7 @@ class CarMapRenderer(
                 if (abs(zoomTarget - zoom) > 0.004) { zoom += (zoomTarget - zoom) * ZOOM_EASE; moved = true }
                 if (stepFling(dt)) moved = true
                 if (following && previewRoute == null) puck?.let { center = it }
+                if (themedNight != null && themedNight != isNight()) moved = true
                 if (moved) requestRender()
                 kotlinx.coroutines.delay(TICK_MS)
             }
