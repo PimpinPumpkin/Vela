@@ -11,6 +11,9 @@ says so.
 
 ### November 2026
 
+- The car's lane picture drawn with the phone card's lane arrows, only the turn's arrow lit
+  (`LaneImage`). Seen on the Desktop Head Unit at 1280 by 720 on a demo drive in Davis: at B
+  Street the dim straight arrow, the lit right arrow and the dash between them, small but clear.
 - Turn arrows on the car screen (#804), the phone's shape for the next three turns, over the
   light badges. Seen on the Desktop Head Unit at 1280 by 720 on a demo drive: the arrow bent
   round the right turn on the route line, above the corner's light.
