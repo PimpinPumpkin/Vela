@@ -35,6 +35,12 @@ class SoundsLikeTest {
         assertEquals("Karl-Marx-Allee", de("Karl Marks Allee"))
     }
 
+    @Test fun `a name heard with an umlaut the street does not have is put right`() {
+        assertEquals("Horsterdamm", de("Hörsterdamm", listOf("Horsterdamm", "Hauptstraße")))
+        assertEquals("Horsterdamm", de("Hoerstär damm", listOf("Horsterdamm", "Hauptstraße")))
+        assertEquals(null, de("Horsterdamm", listOf("Horsterdamm", "Hauptstraße")))
+    }
+
     @Test fun `the whole transcript is tried when it is longer than a run`() {
         assertEquals("Kurfürstendamm", de("Kur für sten damm"))
     }

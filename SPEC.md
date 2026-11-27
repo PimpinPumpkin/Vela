@@ -6599,7 +6599,9 @@ spelled by sound ("Kur fürsten damm"). `MapViewModel.applyVoiceQuery` reads it 
   with a digit is never in a run. Words outside the run stay where they were.
 - A run matches a street when the codes are equal, the code has at least `MIN_CODE` (5) digits,
   the name has at least `MIN_LETTERS` (6) letters, the spelling is within a third of the run's
-  letters (two edits at least), and the run is not already that street's name.
+  letters (two edits at least), and the run is not already that street's name as spelled,
+  accents kept: "Hörsterdamm" heard for Horsterdamm is still put right, for a search that does
+  not fold accents.
 - Several streets with the run's code: the closest spelling wins when it is the run's letters
   exactly or `CLEAR_MARGIN` (2) edits closer than the next. Otherwise there is no rewrite. The
   run covering the most letters wins, and two different rewrites that tie give none.

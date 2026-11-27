@@ -66,7 +66,7 @@ object SoundsLike {
             if (letters.length < MIN_LETTERS || !seen.add(letters)) continue
             val c = codeOfLetters(letters)
             if (c.length < MIN_CODE) continue
-            byCode.getOrPut(c) { ArrayList() } += Street(name, letters, plain(name))
+            byCode.getOrPut(c) { ArrayList() } += Street(name, letters, spelled(name))
         }
         if (byCode.isEmpty()) return null
         val wordLetters = words.map { w -> if (w.any(Char::isDigit)) null else latinLetters(w) }
@@ -85,9 +85,11 @@ object SoundsLike {
             if (parts.any { it.isEmpty() }) continue
             val joined = parts.joinToString("")
             val same = byCode[codeOfLetters(joined)] ?: continue
-            val heard = plain(run.joinToString(" ") { words[it] })
-            // The run already is a street's name: the search missed for another reason.
-            if (same.any { it.plain == heard }) continue
+            val heard = spelled(run.joinToString(" ") { words[it] })
+            // The run already is a street's name: the search missed for another reason. Compared as
+            // spelled, accents kept: dictation's "Hörsterdamm" is not "Horsterdamm" to a search
+            // that does not fold them, so it is still put right.
+            if (same.any { it.spelled == heard }) continue
             val maxEdits = maxOf(2, joined.length / 3)
             val ranked = same.map { it to edits(joined, it.letters) }.filter { it.second <= maxEdits }.sortedBy { it.second }
             if (ranked.isEmpty()) continue
@@ -109,7 +111,7 @@ object SoundsLike {
     /** The Kölner Phonetik code of [text]'s Latin letters, accents folded. Empty when it has none. */
     fun code(text: String): String = codeOfLetters(latinLetters(text) ?: "")
 
-    private class Street(val name: String, val letters: String, val plain: String)
+    private class Street(val name: String, val letters: String, val spelled: String)
     private class Found(val run: IntRange, val street: Street?, val covered: Int)
 
     /** [s] folded to plain a to z with everything else dropped, or null when it holds a letter of
@@ -123,9 +125,9 @@ object SoundsLike {
         return out.toString().ifEmpty { null }
     }
 
-    /** Folded, punctuation dropped, single spaces: two spellings of one name compare equal. */
-    private fun plain(s: String): String =
-        OfflineRank.fold(s).filter { it.isLetterOrDigit() || it == ' ' }.replace(SPACE, " ").trim()
+    /** Lower case, punctuation dropped, single spaces, accents kept: one spelling of a name. */
+    private fun spelled(s: String): String =
+        s.lowercase().filter { it.isLetterOrDigit() || it == ' ' }.replace(SPACE, " ").trim()
 
     /**
      * Kölner Phonetik over lowercase a to z: each letter gets a digit by its neighbors, runs of
