@@ -270,6 +270,9 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- The car's lane picture drawn with the phone card's arrows, the turn's arrow lit (SPEC 10.6,
+  `LaneImage`): rendered through the app's own code on an emulator. Not yet seen on the Desktop
+  Head Unit or a car, where the host scales the picture to its lane strip.
 - The route line curves through junction corners (SPEC 4.8, `roundCorners`), the turn arrows and
   the corner hold on it: on a Davis fixture mock drive on a 4a the two left turns drew as curves
   and the arrow went round them. Not yet seen on a real drive: the puck through a tight turn, a

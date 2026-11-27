@@ -8,77 +8,90 @@ import android.graphics.Path
 import androidx.car.app.model.CarIcon
 import androidx.car.app.navigation.model.Lane
 import androidx.car.app.navigation.model.LaneDirection
+import androidx.compose.ui.geometry.Offset
 import androidx.core.graphics.drawable.IconCompat
+import app.vela.core.model.ManeuverType
+import app.vela.ui.nav.LANE_FOOT
+import app.vela.ui.nav.LANE_GLYPH
+import app.vela.ui.nav.LANE_PITCH
+import app.vela.ui.nav.LANE_STROKE
+import app.vela.ui.nav.laneArrows
+import app.vela.ui.nav.laneGlyphs
+import app.vela.ui.nav.laneHeadOutline
 import app.vela.core.model.Lane as VelaLane
 
 /**
- * Builds Android Auto lane-guidance from Vela's OSRM lane data: both the [Lane] metadata (which the
- * host uses for accessibility/placement) AND a rendered lanes bitmap (which it displays). Valid lanes
- * (the ones you can take for this maneuver) are drawn bright; the rest dimmed — Google's lane diagram.
+ * Builds Android Auto lane guidance from Vela's OSRM lane data: the [Lane] list (which the host
+ * uses for accessibility and placement) and a lanes bitmap (which it displays). The bitmap draws
+ * the phone card's arrows (`laneGlyphs`, Google's): every arrow a lane allows, the one for this
+ * turn lit in a valid lane, and a short dash between lanes. A lane direction is recommended when
+ * the phone would light it.
  */
 object LaneImage {
 
-    private fun shape(ind: String): Int = when {
-        "uturn" in ind -> LaneDirection.SHAPE_U_TURN_LEFT
-        "sharp left" in ind -> LaneDirection.SHAPE_SHARP_LEFT
-        "sharp right" in ind -> LaneDirection.SHAPE_SHARP_RIGHT
-        "slight left" in ind -> LaneDirection.SHAPE_SLIGHT_LEFT
-        "slight right" in ind -> LaneDirection.SHAPE_SLIGHT_RIGHT
-        "left" in ind -> LaneDirection.SHAPE_NORMAL_LEFT
-        "right" in ind -> LaneDirection.SHAPE_NORMAL_RIGHT
-        "straight" in ind || "through" in ind -> LaneDirection.SHAPE_STRAIGHT
-        else -> LaneDirection.SHAPE_UNKNOWN
-    }
+    // Pixels to a glyph unit (a glyph is 97 tall): the host scales the bitmap to its lane strip.
+    private const val UNIT = 1.25f
+    // Room above the tallest tip, and past the end lanes for glyphs that reach out to the side.
+    private const val TOP = 4f
+    private const val SIDE = 21f
 
-    /** Turn angle (degrees, 0 = straight up) for the arrow glyph. */
-    private fun angle(ind: String): Float = when {
-        "uturn" in ind -> 180f
-        "sharp left" in ind -> -135f
-        "sharp right" in ind -> 135f
-        "slight left" in ind -> -40f
-        "slight right" in ind -> 40f
-        "left" in ind -> -90f
-        "right" in ind -> 90f
-        else -> 0f
+    private fun shape(kind: String): Int = when (kind) {
+        "uturn" -> LaneDirection.SHAPE_U_TURN_LEFT
+        "sharp left" -> LaneDirection.SHAPE_SHARP_LEFT
+        "sharp right" -> LaneDirection.SHAPE_SHARP_RIGHT
+        "slight left" -> LaneDirection.SHAPE_SLIGHT_LEFT
+        "slight right" -> LaneDirection.SHAPE_SLIGHT_RIGHT
+        "left" -> LaneDirection.SHAPE_NORMAL_LEFT
+        "right" -> LaneDirection.SHAPE_NORMAL_RIGHT
+        else -> LaneDirection.SHAPE_STRAIGHT
     }
 
     /** Car lanes + a rendered image, or null when there's no lane data. */
-    fun build(lanes: List<VelaLane>): Pair<List<Lane>, CarIcon>? {
+    fun build(lanes: List<VelaLane>, maneuver: ManeuverType): Pair<List<Lane>, CarIcon>? {
         if (lanes.isEmpty() || lanes.size > 8) return null
         val carLanes = lanes.map { vl ->
-            val b = Lane.Builder()
-            (vl.indications.ifEmpty { listOf("straight") }).forEach {
-                b.addDirection(LaneDirection.create(shape(it.lowercase()), vl.valid))
-            }
-            b.build()
+            val arrows = laneArrows(vl, maneuver)
+            Lane.Builder().apply {
+                arrows.kinds.forEach { addDirection(LaneDirection.create(shape(it), it in arrows.lit)) }
+            }.build()
         }
-        return carLanes to CarIcon.Builder(IconCompat.createWithBitmap(render(lanes))).build()
+        return carLanes to CarIcon.Builder(IconCompat.createWithBitmap(render(lanes, maneuver))).build()
     }
 
-    private fun render(lanes: List<VelaLane>): Bitmap {
-        val cell = 60; val h = 60
-        val bmp = Bitmap.createBitmap((cell * lanes.size).coerceAtLeast(1), h, Bitmap.Config.ARGB_8888)
+    internal fun render(lanes: List<VelaLane>, maneuver: ManeuverType): Bitmap {
+        val u = UNIT
+        val w = ((lanes.size * LANE_PITCH + 2 * SIDE) * u).toInt().coerceAtLeast(1)
+        val h = ((TOP + LANE_GLYPH + LANE_FOOT) * u).toInt()
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
+        val body = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE; strokeWidth = LANE_STROKE * u
+            strokeCap = Paint.Cap.BUTT; strokeJoin = Paint.Join.ROUND
+        }
+        val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+        val dim = Color.parseColor("#80868B")
+        val foot = (TOP + LANE_GLYPH) * u
         lanes.forEachIndexed { i, vl ->
-            val cx = i * cell + cell / 2f
-            val color = if (vl.valid) Color.WHITE else Color.parseColor("#59616e")
-            // The valid indication drives the drawn arrow (for a through/turn lane, the turn wins).
-            val ind = (vl.indications.firstOrNull { angle(it.lowercase()) != 0f } ?: vl.indications.firstOrNull() ?: "straight").lowercase()
-            arrow(c, cx, h / 2f, angle(ind), color)
+            val arrows = laneArrows(vl, maneuver)
+            val cx = (SIDE + LANE_PITCH * (i + 0.5f)) * u
+            // Dim arrows first, so the lit one lies on top where they share the shaft.
+            laneGlyphs(arrows.kinds, cx, foot, u).sortedBy { if (it.indication in arrows.lit) 1 else 0 }.forEach { g ->
+                val color = if (g.indication in arrows.lit) Color.WHITE else dim
+                body.color = color; fill.color = color
+                c.drawPath(path(g.body), body)
+                c.drawPath(path(laneHeadOutline(g, u)).apply { close() }, fill)
+            }
+            if (i < lanes.lastIndex) {
+                fill.color = dim
+                val x = (SIDE + LANE_PITCH * (i + 1)) * u
+                c.drawRect(x - 2.5f * u, foot + 2f * u, x + 2.5f * u, foot + LANE_FOOT * u, fill)
+            }
         }
         return bmp
     }
 
-    private fun arrow(c: Canvas, cx: Float, cy: Float, deg: Float, color: Int) {
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color; style = Paint.Style.FILL }
-        c.save()
-        c.rotate(deg, cx, cy)
-        val s = 15f
-        val head = Path().apply {
-            moveTo(cx, cy - s); lineTo(cx - s * 0.75f, cy); lineTo(cx + s * 0.75f, cy); close()
-        }
-        c.drawPath(head, paint)
-        c.drawRect(cx - 3f, cy - 2f, cx + 3f, cy + s + 5f, paint) // shaft
-        c.restore()
+    private fun path(points: List<Offset>) = Path().apply {
+        moveTo(points[0].x, points[0].y)
+        points.drop(1).forEach { lineTo(it.x, it.y) }
     }
 }

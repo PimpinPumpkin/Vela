@@ -6900,7 +6900,10 @@ or last chip scrolls the row all the way to that end.
   foot. A U-turn goes left, up to 52, over a half circle of radius 12.5 and down to a head at 10.
   Every arrow a lane allows is its own whole
   glyph on the lane's center, and they are drawn over one another with the lit one last, so a turn
-  looks the same in every lane. Glyphs reach past their lane to the side, inside the row's 8 dp
+  looks the same in every lane. In a valid lane only the arrow nearest the maneuver's direction
+  lights; when the maneuver's type has no side (a merge, a roundabout, arriving) every arrow of a
+  valid lane lights; other lanes are dim (`laneArrows`, which the car's lanes use too). Glyphs
+  reach past their lane to the side, inside the row's 8 dp
   ends. The card's strip has 26 above the glyphs and 25 under the foot, where a dim dash 5 wide
   parts the lanes: 56 dp in all. No two heads of one lane touch (`LaneGlyphTest`).
 - `roadSigns` keeps the longer of two labels for one route, so the text's "I 80 E" wins over the
@@ -7266,7 +7269,9 @@ the same `:core` singletons as the phone (`CarDeps`).
   `ManeuverMapper` maps Vela maneuvers to car `Maneuver`, `Step` and `Trip`, sets the phone's
   glyph as the icon (`NavGlyphs.bitmap`), and reads the roundabout direction and exit number
   from the route's geometry. A step with up to eight lanes carries them as `Lane`s and a
-  `LaneImage` bitmap, unless `CarLanes` is off (issue #866). The lane strip grows the card, which
+  `LaneImage` bitmap, unless `CarLanes` is off (issue #866). The bitmap draws the phone card's lane
+  glyphs and dashes (10.2) at 1.25 px to the unit, white where the phone lights an arrow and gray
+  elsewhere, and a `LaneDirection` is recommended when its arrow is lit. The lane strip grows the card, which
   shrinks the visible area that Zoom to the next turn frames the turn in, so the camera pulls
   back out when it appears. The destination estimate's time left takes the route line's traffic colors from `Route.trafficRatio`: red over
   1.4, yellow over 1.15 (the car API allows only its standard colors here), green below, and no

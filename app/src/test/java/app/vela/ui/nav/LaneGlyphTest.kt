@@ -1,6 +1,8 @@
 package app.vela.ui.nav
 
 import androidx.compose.ui.geometry.Offset
+import app.vela.core.model.Lane
+import app.vela.core.model.ManeuverType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -102,6 +104,19 @@ class LaneGlyphTest {
         assertTrue(foot - leaves.y > 0.4f * LANE_GLYPH)
         assertTrue(foot - leaves.y < 0.6f * LANE_GLYPH)
         assertEquals(straight.body.last().x, cx)
+    }
+
+    @Test
+    fun `a valid lane lights only the arrow for the turn being made`() {
+        val straightOrRight = Lane(listOf("through", "right"), true)
+        assertEquals(listOf("straight", "right"), laneArrows(straightOrRight, ManeuverType.TURN_RIGHT).kinds)
+        assertEquals(setOf("right"), laneArrows(straightOrRight, ManeuverType.TURN_RIGHT).lit)
+        assertEquals(setOf("straight"), laneArrows(straightOrRight, ManeuverType.STRAIGHT).lit)
+        assertEquals(setOf("right"), laneArrows(Lane(listOf("right", "sharp_right"), true), ManeuverType.TURN_RIGHT).lit)
+        assertEquals(emptySet<String>(), laneArrows(Lane(listOf("right"), false), ManeuverType.TURN_RIGHT).lit)
+        // A merge does not say which side: every arrow of a valid lane lights.
+        assertEquals(setOf("slight left", "straight"), laneArrows(Lane(listOf("merge_to_left", "none"), true), ManeuverType.MERGE).lit)
+        assertEquals(listOf("straight"), laneArrows(Lane(emptyList(), true), ManeuverType.STRAIGHT).kinds)
     }
 
     @Test

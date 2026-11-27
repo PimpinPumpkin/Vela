@@ -839,10 +839,6 @@ internal fun LaneDiagram(
     // Flat mid-gray for the arrows you're NOT taking — a solid color (not a translucent tint of
     // `on`) so overlapping strokes don't build up into a muddy skeuomorphic blob.
     val dim = Color(0xFF80868B)
-    // A signed direction level for the maneuver, or null when the type doesn't pin a side (MERGE /
-    // ROUNDABOUT / arrive / unknown) — in that case we can't say WHICH allowed direction we're
-    // taking, so a valid lane lights ALL its arrows rather than guessing (and lighting the wrong one).
-    val target = maneuverBucket(maneuver)
     // One unit of Google's lane glyph, which is 97 units tall: 37 dp on the turn card's strip, as
     // Google's, and 21 dp in the step list and the glance card.
     val unit = if (plain) (1f / 2.625f).dp else (21f / 97f).dp
@@ -853,14 +849,8 @@ internal fun LaneDiagram(
             verticalAlignment = Alignment.Top,
         ) {
             shown.forEachIndexed { i, lane ->
-                val inds = lane.indications.map { laneKind(laneIndication(it)) }.ifEmpty { listOf("straight") }.distinct()
-                // In a valid lane, ONLY the arrow for the turn we're taking lights up — the other
-                // directions the lane also allows stay dim (so a "go straight" turn doesn't light
-                // the right-turn head on a straight-or-right lane). The active one = the lane's
-                // indication closest to the maneuver's direction. When the maneuver side is unknown
-                // (target null), light all of a valid lane's arrows. Invalid lanes: all dim.
-                val active = if (lane.valid && target != null) inds.minByOrNull { kotlin.math.abs(laneBucket(it) - target) } else null
-                fun lit(ind: String) = lane.valid && (target == null || ind == active)
+                val arrows = laneArrows(lane, maneuver)
+                fun lit(ind: String) = ind in arrows.lit
                 // Every arrow the lane allows stands whole on the lane's center (laneGlyphs); dim
                 // ones are drawn first so the lit one lies on top where they share the shaft. Glyphs
                 // reach past the cell to the side, as Google's do; a short dash under the arrows
@@ -869,7 +859,7 @@ internal fun LaneDiagram(
                     val u = unit.toPx()
                     val foot = u * LANE_GLYPH
                     val body = Stroke(u * LANE_STROKE, cap = StrokeCap.Butt, join = StrokeJoin.Round)
-                    laneGlyphs(inds, size.width / 2f, foot, u).sortedBy { if (lit(it.indication)) 1 else 0 }.forEach { g ->
+                    laneGlyphs(arrows.kinds, size.width / 2f, foot, u).sortedBy { if (lit(it.indication)) 1 else 0 }.forEach { g ->
                         val color = if (lit(g.indication)) bright else dim
                         drawPath(lanePath(g.body), color, style = body)
                         drawPath(lanePath(laneHeadOutline(g, u)).apply { close() }, color)
@@ -888,6 +878,27 @@ private fun laneIndication(raw: String): String = when (val k = raw.trim().lower
     "merge to right" -> "slight right"
     "reverse" -> "uturn"
     else -> k
+}
+
+/** One lane's arrows ([kinds], each drawn once) and the ones lit for the turn being made. */
+internal class LaneArrows(val kinds: List<String>, val lit: Set<String>)
+
+/**
+ * The arrows [lane] draws for [maneuver], on the phone and on the car. In a valid lane only the
+ * arrow nearest the maneuver's direction lights, so a straight-or-right lane at a right turn lights
+ * its right arrow and leaves the straight one dim. When the maneuver's type does not say which
+ * side it goes (a merge, a roundabout, arriving), every arrow of a valid lane lights. Lanes that
+ * are not valid light nothing.
+ */
+internal fun laneArrows(lane: Lane, maneuver: ManeuverType): LaneArrows {
+    val kinds = lane.indications.map { laneKind(laneIndication(it)) }.ifEmpty { listOf("straight") }.distinct()
+    val target = maneuverBucket(maneuver)
+    val lit = when {
+        !lane.valid -> emptySet()
+        target == null -> kinds.toSet()
+        else -> setOfNotNull(kinds.minByOrNull { kotlin.math.abs(laneBucket(it) - target) })
+    }
+    return LaneArrows(kinds, lit)
 }
 
 /** The glyph an indication draws: anything unknown is straight. */

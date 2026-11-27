@@ -93,7 +93,7 @@ object ManeuverMapper {
             // unless the driver turned it off (CarLanes, issue #866).
             .apply {
                 if (lanes && app.vela.ui.CarLanes.on.value) runCatching {
-                    LaneImage.build(m.lanes)?.let { (lanes, image) ->
+                    LaneImage.build(m.lanes, m.type)?.let { (lanes, image) ->
                         lanes.forEach { addLane(it) }
                         setLanesImage(image)
                     }

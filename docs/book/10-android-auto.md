@@ -301,8 +301,9 @@ session's place list is not allowed on that display and crashes the app there.
   NE"); "Road numbers first" applies here too.
 - The card is Google's car teal (`TURN_CARD`). The host draws an app's card color about 20% darker,
   so the color set is #008A8B, which lands on Google's #006D6F.
-- Lanes are drawn as a bitmap of arrows, valid lanes white and the rest dimmed, for up to eight
-  lanes. With lane guidance off (`CarLanes`) no step carries lanes.
+- Lanes are a bitmap of the phone card's lane arrows, up to eight lanes: in a lane you can use,
+  the arrow for this turn is white, and everything else is gray, with a short dash between lanes.
+  With lane guidance off (`CarLanes`) no step carries lanes.
 - The time left is colored by traffic with the route line's thresholds: red when the live time
   runs more than 40% over the typical time, yellow over 15%, green below. A route without live
   traffic leaves it the host's default color.
