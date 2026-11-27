@@ -6933,7 +6933,12 @@ or last chip scrolls the row all the way to that end.
   day and #005153 at night (the night tab sampled off Google Maps, the day one the day green
   darkened by the same ratio). A swiped-ahead step is Google's preview gray (`NavPreviewGray`,
   #5F6368) with no "Preview" line, as on Google's card; a screen reader hears "Preview, tap to
-  resume" as the card's state. All of them carry white text in every theme and color mode.
+  resume" as the card's state. All of them carry white text in Vela's own light, dark and AMOLED
+  themes. With Material You colors in use (`wallpaperColorsInUse`) the card takes the
+  wallpaper's: the live card `primaryContainer` with its ink, a swiped-ahead step
+  `surfaceVariant` with its ink, the "Then" tab the card's color 15 percent toward black, the
+  lane strip black at 22 percent over either, and the unlit lane arrows halfway between the ink
+  and the strip.
 - A drive's first step shows Google's straight arrow with a dashed tail (`HeadToward` in
   `StepsSheet.kt`).
   The lane strip under a preview is #474747 (`NavPreviewStrip`), under the live card black at 22

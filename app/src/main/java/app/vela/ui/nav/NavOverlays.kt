@@ -86,6 +86,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -177,14 +178,27 @@ fun ManeuverBanner(
     // there (driven by previewStepIndex). Tapping it resumes live guidance.
     // Google's banner is a DARK FREEWAY GREEN (#00654F, pixel-sampled off the
     // app): white ink, Roboto (the app font - no brand font on the banner).
-    // A swiped-ahead step is Google's preview gray, also with white ink, in every theme and
-    // color mode, so it never reads as live guidance.
-    // The live card is Google's day green, and its night teal while the map is dark; the "Then"
-    // tab under it is a darker shade of the same.
+    // Vela's own theme draws Google's card: the day green, the night teal while the map is dark,
+    // and a swiped-ahead step in Google's preview gray, all with white ink. With the wallpaper's
+    // colors on, the card takes them: the live card the scheme's primary container and a
+    // swiped-ahead step its surface variant, each with its own ink. The "Then" tab under the live
+    // card is a shade darker than the card either way.
     val night = app.vela.ui.theme.isMapDark()
-    val container = if (previewing) NavPreviewGray else if (night) NavBannerTeal else NavBannerGreen
-    val content = androidx.compose.ui.graphics.Color.White
-    val thenContainer = if (night) NavThenTeal else NavThenGreen
+    val material = app.vela.ui.theme.wallpaperColorsInUse()
+    val scheme = MaterialTheme.colorScheme
+    val container = when {
+        material -> if (previewing) scheme.surfaceVariant else scheme.primaryContainer
+        previewing -> NavPreviewGray
+        night -> NavBannerTeal
+        else -> NavBannerGreen
+    }
+    val content = if (material) (if (previewing) scheme.onSurfaceVariant else scheme.onPrimaryContainer)
+    else androidx.compose.ui.graphics.Color.White
+    val thenContainer = when {
+        material -> androidx.compose.ui.graphics.lerp(container, androidx.compose.ui.graphics.Color.Black, 0.15f)
+        night -> NavThenTeal
+        else -> NavThenGreen
+    }
     val previewSaid = stringResource(R.string.nav_preview_tap_resume)
     // The card tracks your finger as you drag (translationX = offsetX); on release
     // past a threshold it slides the rest of the way out, swaps to the next/prev
@@ -530,11 +544,14 @@ fun ManeuverBanner(
         if (laneOn) {
             Box(
                 // The per-lane diagram brings its own margins, Google's: the strip is 56 dp.
-                Modifier.fillMaxWidth().background(if (previewing) NavPreviewStrip else Color.Black.copy(alpha = 0.22f))
+                Modifier.fillMaxWidth().background(if (previewing && !material) NavPreviewStrip else Color.Black.copy(alpha = 0.22f))
                     .padding(vertical = if (lanes.isNotEmpty()) 0.dp else 4.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                if (lanes.isNotEmpty()) LaneDiagram(lanes, type, on = content, plain = true, compact = compact)
+                // With the wallpaper's colors the unlit arrows sit halfway between the ink and the strip,
+                // so they stay faint but visible on a pale card as on a dark one.
+                val laneDim = if (material) androidx.compose.ui.graphics.lerp(content, Color.Black.copy(alpha = 0.22f).compositeOver(container), 0.55f) else null
+                if (lanes.isNotEmpty()) LaneDiagram(lanes, type, on = content, plain = true, compact = compact, dimInk = laneDim)
                 else laneHint?.let { LaneGuide(it, type, on = content) }
             }
         }
@@ -853,12 +870,13 @@ internal fun LaneDiagram(
     modifier: Modifier = Modifier,
     plain: Boolean = false, // no tile of its own: the turn card's lane strip is the background
     compact: Boolean = false, // the compact card on a short screen: smaller lanes, like its arrow
+    dimInk: Color? = null, // the unlit arrows' color, when the card's own colors call for another
 ) {
     val bright = on
     // Flat mid-gray for the arrows you're NOT taking — a solid color (not a translucent tint of
     // `on`) so overlapping strokes don't build up into a muddy skeuomorphic blob.
     // On the turn card's strip it is Google's unlit arrow gray.
-    val dim = if (plain) Color(0xFF909090) else Color(0xFF80868B)
+    val dim = dimInk ?: if (plain) Color(0xFF909090) else Color(0xFF80868B)
     // One unit of Google's lane glyph, which is 97 units tall: 37 dp on the turn card's strip, as
     // Google's, 24 dp on the compact card of a short screen (landscape), whose arrow and text are
     // smaller too, and 21 dp in the step list and the glance card.

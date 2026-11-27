@@ -44,7 +44,7 @@ the left.
 
 The card leads with where you are going and is laid out the way Google's is, at Google's text
 sizes: green by day and teal at night, and a swiped-ahead step on Google's gray with no "Then"
-tab and no "Preview" line. It has a large arrow on the left, then the distance, the exit tab
+tab and no "Preview" line. With Material You colors on, the card takes the wallpaper's colors. It has a large arrow on the left, then the distance, the exit tab
 and shields on a row of their own, and the place in large type. A turn shows the road ("W Covell Blvd", the "Blvd" smaller) and one small line for
 what follows it ("toward Downtown"). "Turn right onto" is not shown; the arrow says it. An exit
 or a ramp shows the exit tab ("4A" in an outlined box with an arrow to the exit's side) and the
