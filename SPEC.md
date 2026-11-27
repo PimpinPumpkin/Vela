@@ -6887,9 +6887,13 @@ or last chip scrolls the row all the way to that end.
   toward the exit's side (`exitOnLeft` from the maneuver type), on the card and in the step
   list. Beside a route shield the direction is the language's word (`NavStrings.shieldDirection`:
   "NORTH" in English, the letter where a language has none). On the card both take the card's
-  text color, so a previewed step's light card in the light theme draws them dark.
+  text color.
+- The live card is Google's green (`NavBannerGreen`, #00654F) and a swiped-ahead step is Google's
+  preview gray (`NavPreviewGray`, #5F6368), both with white text in every theme and color mode.
+  The lane strip under a preview is #474747 (`NavPreviewStrip`), under the live card black at 22
+  percent, and the card's unlit lane arrows are #909090.
 - Lanes (`LaneDiagram`, or `LaneGuide` for the count-based hint) sit on a strip across the card's
-  foot, black at 22 percent over the card's color, centered, as on Google's card; in both layouts.
+  foot, centered, as on Google's card; in both layouts.
   The arrows are Google's, measured off its card (`laneGlyphs`), in units of a glyph 97 tall: 2.625
   px to the unit on a 420 dpi screen, so 37 dp on the card and 21 dp in the step list. Lanes are 83
   apart, the stroke is 10.1 with a square-cut foot, and every head is a 90 degree chevron with sides

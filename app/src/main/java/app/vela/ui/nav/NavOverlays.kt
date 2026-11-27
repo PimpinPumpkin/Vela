@@ -176,17 +176,15 @@ fun ManeuverBanner(
     // there (driven by previewStepIndex). Tapping it resumes live guidance.
     // Google's banner is a DARK FREEWAY GREEN (#00654F, pixel-sampled off the
     // app): white ink, Roboto (the app font - no brand font on the banner).
-    // Preview keeps the gray surfaceVariant so a swiped-ahead step never reads
-    // as live guidance.
-    val container = if (previewing) MaterialTheme.colorScheme.surfaceVariant
-    else NavBannerGreen
-    val content = if (previewing) MaterialTheme.colorScheme.onSurfaceVariant
-    else androidx.compose.ui.graphics.Color.White
+    // A swiped-ahead step is Google's preview gray, also with white ink, in every theme and
+    // color mode, so it never reads as live guidance.
+    val container = if (previewing) NavPreviewGray else NavBannerGreen
+    val content = androidx.compose.ui.graphics.Color.White
     // The detached "then" strip under the card is darker than the banner (Google's reads
     // as a dimmer tab); preview follows the main card's own treatment.
-    val thenContainer = if (previewing) MaterialTheme.colorScheme.surfaceVariant
+    val thenContainer = if (previewing) NavPreviewGray
     else MaterialTheme.colorScheme.surfaceContainerHigh
-    val thenContent = if (previewing) MaterialTheme.colorScheme.onSurfaceVariant
+    val thenContent = if (previewing) androidx.compose.ui.graphics.Color.White
     else MaterialTheme.colorScheme.onSurface
     // The card tracks your finger as you drag (translationX = offsetX); on release
     // past a threshold it slides the rest of the way out, swaps to the next/prev
@@ -525,7 +523,8 @@ fun ManeuverBanner(
         if (laneOn) {
             Box(
                 // The per-lane diagram brings its own margins, Google's: the strip is 56 dp.
-                Modifier.fillMaxWidth().background(Color.Black.copy(alpha = 0.22f)).padding(vertical = if (lanes.isNotEmpty()) 0.dp else 4.dp),
+                Modifier.fillMaxWidth().background(if (previewing) NavPreviewStrip else Color.Black.copy(alpha = 0.22f))
+                    .padding(vertical = if (lanes.isNotEmpty()) 0.dp else 4.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 if (lanes.isNotEmpty()) LaneDiagram(lanes, type, on = content, plain = true)
@@ -587,6 +586,10 @@ internal fun bidiIsolate(text: String): String = "\u2068" + text + "\u2069"
 
 /** Google's nav-banner freeway green, pixel-sampled off the Maps app (#00654F). */
 internal val NavBannerGreen = androidx.compose.ui.graphics.Color(0xFF00654F)
+
+/** Google's card for a swiped-ahead step and the lane strip under it, sampled off Google Maps. */
+internal val NavPreviewGray = androidx.compose.ui.graphics.Color(0xFF5F6368)
+internal val NavPreviewStrip = androidx.compose.ui.graphics.Color(0xFF474747)
 // The nav bottom bar as a drag handle (see NavControls): how far it must be lifted to commit to
 // the step sheet, how far it may lift at all, and the upward fling speed that commits regardless.
 private const val NAV_BAR_LIFT_COMMIT_DP = 56
@@ -838,7 +841,8 @@ internal fun LaneDiagram(
     val bright = on
     // Flat mid-gray for the arrows you're NOT taking — a solid color (not a translucent tint of
     // `on`) so overlapping strokes don't build up into a muddy skeuomorphic blob.
-    val dim = Color(0xFF80868B)
+    // On the turn card's strip it is Google's unlit arrow gray.
+    val dim = if (plain) Color(0xFF909090) else Color(0xFF80868B)
     // One unit of Google's lane glyph, which is 97 units tall: 37 dp on the turn card's strip, as
     // Google's, and 21 dp in the step list and the glance card.
     val unit = if (plain) (1f / 2.625f).dp else (21f / 97f).dp
