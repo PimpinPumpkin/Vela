@@ -181,6 +181,40 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             hint = stringResource(R.string.settings_route_trail_hint),
         )
 
+        GroupDivider()
+        val customNavLine = app.vela.ui.NavLineWidth.custom.value
+        ToggleRow(
+            label = stringResource(R.string.settings_nav_line_custom),
+            checked = customNavLine,
+            onCheckedChange = { app.vela.ui.NavLineWidth.setCustom(context, it) },
+        )
+        if (customNavLine) {
+            androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Text(stringResource(R.string.settings_nav_line_multiplier, String.format(app.vela.ui.AppLocale.effective(), "%.1f", app.vela.ui.NavLineWidth.widthMultiplier.value)), style = MaterialTheme.typography.bodyMedium)
+                androidx.compose.material3.Slider(
+                    value = app.vela.ui.NavLineWidth.widthMultiplier.value,
+                    onValueChange = {
+                        val rounded = kotlin.math.round(it * 10f) / 10f
+                        app.vela.ui.NavLineWidth.setMultiplier(context, rounded)
+                    },
+                    valueRange = 0.1f..2.0f,
+                    steps = 18,
+                    modifier = Modifier
+                        .onKeyEvent { ev ->
+                            if (ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight) {
+                                if (ev.type == KeyEventType.KeyDown) {
+                                    val delta = if (ev.key == Key.DirectionRight) 0.1f else -0.1f
+                                    val stepped = (kotlin.math.round((app.vela.ui.NavLineWidth.widthMultiplier.value + delta) * 10f) / 10f).coerceIn(0.1f, 2.0f)
+                                    app.vela.ui.NavLineWidth.setMultiplier(context, stepped)
+                                }
+                                true
+                            } else false
+                        }
+                        .dpadHighlight(DpadShape(12.dp)),
+                )
+            }
+        }
+
         // Bike routing preference (issue #401): safety over speed, on by default.
         GroupDivider()
         ToggleRow(
