@@ -732,7 +732,7 @@ object NavEngine {
                     }
                     isArrive || (firstForStep && lane != null) -> instr
                     chainFirst -> withNext(withLight(cue.takeIf { it == LightCue.AT_LIGHT || it == LightCue.AT_STOP }, instr))
-                    else -> withLight(cue.takeIf { it != LightCue.NEXT_STOP }, instr)
+                    else -> withLight(cue.takeIf { it != LightCue.NEXT_STOP && it != LightCue.NEXT_LIGHT }, instr)
                 }
                 // "At the next stop sign, turn right onto ..." stands in for the distance, on a
                 // plain line only.
@@ -743,6 +743,9 @@ object NavEngine {
                 // left onto Elm Street". Said about 10 s out, the number was stale by its end.
                 fun say(instr: String) = when {
                     nextStop -> withLight(LightCue.NEXT_STOP, instr)
+                    // "At the next light, use the right two lanes to turn right" stands in for the
+                    // distance as the stop sign's does, lanes and all.
+                    cue == LightCue.NEXT_LIGHT && !chainFirst && !(firstForStep && thenStopHere) -> withLight(LightCue.NEXT_LIGHT, instr)
                     quietCorner && nearLine -> wrap(instr)
                     else -> nav().inThen(distancePhrase, wrap(instr))
                 }
@@ -1351,12 +1354,13 @@ object NavEngine {
                         val own = withLight(cue.takeIf { it == LightCue.AT_LIGHT || it == LightCue.AT_STOP }, instr)
                         joinNext(m, ms[nextIdx], own, d + gapTo(nextIdx), detail, cornerQuiet).first.also { if (it != own) joinedFirst = true }
                     }
-                    else -> withLight(cue.takeIf { it != LightCue.NEXT_STOP }, instr)
+                    else -> withLight(cue.takeIf { it != LightCue.NEXT_STOP && it != LightCue.NEXT_LIGHT }, instr)
                 }
                 val nextStop = cue == LightCue.NEXT_STOP && !(first && (lane != null || (nextIdx >= 0 && !(quiet && cueLine != CueLine.NEAR)))) &&
                     !(quiet && cueLine == CueLine.NEAR && (quietNext >= 0 || arriveNext >= 0))
                 return when {
                     nextStop -> withLight(LightCue.NEXT_STOP, instr)
+                    cue == LightCue.NEXT_LIGHT && !(first && nextIdx >= 0 && !(quiet && cueLine != CueLine.NEAR)) -> withLight(LightCue.NEXT_LIGHT, instr)
                     quiet && cueLine == CueLine.NEAR -> wrapped
                     else -> nav().inThen(spokenDistance(sayM, imperial), wrapped)
                 }
@@ -1452,7 +1456,7 @@ object NavEngine {
     }
 
     /** The landmark cue a line gets ([lightCue]). */
-    internal enum class LightCue { GO_PAST, AT_LIGHT, AT_STOP, NEXT_STOP }
+    internal enum class LightCue { GO_PAST, AT_LIGHT, AT_STOP, NEXT_STOP, NEXT_LIGHT }
 
     /** Which of a step's lines a cue is asked for: an approach line said before the near one, the
      *  near approach line, the line at the turn, or the "then" of the line before. */
@@ -1478,7 +1482,13 @@ object NavEngine {
         if (m.lightsBeforeM.isEmpty() && !m.lightAtTurn && m.stopsBeforeM.isEmpty() && !m.stopAtTurn) return null
         if (dtn > LIGHT_SPEAK_MAX_M) return null
         val n = nav()
-        if (m.lightAtTurn && n.atLight("") != null) return if (line == CueLine.FAR) null else LightCue.AT_LIGHT
+        if (m.lightAtTurn && n.atLight("") != null) {
+            if (line != CueLine.FAR) return LightCue.AT_LIGHT
+            // Google's far line for a turn at the next light: "At the next light, use the right
+            // two lanes to turn right". Not with a light before it: the distance then.
+            val lightFirst = m.lightsBeforeM.any { it <= dtn - LIGHT_AHEAD_MIN_M }
+            return if (!lightFirst && n.atNextLight("") != null) LightCue.NEXT_LIGHT else null
+        }
         if (m.stopAtTurn && !m.lightAtTurn) {
             if (line != CueLine.FAR) return if (n.atStop("") != null) LightCue.AT_STOP else null
             val stopFirst = m.stopsBeforeM.any { it <= dtn - LIGHT_AHEAD_MIN_M }
@@ -1495,6 +1505,7 @@ object NavEngine {
         LightCue.AT_LIGHT -> nav().atLight(text) ?: text
         LightCue.AT_STOP -> nav().atStop(text) ?: text
         LightCue.NEXT_STOP -> nav().atNextStop(text) ?: text
+        LightCue.NEXT_LIGHT -> nav().atNextLight(text) ?: text
         null -> text
     }
 

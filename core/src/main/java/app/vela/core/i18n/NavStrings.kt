@@ -66,6 +66,10 @@ interface NavStrings {
      *  distance: EN "At the next stop sign, turn right onto 5th Ave". Null = no such phrase. */
     fun atNextStop(instruction: String): String? = null
 
+    /** A far line's cue for a turn at the next light, Google's: EN "At the next light, turn left
+     *  onto ...". Null (the default) says the distance instead. */
+    fun atNextLight(instruction: String): String? = null
+
     /** The SPOKEN form of a sign instruction: the secondary sign destinations after a colon are
      *  dropped ("Take the ramp toward I 5 North: Vancouver British Columbia" -> "... toward I 5
      *  North"). The full sign stays on the banner; speaking it all took so long the next prompt
@@ -299,6 +303,8 @@ object EnNavStrings : NavStrings {
     override fun atStop(instruction: String): String = "At the stop sign, " + instruction.replaceFirstChar { it.lowercaseChar() }
 
     override fun atNextStop(instruction: String): String = "At the next stop sign, " + instruction.replaceFirstChar { it.lowercaseChar() }
+
+    override fun atNextLight(instruction: String): String = "At the next light, " + instruction.replaceFirstChar { it.lowercaseChar() }
 
     // Trailing SEMICOLON on purpose (spoken-only string — NavEngine Speak, never displayed): bare text
     // gives the Piper voice no final prosody contour and the callout ended oddly; the user A/B'd

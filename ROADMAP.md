@@ -277,6 +277,8 @@ off the list when it has been.
   leaves Wi-Fi.
 - A drive's town turns say their near line with no distance, as Google's ("At the light, turn
   left onto 5th Street"; SPEC 4.6, Guidance): unit tests only; not yet heard on a drive.
+- A turn at the next light says "At the next light, ..." on its far line in place of the
+  distance (SPEC 4.6, Guidance): unit tests and a mock drive on a 4a; not yet heard on a drive.
 - On a drive, a fork to places says "Follow signs for A and B" as its own sentence (SPEC 4.6):
   unit tests; not yet heard on a drive.
 - On a drive, no lane line for a turn made from the one lane at its own edge (SPEC 4.6): unit

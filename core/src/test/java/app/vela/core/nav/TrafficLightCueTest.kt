@@ -54,13 +54,20 @@ class TrafficLightCueTest {
         return said
     }
 
-    @Test fun `a turn at a light says so near the turn and at it, not from far out`() {
+    @Test fun `a turn at the next light says so from far out, near the turn and at it`() {
         val said = drive(route(400.0, elm = { copy(lightAtTurn = true) }), 400.0)
         val elm = said.filter { "Elm Street" in it || it.startsWith("Turn right") || it.startsWith("At the light, turn right") }
-        assertTrue("$said", "light" !in elm.first())
+        // Google's far line: "At the next light" in place of the distance.
+        assertEquals("$said", "At the next light, turn right onto Elm Street", elm.first())
         assertTrue("$said", elm.any { "At the light, turn right onto Elm Street" in it })
         assertTrue("$said", elm.last().startsWith("At the light, turn right"))
         assertTrue("$said", said.none { "light, turn left onto Oak Avenue" in it })
+    }
+
+    @Test fun `with a light before the turn's own, the far line says the distance`() {
+        val said = drive(route(400.0, elm = { copy(lightAtTurn = true, lightsBeforeM = listOf(200.0)) }), 400.0)
+        val far = said.first { "Elm Street" in it }
+        assertTrue("$said", far.startsWith("In ") && "light" !in far)
     }
 
     @Test fun `a turn too close to the one before says it in the then and again at its turn`() {

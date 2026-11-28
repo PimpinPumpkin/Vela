@@ -2296,7 +2296,11 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   the near band is merged into (`BAND_MERGE_S`); the one-approach line at speed is a near line.
   - A turn at its own light: "At the light, turn left onto ..." (`NavStrings.atLight`) on the
     near line, the line at the turn and the "then" of the line before, whatever lights come
-    first. The far line names no light.
+    first. The far line says "At the next light, turn left onto ..." (`atNextLight`, English) in
+    place of the distance, lanes and all, when no other light comes first; with one first it says
+    the distance. Google, on the Sacramento fixture drive: "At the next light, use the right two
+    lanes to turn right." for the light at the end of an exit ramp, and the distance where lights
+    came before the turn's own.
   - A turn at a stop sign: "At the stop sign, turn left onto ..." (`atStop`) on those same lines.
     The far line says "At the next stop sign, turn left onto ..." (`atNextStop`) in place of the
     distance, when no other stop sign comes first; with one first it says the distance.
