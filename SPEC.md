@@ -2105,9 +2105,10 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   `DRIVE`; walking, cycling and track rides keep the line at the turn). A town turn
   (`NavEngine.townTurn`) is a left or right, slight and sharp included, that does not get the one
   approach line above and is not the turn onto an on-ramp. It says its far line with the distance
-  and its near line, and nothing at the corner once that near line is said: the buzz stays. Its
-  near line names a turn close after it, or one due at once (`chainedNext`, `dueNext`): "In 500
-  feet, turn left onto 5th Street, then take the ramp on the right toward I 80 East". A "then",
+  and its near line with none ("At the light, turn left onto 5th Street"), and nothing at the
+  corner once that near line is said: the buzz stays. Its near line names a turn close after it,
+  or one due at once (`chainedNext`, `dueNext`): "Turn left onto 5th Street, then take the ramp on
+  the right toward I 80 East". A "then",
   on any line, counts only as that next town turn's far line, so its near line is still said, and
   past a quiet corner it waits until the car is `CORNER_CLEAR_M` (15 m) past it. Google, recorded
   on two Davis fixture drives: far 300 to 420 m out with the distance, near 93 to 160 m out with

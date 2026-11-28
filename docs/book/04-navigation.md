@@ -83,8 +83,9 @@ PASSED_SLACK_M = 75    // a maneuver this far behind was passed in a gap: advanc
 ```
 
 A turn in town on a drive gets two lines, as Google's does: a far prompt with the distance and a
-near one, with the 400 m and 150 m floors, and nothing at the corner, where the driver is
-turning. The near prompt names a turn close after it ("In 500 feet, turn left onto 5th Street,
+near one without it ("At the light, turn left onto 5th Street"), with the 400 m and 150 m floors,
+and nothing at the corner, where the driver is turning. A distance said 10 s out is out of date
+before the line ends. The near prompt names a turn close after it ("Turn left onto 5th Street,
 then take the ramp on the right"), and that turn still gets its own line once the corner is 15 m
 behind. Recorded on two Davis drives, Google said its near line 93 to 160 m out and nothing
 after it; Vela's old line at the turn started 12 to 30 m out and played through the corner.

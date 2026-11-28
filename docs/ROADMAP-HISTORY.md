@@ -11,6 +11,9 @@ says so.
 
 ### November 2026
 
+- A drive's town turns say no line at the corner, Google's two lines (SPEC 4.6, Guidance). Heard
+  on a 13 km drive with eleven turns: out of the parking lot, no line played while the car turned
+  (its course moved 22 degrees at most during any line).
 - The car's lane picture drawn with the phone card's lane arrows, only the turn's arrow lit
   (`LaneImage`). Seen on the Desktop Head Unit at 1280 by 720 on a demo drive in Davis: at B
   Street the dim straight arrow, the lit right arrow and the dash between them, small but clear.

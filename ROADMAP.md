@@ -275,8 +275,8 @@ off the list when it has been.
   Google's route to stop turning the car round instead of offering it as faster (SPEC 4.6,
   Rechecks). Unit and session tests only: not yet seen on a drive that starts as the phone
   leaves Wi-Fi.
-- A drive's town turns say no line at the corner, Google's two lines (SPEC 4.6, Guidance): unit
-  tests and a replay of a real drive; not yet heard on a drive.
+- A drive's town turns say their near line with no distance, as Google's ("At the light, turn
+  left onto 5th Street"; SPEC 4.6, Guidance): unit tests only; not yet heard on a drive.
 - Lane arrows when no lane has an arrow the way of the turn: the lane the data marks for it
   draws the turn's arrow, lit, on the card and the car (SPEC 10.2, `laneArrows`). Unit tests and
   the car's lane bitmap drawn through the app's code; not yet seen on a drive.

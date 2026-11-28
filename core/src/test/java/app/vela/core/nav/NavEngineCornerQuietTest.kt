@@ -9,7 +9,6 @@ import app.vela.core.model.RouteLeg
 import app.vela.core.model.distanceTo
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -17,7 +16,7 @@ import java.util.Locale
 
 /**
  * A drive's town turns in Google's rhythm (NavEngine.update's cornerQuiet): a far line with its
- * distance, a near line, and nothing at the corner. The near line names a turn close after, and
+ * distance, a near line with none, and nothing at the corner. The near line names a turn close after, and
  * that turn's own line comes once the corner is made. Davis fixture, metric, 10 m/s.
  */
 class NavEngineCornerQuietTest {
@@ -73,7 +72,7 @@ class NavEngineCornerQuietTest {
     @Test fun `a town turn says a far and a near line and nothing at the corner`() {
         val quiet = drive(route(), quiet = true)
         val turnLines = quiet.filter { "North Road" in it.second }
-        assertEquals("$quiet", listOf("In 400 meters, Turn left onto North Road", "In 150 meters, Turn left onto North Road"), turnLines.map { it.second })
+        assertEquals("$quiet", listOf("In 400 meters, Turn left onto North Road", "Turn left onto North Road"), turnLines.map { it.second })
         assertTrue("$quiet", quiet.none { it.first in 1460.0..1530.0 })
         // Without it (walking, cycling) the line at the turn stays.
         val loud = drive(route(), quiet = false)
@@ -82,7 +81,7 @@ class NavEngineCornerQuietTest {
 
     @Test fun `the near line names a turn close after, and that turn speaks once the corner is made`() {
         val said = drive(route(northM = 100.0, second = true), quiet = true)
-        val near = said.first { it.second.startsWith("In 150 meters, Turn left onto North Road") }.second
+        val near = said.first { it.second.startsWith("Turn left onto North Road") }.second
         assertTrue(near, "then" in near && "Elm Street" in near)
         // Nothing inside either corner: from 30 m before the first to 15 m past it, and from 25 m
         // before the second.
@@ -102,8 +101,10 @@ class NavEngineCornerQuietTest {
     @Test fun `the voice prepares the near line with the turn after, not a line at the corner`() {
         val r = route(northM = 100.0, second = true)
         val lines = NavEngine.upcomingPrompts(r, fromStep = 1, spoken = emptySet(), speedMps = 10.0, imperial = false, nearestFirst = false, cornerQuiet = true)
-        assertTrue("$lines", lines.any { it.startsWith("In 150 meters, Turn left onto North Road") && "Elm Street" in it })
-        assertFalse("$lines", lines.any { it == "Turn left onto North Road" || it.startsWith("Turn left onto North Road, then") })
+        // The far line, then the near line with no distance and the turn after: nothing else
+        // names North Road, so nothing is prepared for the corner.
+        assertEquals("$lines", listOf("In 400 meters, Turn left onto North Road, then turn right onto Elm Street", "Turn left onto North Road, then turn right onto Elm Street"),
+            lines.filter { "North Road" in it }.distinct())
     }
 
     @Test fun `a town turn named on the line at a fork just before it still gets its own line`() {
@@ -125,7 +126,7 @@ class NavEngineCornerQuietTest {
         )
         val d = poly.zipWithNext { a, b -> a.distanceTo(b) }.sum()
         val said = drive(Route(poly, listOf(RouteLeg(d, d / 10, null, ms)), d, d / 10, null), quiet = true)
-        val own = said.filter { it.second.startsWith("In ") && "Oak Avenue" in it.second && !it.second.startsWith("In 400") }
+        val own = said.filter { "Oak Avenue" in it.second && "Keep" !in it.second && !it.second.startsWith("In 400") }
         assertTrue("$said", own.any { it.first >= 975.0 })
     }
 }

@@ -708,7 +708,13 @@ object NavEngine {
                 val nextStop = cue == LightCue.NEXT_STOP && !(firstForStep && (thenStopHere || lane != null || nextIdx >= 0)) &&
                     !(quietCorner && nearLine && chainIdx >= 0)
                 val distancePhrase = spokenDistance(sayM, imperial)
-                fun say(instr: String) = if (nextStop) withLight(LightCue.NEXT_STOP, instr) else nav().inThen(distancePhrase, wrap(instr))
+                // A quiet town turn's near line has no distance, as Google's: "At the light, turn
+                // left onto Elm Street". Said about 10 s out, the number was stale by its end.
+                fun say(instr: String) = when {
+                    nextStop -> withLight(LightCue.NEXT_STOP, instr)
+                    quietCorner && nearLine -> wrap(instr)
+                    else -> nav().inThen(distancePhrase, wrap(instr))
+                }
                 var line = say(instruction)
                 // Entering a short step at speed, the whole line was still playing when the line
                 // at the turn cut in (it interrupts), and the sign's tail was what got cut. When
@@ -1235,7 +1241,11 @@ object NavEngine {
                 }
                 val nextStop = cue == LightCue.NEXT_STOP && !(first && (lane != null || nextIdx >= 0)) &&
                     !(quiet && cueLine == CueLine.NEAR && quietNext >= 0)
-                return if (nextStop) withLight(LightCue.NEXT_STOP, instr) else nav().inThen(spokenDistance(sayM, imperial), wrapped)
+                return when {
+                    nextStop -> withLight(LightCue.NEXT_STOP, instr)
+                    quiet && cueLine == CueLine.NEAR -> wrapped
+                    else -> nav().inThen(spokenDistance(sayM, imperial), wrapped)
+                }
             }
             // Update's approach lines replayed from the car's first look at the step ([entries])
             // down to the turn: a line where a band is first due, at the real distance when the car
