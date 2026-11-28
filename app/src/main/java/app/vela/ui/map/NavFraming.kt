@@ -163,19 +163,25 @@ internal object NavFraming {
 
     /**
      * Ground dp, at the center's scale, from the arrow to the screen row [upDp] above it, on a map
-     * [heightDp] tall tilted [tiltDeg]. Flat, that is [upDp] itself. Tilted, the ground beyond the
+     * [heightDp] tall tilted [tiltDeg], the arrow [belowCenterDp] under the view's center (0 on the
+     * phone, whose padding puts the center of the view on the arrow). Flat, that is [upDp] itself. Tilted, the ground beyond the
      * arrow is drawn smaller, so a screen row reaches farther. The mirror of
      * `CarFraming.targetOffset`, for a row above the center: a point g beyond the center sits
      * `atan((d sin p + g) / (d cos p)) - p` above the view axis, shown at `tan(angle) d` pixels,
      * solved for g. Infinite at the horizon and past it.
      */
-    fun groundAhead(upDp: Double, tiltDeg: Double, heightDp: Double): Double {
+    fun groundAhead(upDp: Double, tiltDeg: Double, heightDp: Double, belowCenterDp: Double = 0.0): Double {
         if (tiltDeg <= 0.0 || heightDp <= 0.0) return upDp
         val p = Math.toRadians(tiltDeg)
         val d = cameraDistanceDp(heightDp)
-        val a = p + atan(upDp / d)
+        // An arrow [belowCenterDp] under the view's center (the car's snapshot, which moves the
+        // target instead of padding the view): the row is that much less above the center, and
+        // the ground from the arrow up to the center is added.
+        val a = p + atan((upDp - belowCenterDp) / d)
         if (a >= Math.PI / 2 - 1e-6) return Double.POSITIVE_INFINITY
-        return d * cos(p) * tan(a) - d * sin(p)
+        val fromCenter = d * cos(p) * tan(a) - d * sin(p)
+        if (belowCenterDp == 0.0) return fromCenter
+        return fromCenter + app.vela.car.CarFraming.targetOffset(belowCenterDp, 0.0, tiltDeg, heightDp).first
     }
 
     /** The screen row above the arrow that a ground point [aheadDp] beyond it lands on: the
@@ -196,9 +202,9 @@ internal object NavFraming {
      * at latitude [latDeg]. A turn off to the side lands lower than that row, never higher. NaN
      * when there is nothing to frame (no distance, no room above the arrow). Not floored.
      */
-    fun turnZoom(groundM: Double, upDp: Double, heightDp: Double, tiltDeg: Double, latDeg: Double): Double {
+    fun turnZoom(groundM: Double, upDp: Double, heightDp: Double, tiltDeg: Double, latDeg: Double, belowCenterDp: Double = 0.0): Double {
         if (groundM <= 0.0 || upDp <= 0.0 || heightDp <= 0.0) return Double.NaN
-        val g = groundAhead(upDp, tiltDeg, heightDp)
+        val g = groundAhead(upDp, tiltDeg, heightDp, belowCenterDp)
         if (!g.isFinite() || g <= 0.0) return Double.NaN
         return log2(EARTH_CIRCUMFERENCE_M * cos(Math.toRadians(latDeg)) * g / (WORLD_PX_Z0 * groundM))
     }
@@ -213,14 +219,14 @@ internal object NavFraming {
      * out further still. The fixed point is bisected between the flat answer and the one at the
      * wanted tilt; twelve halvings leave less than 0.001 of a level.
      */
-    fun turnZoomFlattening(groundM: Double, upDp: Double, heightDp: Double, tiltWantedDeg: Double, latDeg: Double): Double {
-        val atWanted = turnZoom(groundM, upDp, heightDp, tiltWantedDeg, latDeg)
+    fun turnZoomFlattening(groundM: Double, upDp: Double, heightDp: Double, tiltWantedDeg: Double, latDeg: Double, belowCenterDp: Double = 0.0): Double {
+        val atWanted = turnZoom(groundM, upDp, heightDp, tiltWantedDeg, latDeg, belowCenterDp)
         if (atWanted.isNaN() || tiltAt(atWanted, tiltWantedDeg) >= tiltWantedDeg - 1e-9) return atWanted
-        var lo = turnZoom(groundM, upDp, heightDp, 0.0, latDeg)
+        var lo = turnZoom(groundM, upDp, heightDp, 0.0, latDeg, belowCenterDp)
         var hi = atWanted
         repeat(12) {
             val mid = (lo + hi) / 2
-            if (turnZoom(groundM, upDp, heightDp, tiltAt(mid, tiltWantedDeg), latDeg) > mid) lo = mid else hi = mid
+            if (turnZoom(groundM, upDp, heightDp, tiltAt(mid, tiltWantedDeg), latDeg, belowCenterDp) > mid) lo = mid else hi = mid
         }
         return (lo + hi) / 2
     }

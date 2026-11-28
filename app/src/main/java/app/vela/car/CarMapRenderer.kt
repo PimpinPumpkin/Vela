@@ -769,18 +769,29 @@ class CarMapRenderer(
             turnPoint = app.vela.ui.map.NavTurnTarget.pointFor(st.route, st.nav.stepIndex)
         }
         val target = turnPoint ?: run { turnYaw = 0.0; return speed }
-        val upPx = framingArea().height() * PUCK_DOWN - TURN_MARGIN_PX
+        val area = framingArea()
+        val upPx = area.height() * PUCK_DOWN - TURN_MARGIN_PX
+        // The arrow sits under the snapshot's center (requestRender moves the target, it does not
+        // pad the view), and a tilted view reaches less ground above a row under its center.
+        val belowPx = area.top + area.height() * PUCK_DOWN - height / 2.0
         val ground = from.distanceTo(target)
-        val solved = app.vela.ui.map.NavFraming.turnZoomFlattening(ground, upPx, height.toDouble(), CarFraming.NAV_TILT_DEG, from.lat)
+        val solved = app.vela.ui.map.NavFraming.turnZoomFlattening(ground, upPx, height.toDouble(), CarFraming.NAV_TILT_DEG, from.lat, belowPx)
         // The zoom is solved for the tilt the camera is heading for, and the tilt eases in over
         // about two seconds (TILT_EASE). Until it arrives the camera is flatter and shows less road,
         // so where the view tilts up from top-down, about a mile from a freeway turn, the turn slid
         // off the top, under the turn card (#995). Framed for the flatter of the two, it stays in.
         val raw = if (!solved.isNaN() && tilt < app.vela.ui.map.NavFraming.tiltAt(solved, CarFraming.NAV_TILT_DEG) - TILT_FRAME_SLACK_DEG) {
-            app.vela.ui.map.NavFraming.turnZoom(ground, upPx, height.toDouble(), tilt, from.lat)
+            app.vela.ui.map.NavFraming.turnZoom(ground, upPx, height.toDouble(), tilt, from.lat, belowPx)
         } else solved
         turnYaw = app.vela.ui.map.NavFraming.turnYaw(heading, from.bearingTo(target), speed, raw)
-        return app.vela.ui.map.NavFraming.withTurn(speed, raw, app.vela.ui.map.NavFraming.turnFloor())
+        val out = app.vela.ui.map.NavFraming.withTurn(speed, raw, app.vela.ui.map.NavFraming.turnFloor())
+        if (android.util.Log.isLoggable("VelaCar", android.util.Log.DEBUG)) android.util.Log.d(
+            "VelaCar",
+            "turn frame: ground=${ground.toInt()} m up=${upPx.toInt()} below=${belowPx.toInt()} px of ${height} vis=${area.toShortString()} " +
+                "solved=${"%.2f".format(java.util.Locale.US, solved)} raw=${"%.2f".format(java.util.Locale.US, raw)} " +
+                "speedZoom=${"%.2f".format(java.util.Locale.US, speed)} out=${"%.2f".format(java.util.Locale.US, out)} tilt=${tilt.toInt()} step=${st.nav.stepIndex}",
+        )
+        return out
     }
 
     private var styleLayerIds: List<String> = emptyList()

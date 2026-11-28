@@ -193,7 +193,9 @@ Zoom follows speed whenever the view follows a moving car, from 17.2 at rest to 
 and up, on a straight line, eased. With the phone's "Zoom to the next turn" on, a drive also zooms
 out until the next maneuver sits 40 px under the top of the visible area, no farther than the
 phone's floor, turns the camera toward it up to 90 degrees as the phone does (chapter 11), and
-lies flatter that far out. A fix that reports no speed takes the distance since the last
+lies flatter that far out. The car's map keeps the view centered and moves the arrow low by
+moving the camera's target, so the zoom is worked out for an arrow under the center: a tilted
+view reaches less road above a low row than above the middle. A fix that reports no speed takes the distance since the last
 fix over the time between them, because a fix read as parked held the zoom at its closest, and
 one with no bearing takes the direction from the last fix once it has moved a few meters. A pan,
 a pinch or a zoom button stops following until `RECENTER_MS` (6 s) has passed or you press

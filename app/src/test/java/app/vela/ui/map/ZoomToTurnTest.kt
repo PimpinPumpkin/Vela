@@ -37,6 +37,30 @@ class ZoomToTurnTest {
         assertEquals(949.0, NavFraming.groundAhead(upDp, 55.0, heightDp), 1.0)
     }
 
+    /** The car's snapshot keeps its view centered and moves the target, so the arrow sits under
+     *  the center: a Desktop Head Unit at 800x480, a 370 px surface with the visible area from 11
+     *  to 359 px, the arrow at 86% of it (issue #995). */
+    @Test fun `an arrow under the center reaches less ground, and the turn lands on its row`() {
+        val h = 370.0
+        val arrowY = 11.0 + 348.0 * 0.86
+        val below = arrowY - h / 2
+        val up = 348.0 * 0.86 - 40.0
+        for (tilt in listOf(0.0, 20.0, 40.0, 55.0)) {
+            val g = NavFraming.groundAhead(up, tilt, h, below)
+            // Forward: the ground point g beyond the arrow is (g - arrow to center) beyond the center.
+            val toCenter = app.vela.car.CarFraming.targetOffset(below, 0.0, tilt, h).first
+            val rowAboveCenter = NavFraming.screenUp(g - toCenter, tilt, h)
+            assertEquals("tilt $tilt", up - below, rowAboveCenter, 1e-6)
+        }
+        // At the drive tilt, taking the arrow for the center overstated the reach about 2.6 times,
+        // and the zoom put a turn 1.6 km out well past the top of the map.
+        val asCenter = NavFraming.groundAhead(up, 55.0, h)
+        val real = NavFraming.groundAhead(up, 55.0, h, below)
+        assertTrue("reach $asCenter against $real", asCenter > 2.4 * real && asCenter < 2.8 * real)
+        val z = NavFraming.turnZoomFlattening(1650.0, up, h, 55.0, lat, below)
+        assertTrue("zoom $z", z < 14.6)
+    }
+
     @Test fun `meters per dp follow the 512 px world`() {
         assertEquals(NavFraming.EARTH_CIRCUMFERENCE_M / 512, NavFraming.metersPerDp(0.0, 0.0), 1e-6)
         assertEquals(0.934, NavFraming.metersPerDp(16.0, lat), 0.001)

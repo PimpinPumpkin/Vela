@@ -7452,7 +7452,12 @@ The map:
   the flatter of the camera's tilt now and the tilt it is heading for (`turnZoom` at the current
   tilt while it is more than `TILT_FRAME_SLACK_DEG` short of `tiltAt` of the solved zoom): framed
   for a tilt not yet reached, the turn slid off the top, under the turn card, where the view
-  tilts up from top-down about a mile out on a freeway (#995). A fix with no speed takes the distance since the last fix over
+  tilts up from top-down about a mile out on a freeway (#995). The solve also takes the arrow's
+  place under the snapshot's center (`belowCenterDp`, the arrow's row less half the surface
+  height): the snapshot moves its target rather than padding the view, so a tilted row above the
+  arrow reaches less ground than the same row above the center. Taken as the center, the reach
+  at 55 degrees was overstated about 2.6 times on an 800x480 head unit, and from about 1.5 km to
+  0.3 km out at town speed the turn sat past the top of the map. A fix with no speed takes the distance since the last fix over
   the time between them (0.2 to 5 s apart), capped at `FIX_SPEED_MAX_MPS` (70): read as parked,
   it held the zoom at its closest. A fix with no bearing takes the direction from the last fix
   once it has moved `FIX_COURSE_MIN_M` (3 m).
