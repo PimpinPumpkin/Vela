@@ -114,6 +114,12 @@ class LaneGlyphTest {
         assertEquals(setOf("straight"), laneArrows(straightOrRight, ManeuverType.STRAIGHT).lit)
         assertEquals(setOf("right"), laneArrows(Lane(listOf("right", "sharp_right"), true), ManeuverType.TURN_RIGHT).lit)
         assertEquals(emptySet<String>(), laneArrows(Lane(listOf("right"), false), ManeuverType.TURN_RIGHT).lit)
+        // A lane the data marks valid with no arrow toward the turn lights nothing: a straight-or-
+        // right lane beside two left lanes at a left turn.
+        assertEquals(emptySet<String>(), laneArrows(Lane(listOf("straight", "right"), true), ManeuverType.TURN_LEFT).lit)
+        assertEquals(setOf("left"), laneArrows(Lane(listOf("left"), true), ManeuverType.TURN_LEFT).lit)
+        assertEquals(setOf("slight left"), laneArrows(Lane(listOf("straight", "slight left"), true), ManeuverType.TURN_LEFT).lit)
+        assertEquals(setOf("straight"), laneArrows(Lane(listOf("straight"), true), ManeuverType.SLIGHT_LEFT).lit)
         // A merge does not say which side: every arrow of a valid lane lights.
         assertEquals(setOf("slight left", "straight"), laneArrows(Lane(listOf("merge_to_left", "none"), true), ManeuverType.MERGE).lit)
         assertEquals(listOf("straight"), laneArrows(Lane(emptyList(), true), ManeuverType.STRAIGHT).kinds)

@@ -929,9 +929,11 @@ internal class LaneArrows(val kinds: List<String>, val lit: Set<String>)
 /**
  * The arrows [lane] draws for [maneuver], on the phone and on the car. In a valid lane only the
  * arrow nearest the maneuver's direction lights, so a straight-or-right lane at a right turn lights
- * its right arrow and leaves the straight one dim. When the maneuver's type does not say which
- * side it goes (a merge, a roundabout, arriving), every arrow of a valid lane lights. Lanes that
- * are not valid light nothing.
+ * its right arrow and leaves the straight one dim; and only when that arrow is within a step of
+ * the maneuver's direction (a slight or sharp one for a turn), so a lane the data marks valid with
+ * no arrow that way lights nothing: a straight arrow never lights for a left turn. When the
+ * maneuver's type does not say which side it goes (a merge, a roundabout, arriving), every arrow
+ * of a valid lane lights. Lanes that are not valid light nothing.
  */
 internal fun laneArrows(lane: Lane, maneuver: ManeuverType): LaneArrows {
     val kinds = lane.indications.map { laneKind(laneIndication(it)) }.ifEmpty { listOf("straight") }.distinct()
@@ -939,7 +941,10 @@ internal fun laneArrows(lane: Lane, maneuver: ManeuverType): LaneArrows {
     val lit = when {
         !lane.valid -> emptySet()
         target == null -> kinds.toSet()
-        else -> setOfNotNull(kinds.minByOrNull { kotlin.math.abs(laneBucket(it) - target) })
+        else -> setOfNotNull(
+            kinds.minByOrNull { kotlin.math.abs(laneBucket(it) - target) }
+                ?.takeIf { kotlin.math.abs(laneBucket(it) - target) <= 1 },
+        )
     }
     return LaneArrows(kinds, lit)
 }

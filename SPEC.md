@@ -6984,7 +6984,8 @@ or last chip scrolls the row all the way to that end.
   Every arrow a lane allows is its own whole
   glyph on the lane's center, and they are drawn over one another with the lit one last, so a turn
   looks the same in every lane. In a valid lane only the arrow nearest the maneuver's direction
-  lights; when the maneuver's type has no side (a merge, a roundabout, arriving) every arrow of a
+  lights, and only when it is within one step of it (`laneBucket`: a slight or sharp arrow for a
+  turn), so a lane marked valid with no arrow that way stays dim; when the maneuver's type has no side (a merge, a roundabout, arriving) every arrow of a
   valid lane lights; other lanes are dim (`laneArrows`, which the car's lanes use too). Glyphs
   reach past their lane to the side, inside the row's 8 dp
   ends. The card's strip has 26 above the glyphs and 25 under the foot, where a dim dash 5 wide
