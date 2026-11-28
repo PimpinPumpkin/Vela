@@ -277,6 +277,10 @@ off the list when it has been.
   leaves Wi-Fi.
 - A drive's town turns say their near line with no distance, as Google's ("At the light, turn
   left onto 5th Street"; SPEC 4.6, Guidance): unit tests only; not yet heard on a drive.
+- On a drive, exits, ramps, forks and keeps say Google's two lines at any speed, far ("In 800
+  meters, take exit 10") and near without a distance ("Take exit 10"), and nothing at the gore;
+  a step after an exit gets its own lines (SPEC 4.6, Guidance): unit tests and mock drives on a
+  4a; not yet heard on a freeway drive.
 - A drive's "then" is Google's own short sentence with no street ("Turn right onto Elm Street.
   Then at the next light, you'll turn left"; SPEC 4.6, Guidance), and that turn's near line
   still names it: unit tests and a mock drive on a 4a; not yet heard on a drive.

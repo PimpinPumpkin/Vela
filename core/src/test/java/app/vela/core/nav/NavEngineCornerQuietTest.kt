@@ -96,9 +96,11 @@ class NavEngineCornerQuietTest {
         assertTrue("$said", own[0].first in 1515.0..1575.0)
     }
 
-    @Test fun `a ramp keeps its line at the turn`() {
+    @Test fun `a ramp says Google's two lines too and nothing at the turn`() {
         val said = drive(route(type = ManeuverType.RAMP_RIGHT), quiet = true)
-        assertTrue("$said", said.any { it.first > 1450.0 && it.second.startsWith("Take the ramp") && !it.second.startsWith("In ") })
+        val ramp = said.filter { "ramp" in it.second }
+        assertEquals("$said", listOf("In 400 meters, Take the ramp on the right toward I 80 East", "Take the ramp on the right"), ramp.map { it.second })
+        assertTrue("$said", said.none { it.first in 1460.0..1530.0 })
     }
 
     @Test fun `the voice prepares the near line with the turn after, not a line at the corner`() {

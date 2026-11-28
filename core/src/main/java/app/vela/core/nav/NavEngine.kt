@@ -297,9 +297,10 @@ object NavEngine {
         // A GPX track ride (TrackRide): the approach bands and the "then" distance are a
         // cyclist's ([farBand], [nearBand], [TRACK_CHAIN_M]). False keeps every other drive as is.
         trackRide: Boolean = false,
-        // A drive (NavSession, DRIVE): a town turn says no line at the corner ([townTurn]). Its
-        // near line carries the turn after it, and the line for that turn waits until the car is
-        // [CORNER_CLEAR_M] past this one. False keeps the line at the turn (walking, cycling).
+        // A drive (NavSession, DRIVE): Google's rhythm. A turn, exit or fork says a far and a near
+        // line and nothing at it ([driveQuiet]); its near line carries a step close after it, and
+        // the next step's line waits until the car is [CORNER_CLEAR_M] past it. False keeps the
+        // line at the turn and the highway's one approach line (walking, cycling).
         cornerQuiet: Boolean = false,
     ): Pair<NavState, List<NavEvent>> {
         val events = mutableListOf<NavEvent>()
@@ -557,7 +558,7 @@ object NavEngine {
         // after it. Both bands are the same distance, so they are said as one.
         val detail = SpokenDetail.mode
         fun bandsFor(i: Int): Pair<Double, Double> =
-            if (detail == SpokenDetail.Mode.FULL && oneApproach(maneuvers, i, v)) {
+            if (detail == SpokenDetail.Mode.FULL && !cornerQuiet && oneApproach(maneuvers, i, v)) {
                 maxOf(nearM, round50(v * FAST_APPROACH_S)).let { it to it }
             } else farM to nearM
         // The line at the turn, ~2.5 s before it (the fixed 25 m fired ≤1 s before a 75 mph gore
@@ -605,10 +606,12 @@ object NavEngine {
         }
         // GOOGLE'S TOWN RHYTHM: two lines, the far one with its distance and the near one, and
         // nothing at the corner, where the driver is turning. The near line names the turn after.
-        val quietCorner = cornerQuiet && detail == SpokenDetail.Mode.FULL && !trackRide && townTurn(maneuvers, idxCur, v)
-        val chainIdx = if (nextIdx >= 0) nextIdx else laterIdx
+        val quietCorner = cornerQuiet && detail == SpokenDetail.Mode.FULL && !trackRide && driveQuiet(maneuvers, idxCur)
+        // The near line's "then": a step close after it, as Google's, which named a step 320 m on
+        // and not one 400 m on ([QUIET_THEN_M]); a step further on gets its own lines.
+        val chainIdx = if (nextIdx >= 0) nextIdx else laterIdx.takeIf { it >= 0 && manAlong[it] - manAlong[idxCur] <= QUIET_THEN_M } ?: -1
         // Just round a quiet corner, the next turn's first line waits until the turn is made.
-        val prevCornerHold = cornerQuiet && !trackRide && idxCur > 0 && townTurn(maneuvers, idxCur - 1, v) &&
+        val prevCornerHold = cornerQuiet && !trackRide && idxCur > 0 && driveQuiet(maneuvers, idxCur - 1) &&
             traveled < manAlong[idxCur - 1] + CORNER_CLEAR_M
         var chainedOnNear = false
         var chainedNow = false
@@ -858,7 +861,7 @@ object NavEngine {
             // Named on a near line, the turn after keeps its own near line, said after this corner.
             // A town turn that will say nothing at its corner keeps its near line however it was named.
             chainedBands = if (!chainedNow) state.chainedBands
-            else if (chainedOnNear || (cornerQuiet && !trackRide && (townTurn(maneuvers, chainedIdx, v) || thenDropsRoad(maneuvers[chainedIdx])))) (if (chainedIdx == laterIdx) laterBands - 1 else setOf(0))
+            else if (chainedOnNear || (cornerQuiet && !trackRide && (driveQuiet(maneuvers, chainedIdx) || thenDropsRoad(maneuvers[chainedIdx])))) (if (chainedIdx == laterIdx) laterBands - 1 else setOf(0))
             else (if (chainedIdx == laterIdx) laterBands else setOf(0, 1)) +
                 (if (thenAtTurn && chainRepeatsSoon(maneuvers, manAlong, idxCur, chainedIdx, dtn, turnNowM, v, thenSaid)) setOf(TURN_NOW_SAID_SLOT) else emptySet()),
         )
@@ -888,12 +891,14 @@ object NavEngine {
         ManeuverType.SLIGHT_LEFT, ManeuverType.SLIGHT_RIGHT,
     )
 
-    /** Step [i] is a town turn at [speedMps]: a plain left or right (slight and sharp too) that is
-     *  not given the highway's one approach line ([oneApproach]) and is not the turn onto an
-     *  on-ramp ([onRampTurn]). With [update]'s cornerQuiet it says two lines, as Google's does:
-     *  far with its distance, near, and none at the corner. */
-    internal fun townTurn(ms: List<Maneuver>, i: Int, speedMps: Double): Boolean =
-        i in ms.indices && ms[i].type in TOWN_TURN_TYPES && !oneApproach(ms, i, speedMps) && !onRampTurn(ms, i)
+    /** Step [i] on a drive says Google's two lines, far with its distance and near without, and
+     *  none at the turn: a left or right (slight and sharp too), the turn onto an on-ramp, a ramp,
+     *  an exit, a fork or a keep, at any speed. U-turns, roundabouts and merges keep their own. */
+    internal fun driveQuiet(ms: List<Maneuver>, i: Int): Boolean =
+        i in ms.indices && (ms[i].type in TOWN_TURN_TYPES || (SpokenDetail.exitLike(ms[i].type) && ms[i].type != ManeuverType.UTURN))
+
+    /** The furthest a quiet step's near line names the step after it ([update]). */
+    const val QUIET_THEN_M = 350.0
 
     /** Whether step [i], approached at [speedMps], gets one approach line instead of two in the full
      *  voice: anything at [SpokenDetail.FAST_MPS] or more, and an exit, fork, keep, U-turn or the
@@ -1139,7 +1144,7 @@ object NavEngine {
         val turnNowM = (speedMps * 2.5).coerceIn(ARRIVE_RADIUS_M, 90.0)
         val detail = SpokenDetail.mode
         fun bandsOf(k: Int): List<Double> =
-            if (detail == SpokenDetail.Mode.FULL && oneApproach(ms, k, speedMps)) maxOf(near, round50(speedMps * FAST_APPROACH_S)).let { listOf(it, it) }
+            if (detail == SpokenDetail.Mode.FULL && !cornerQuiet && oneApproach(ms, k, speedMps)) maxOf(near, round50(speedMps * FAST_APPROACH_S)).let { listOf(it, it) }
             else listOf(far, near)
         // A turn said as the "then" of the one before: the bands that line counts as said for it.
         // The drive's own ([NavState.chainedStep]) to begin with, then the ones predicted here.
@@ -1168,7 +1173,7 @@ object NavEngine {
                     val v = if (turnLeftOf(ms[i - 1].type) != null) minOf(pace, TURN_PACE_MPS) else pace
                     val adv = (v * 2.5).coerceIn(ADVANCE_MIN_M, 90.0)
                     // Past a quiet corner the first line waits until the car is clear of it.
-                    if (cornerQuiet && !trackRide && townTurn(ms, i - 1, speedMps)) listOf(legM - CORNER_CLEAR_M, legM - CORNER_CLEAR_M - v)
+                    if (cornerQuiet && !trackRide && driveQuiet(ms, i - 1)) listOf(legM - CORNER_CLEAR_M, legM - CORNER_CLEAR_M - v)
                     else listOf(legM + adv - v, legM + adv - 2 * v)
                 }
                 said.isNotEmpty() -> listOf(Double.POSITIVE_INFINITY)
@@ -1221,8 +1226,8 @@ object NavEngine {
             val lane = app.vela.core.model.laneGuidance(m.lanes)
             // update's cornerQuiet: a town turn's near line names the turn after, and it says
             // nothing at the corner.
-            val quiet = cornerQuiet && !trackRide && townTurn(ms, i, speedMps)
-            val quietNext = if (nextIdx >= 0) nextIdx else laterIdx
+            val quiet = cornerQuiet && !trackRide && driveQuiet(ms, i)
+            val quietNext = if (nextIdx >= 0) nextIdx else laterIdx.takeIf { it >= 0 && gapTo(it) <= QUIET_THEN_M } ?: -1
             var joinedNear = false
             val full = if (lane != null) nav().useLanesToDo(lane.side, lane.count, nav().spokenSign(m.spokenInstruction()))
                 else nav().spokenSign(m.spokenInstruction())
@@ -1320,7 +1325,7 @@ object NavEngine {
                     if (!alwaysChained) continue
                     chainedInto = k
                     val repeats = joins.all { (dtn, j) -> j.atTurn && chainRepeatsSoon(ms, manAlong, i, k, dtn, turnNowM, speedMps, j.thenSaid) }
-                    chainedBands = if (cornerQuiet && !trackRide && (townTurn(ms, k, speedMps) || thenDropsRoad(ms[k]))) {
+                    chainedBands = if (cornerQuiet && !trackRide && (driveQuiet(ms, k) || thenDropsRoad(ms[k]))) {
                         if (k == nextIdx) setOf(0) else bandsOf(k).withIndex().filter { (_, d) -> (gap - d) / pace < BAND_MERGE_S }.map { it.index }.toSet() - 1
                     } else (
                         if (k == nextIdx || ms[k].type == ManeuverType.MERGE) setOf(0, 1)

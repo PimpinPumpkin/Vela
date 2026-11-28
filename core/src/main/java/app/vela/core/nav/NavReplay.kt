@@ -47,7 +47,7 @@ object NavReplay {
         val worstCardErrorM: Double,     // worst |card distance − real distance| while it was the target
         val nearestApproachM: Double,    // closest the track actually came to the turn (along-route)
         val ringExit: Boolean = false,   // a roundabout's exit right after its entry (NavEngine.ringExit)
-        val quietCorner: Boolean = false, // a drive's town turn, which says nothing at the corner (NavEngine.townTurn)
+        val quietCorner: Boolean = false, // a drive's turn, exit or fork, which says nothing at it (NavEngine.driveQuiet)
     ) {
         // CONTINUE is voice-silent BY DESIGN (same-road straight-on, see NavEngine's
         // redundantContinue) — exempt it like DEPART or every intentional silence on a real
@@ -196,7 +196,7 @@ object NavReplay {
                 worstCardErrorM = worstErr[i],
                 nearestApproachM = nearest[i].takeIf { it != Double.MAX_VALUE } ?: 0.0,
                 ringExit = NavEngine.ringExit(maneuvers, i),
-                quietCorner = cornerQuiet && NavEngine.townTurn(maneuvers, i, 0.0),
+                quietCorner = cornerQuiet && NavEngine.driveQuiet(maneuvers, i),
             )
         }
         return Report(cards, diffs)

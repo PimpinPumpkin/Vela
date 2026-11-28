@@ -82,14 +82,17 @@ turn now     = speed x 2.5 s, clamped 25..90 m   // also where the step advances
 PASSED_SLACK_M = 75    // a maneuver this far behind was passed in a gap: advance silently
 ```
 
-A turn in town on a drive gets two lines, as Google's does: a far prompt with the distance and a
-near one without it ("At the light, turn left onto 5th Street"), with the 400 m and 150 m floors,
-and nothing at the corner, where the driver is turning. A distance said 10 s out is out of date
+A turn, exit or fork on a drive gets two lines, as Google's does: a far prompt with the distance
+and a near one without it ("At the light, turn left onto 5th Street"; "Take exit 10"), with the
+400 m and 150 m floors, and nothing at the corner or the gore, where the driver is turning. At
+23 m/s that is "In 800 meters, take exit 10 toward El Camino Avenue" and "Take exit 10" 250 m
+out, as Google says them. A distance said 10 s out is out of date
 before the line ends. The near prompt names a turn close after it ("Turn left onto 5th Street,
 then take the ramp on the right"), and that turn still gets its own line once the corner is 15 m
 behind. Recorded on two Davis drives, Google said its near line 93 to 160 m out and nothing
 after it; Vela's old line at the turn started 12 to 30 m out and played through the corner.
-Walking and cycling keep the short line at the turn, where corners come close together. Any maneuver at 80 km/h (50 mph) or more, and an exit, fork, keep, U-turn or the
+Walking and cycling keep the short line at the turn, where corners come close together. Off a
+drive, any maneuver at 80 km/h (50 mph) or more, and an exit, fork, keep, U-turn or the
 turn onto an on-ramp at 55 km/h (34 mph) or more, gets one prompt about 15 s out and the
 turn-now line: at 29 m/s (65 mph) that is "In a quarter mile" 450 m out, then "Take exit 12" at
 the gore. With far and near prompts too, an exit, the fork on its ramp and the merge after it
