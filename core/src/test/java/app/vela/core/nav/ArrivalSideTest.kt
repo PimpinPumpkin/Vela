@@ -52,7 +52,7 @@ class ArrivalSideTest {
         assertEquals("Your destination is on the right", right.last())
         // No side known: the approach stays "ahead" and the arrival is the plain line.
         val none = said(route())
-        assertTrue(none.toString(), none.any { it.endsWith("Your destination will be ahead") })
+        assertTrue(none.toString(), none.any { it.endsWith("You will arrive at your destination") })
     }
 
     @Test fun `a pin north of an eastbound end is on the left`() {

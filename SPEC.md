@@ -2326,8 +2326,12 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   reads a stop, and the step's words say it. A pin within `SIDE_MIN_OFF_M` (8 m) of the line, or
   an arrive step that has a side, is left as it was.
 - The destination's approach prompt reads the same side (`NavStrings.destinationWillBe`): "Your
-  destination will be on the right", or "will be ahead" with no side. Said "ahead", it
-  contradicted the arrival line that named a side.
+  destination will be on the right", or with no side Google's "You will arrive at your
+  destination" (English; "will be ahead" in the other tables). Said "ahead", it contradicted the
+  arrival line that named a side. On a drive, a destination within `QUIET_THEN_M` (350 m) after a
+  quiet turn is that turn's near line's "then", as Google's: "Turn right onto Kadema Drive. Then
+  your destination will be on the left"; it then has no approach line of its own
+  (`chainedBands` 0 and 1), only the line on arriving.
 - ETA sums the remaining step durations, the current leg pro-rated, times the route's traffic
   ratio, then times `etaScale`. It is never remaining distance over average speed, unless the
   steps carry under 70% of the route's duration. So every fold of one step into another (a

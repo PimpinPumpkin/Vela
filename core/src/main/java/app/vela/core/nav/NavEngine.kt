@@ -610,6 +610,10 @@ object NavEngine {
         // The near line's "then": a step close after it, as Google's, which named a step 320 m on
         // and not one 400 m on ([QUIET_THEN_M]); a step further on gets its own lines.
         val chainIdx = if (nextIdx >= 0) nextIdx else laterIdx.takeIf { it >= 0 && manAlong[it] - manAlong[idxCur] <= QUIET_THEN_M } ?: -1
+        // The destination close after the last turn rides on its near line, as Google's does:
+        // "Turn right onto Kadema Drive. Then your destination will be on the left".
+        val arriveIdx = if (chainIdx < 0 && stop == null && idxCur < maneuvers.lastIndex) nextSpoken(maneuvers, idxCur + 1)
+            .takeIf { maneuvers[it].type == ManeuverType.ARRIVE && manAlong[it] - manAlong[idxCur] <= QUIET_THEN_M } ?: -1 else -1
         // Just round a quiet corner, the next turn's first line waits until the turn is made.
         val prevCornerHold = cornerQuiet && !trackRide && idxCur > 0 && driveQuiet(maneuvers, idxCur - 1) &&
             traveled < manAlong[idxCur - 1] + CORNER_CLEAR_M
@@ -716,6 +720,12 @@ object NavEngine {
                         val own = if (firstForStep && lane != null) instr else withLight(cue.takeIf { it == LightCue.AT_LIGHT || it == LightCue.AT_STOP }, instr)
                         withNext(own, chainIdx).also { if (it != own) chainedOnNear = true }
                     }
+                    quietCorner && nearLine && !thenStopHere && !isArrive && arriveIdx >= 0 -> {
+                        val own = if (firstForStep && lane != null) instr else withLight(cue.takeIf { it == LightCue.AT_LIGHT || it == LightCue.AT_STOP }, instr)
+                        val side = when (maneuvers[arriveIdx].side) { "left" -> true; "right" -> false; else -> null }
+                        chainedNow = true; chainedIdx = arriveIdx; chainedOnNear = true
+                        nav().thenAfter(own, nav().destinationWillBe(side))
+                    }
                     isArrive || (firstForStep && lane != null) -> instr
                     chainFirst -> withNext(withLight(cue.takeIf { it == LightCue.AT_LIGHT || it == LightCue.AT_STOP }, instr))
                     else -> withLight(cue.takeIf { it != LightCue.NEXT_STOP }, instr)
@@ -723,7 +733,7 @@ object NavEngine {
                 // "At the next stop sign, turn right onto ..." stands in for the distance, on a
                 // plain line only.
                 val nextStop = cue == LightCue.NEXT_STOP && !(firstForStep && (thenStopHere || lane != null)) && !chainFirst &&
-                    !(quietCorner && nearLine && chainIdx >= 0)
+                    !(quietCorner && nearLine && (chainIdx >= 0 || arriveIdx >= 0))
                 val distancePhrase = spokenDistance(sayM, imperial)
                 // A quiet town turn's near line has no distance, as Google's: "At the light, turn
                 // left onto Elm Street". Said about 10 s out, the number was stale by its end.
@@ -876,6 +886,8 @@ object NavEngine {
             // Named on a near line, the turn after keeps its own near line, said after this corner.
             // A town turn that will say nothing at its corner keeps its near line however it was named.
             chainedBands = if (!chainedNow) state.chainedBands
+            // The arrival said as a "then" has nothing more before the line on arriving.
+            else if (maneuvers[chainedIdx].type == ManeuverType.ARRIVE) setOf(0, 1)
             else if (chainedOnNear || (cornerQuiet && !trackRide && (driveQuiet(maneuvers, chainedIdx) || thenDropsRoad(maneuvers[chainedIdx])))) (if (chainedIdx == laterIdx) laterBands - 1 else setOf(0))
             else (if (chainedIdx == laterIdx) laterBands else setOf(0, 1)) +
                 (if (thenAtTurn && chainRepeatsSoon(maneuvers, manAlong, idxCur, chainedIdx, dtn, turnNowM, v, thenSaid)) setOf(TURN_NOW_SAID_SLOT) else emptySet()),
@@ -1291,6 +1303,10 @@ object NavEngine {
             // nothing at the corner.
             val quiet = cornerQuiet && !trackRide && driveQuiet(ms, i)
             val quietNext = if (nextIdx >= 0) nextIdx else laterIdx.takeIf { it >= 0 && gapTo(it) <= QUIET_THEN_M } ?: -1
+            // update's arriveIdx: the destination close after this turn, said as its "then".
+            val arriveNext = if (quiet && quietNext < 0 && i < ms.lastIndex) nextSpoken(ms, i + 1)
+                .takeIf { ms[it].type == ManeuverType.ARRIVE && gapTo(it) <= QUIET_THEN_M } ?: -1 else -1
+            var joinedArrive = false
             var joinedNear = false
             val full = if (lane != null) nav().useLanesToDo(lane.side, lane.count, nav().spokenSign(m.spokenInstruction()))
                 else nav().spokenSign(m.spokenInstruction())
@@ -1306,6 +1322,11 @@ object NavEngine {
                         val own = if (first && lane != null) instr else withLight(cue.takeIf { it == LightCue.AT_LIGHT || it == LightCue.AT_STOP }, instr)
                         joinNext(m, ms[quietNext], own, d + gapTo(quietNext), detail, cornerQuiet).first.also { if (it != own) joinedNear = true }
                     }
+                    quiet && cueLine == CueLine.NEAR && arriveNext >= 0 -> {
+                        val own = if (first && lane != null) instr else withLight(cue.takeIf { it == LightCue.AT_LIGHT || it == LightCue.AT_STOP }, instr)
+                        joinedArrive = true
+                        nav().thenAfter(own, nav().destinationWillBe(when (ms[arriveNext].side) { "left" -> true; "right" -> false; else -> null }))
+                    }
                     first && lane != null -> instr
                     first && nextIdx >= 0 && !(quiet && cueLine != CueLine.NEAR) -> {
                         val own = withLight(cue.takeIf { it == LightCue.AT_LIGHT || it == LightCue.AT_STOP }, instr)
@@ -1314,7 +1335,7 @@ object NavEngine {
                     else -> withLight(cue.takeIf { it != LightCue.NEXT_STOP }, instr)
                 }
                 val nextStop = cue == LightCue.NEXT_STOP && !(first && (lane != null || (nextIdx >= 0 && !(quiet && cueLine != CueLine.NEAR)))) &&
-                    !(quiet && cueLine == CueLine.NEAR && quietNext >= 0)
+                    !(quiet && cueLine == CueLine.NEAR && (quietNext >= 0 || arriveNext >= 0))
                 return when {
                     nextStop -> withLight(LightCue.NEXT_STOP, instr)
                     quiet && cueLine == CueLine.NEAR -> wrapped
@@ -1358,6 +1379,7 @@ object NavEngine {
                 if (1 !in sp) nearAlways = false
                 if (sp.isEmpty()) saidNone = true else saidSome = true
             }
+            if (joinedArrive) { chainedInto = arriveNext; chainedBands = setOf(0, 1) }
             if (joinedFirst) { chainedInto = nextIdx; chainedBands = if (cornerQuiet && !trackRide && thenDropsRoad(ms[nextIdx])) setOf(0) else setOf(0, 1) }
             if (joinedNear) {
                 chainedInto = quietNext

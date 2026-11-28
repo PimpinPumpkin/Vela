@@ -140,7 +140,7 @@ class StartPromptsTest {
                 predicted = NavEngine.upcomingPrompts(r, st.stepIndex, st.spoken, speed, imperial = true)
             }
             assertTrue("never arrived: $said", st.arrived)
-            assertTrue("no approach line for the destination: $said", said.any { "destination will be" in it.lowercase() })
+            assertTrue("no approach line for the destination: $said", said.any { "destination will be" in it.lowercase() || "arrive at your destination" in it.lowercase() })
         }
     }
 

@@ -137,8 +137,10 @@ turn. The voice says "turn left" 25 m out either way.
 - The destination is said with its side, "Your destination is on the right", from the router or,
   when the router gives none, from where the destination's pin sits against the end of the line.
   Its approach prompt says the same side ("Your destination will be on the right"). A pin on the
-  line itself gives no side: the approach says "will be ahead" and the arrival is "You have
-  arrived".
+  line itself gives no side: the approach says "You will arrive at your destination" and the
+  arrival is "You have arrived". On a drive a destination just after the last turn is said on
+  that turn's near line instead: "Turn right onto Kadema Drive. Then your destination will be on
+  the left."
 - A fork on an exit ramp is its own step, said like any fork. One close to the exit rides on the
   exit's line: "Take the exit toward ..., then keep left". The merge at the ramp's end is folded
   into the step before it.

@@ -187,12 +187,12 @@ class NavAuditRegressionTest {
                 Maneuver(ManeuverType.ARRIVE, "Arrive", at(1000.0), 0.0, 0.0),
             ),
         )
-        // 120 m out (inside the near band): "your destination will be ahead" — the old engine
+        // 120 m out (inside the near band): "you will arrive at your destination". The old engine
         // excluded ARRIVE from prompts entirely (silence from the last turn to the arrival line).
         val state = NavState(stepIndex = 1, traveledM = 850.0)
         val (next, events) = NavEngine.update(r, state, at(880.0))
         assertTrue(
-            events.filterIsInstance<NavEvent.Speak>().any { it.text.contains("Your destination will be ahead") },
+            events.filterIsInstance<NavEvent.Speak>().any { it.text.contains("You will arrive at your destination") },
         )
         assertFalse("not arrived yet at 120 m", next.arrived)
     }

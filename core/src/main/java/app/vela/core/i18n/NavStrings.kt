@@ -309,6 +309,10 @@ object EnNavStrings : NavStrings {
 
     override fun continueFor(road: String, length: String): String = "Continue on $road for $length"
 
+    // Google's: "In 600 feet, you will arrive at your destination", "Then you will arrive at your
+    // destination".
+    override fun destinationAhead(): String = "You will arrive at your destination"
+
     override fun spokenLength(meters: Double, imperial: Boolean): String {
         val whole = if (imperial) meters / 1609.34 else meters / 1000.0
         return when {

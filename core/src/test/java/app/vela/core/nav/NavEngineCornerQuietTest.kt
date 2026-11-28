@@ -173,4 +173,21 @@ class NavEngineCornerQuietTest {
             assertTrue("gap $gap: $said", lot[0].first >= 1510.0)
         }
     }
+
+    @Test fun `a destination close after the last turn rides on its near line`() {
+        // East 1500 m, left onto North Road, the destination 60 m up it on the left.
+        val east = (0..150).map { pt(it * 10.0, 0.0) }
+        val north = (1..12).map { pt(1500.0, it * 5.0) }
+        val poly = east + north
+        val ms = listOf(
+            Maneuver(ManeuverType.DEPART, "Head east", poly.first(), 1500.0, 150.0),
+            Maneuver(ManeuverType.TURN_LEFT, "Turn left onto North Road", pt(1500.0, 0.0), 60.0, 6.0, road = "North Road", instructionNoRoad = "Turn left"),
+            Maneuver(ManeuverType.ARRIVE, "Arrive", poly.last(), 0.0, 0.0, side = "left"),
+        )
+        val d = poly.zipWithNext { a, b -> a.distanceTo(b) }.sum()
+        val said = drive(Route(poly, listOf(RouteLeg(d, d / 10, null, ms)), d, d / 10, null), quiet = true)
+        assertTrue("$said", said.any { it.second == "Turn left onto North Road. Then your destination will be on the left" })
+        // Nothing more about it until the arrival itself.
+        assertEquals("$said", 1, said.count { "destination will be" in it.second })
+    }
 }
