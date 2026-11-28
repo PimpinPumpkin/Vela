@@ -182,4 +182,38 @@ class GyroHeadingTest {
         repeat(600) { g.update(dt, 120.0, 0.0, 10.0) }
         assertTrue(abs(GyroHeading.delta(g.heading, 0.0)) <= GyroHeading.MAX_OFF_DEG + 0.01)
     }
+    /** Out of a right turn the gyroscope under-read: the arrow at 65 while the car heads 90 and the
+     *  reference at the arrow still lags at 60, with the road ahead at 90 inside the envelope. */
+    private fun outOfTurn(course: Double?, seconds: Double): Double {
+        val g = GyroHeading()
+        g.seed(65.0)
+        var t = 0.0
+        while (t < seconds) {
+            g.update(dt, 0.0, 60.0, 8.0, envLoDeg = 0.0, envHiDeg = 30.0, capDps = 20.0, courseDeg = course)
+            t += dt
+        }
+        return g.heading
+    }
+
+    @Test fun `out of a turn the fix's course finishes it`() {
+        assertTrue("with the course: ${outOfTurn(90.0, 1.5)}", outOfTurn(90.0, 1.5) > 85.0)
+        assertTrue("without it the arrow waits: ${outOfTurn(null, 1.5)}", outOfTurn(null, 1.5) < 66.0)
+    }
+
+    @Test fun `a course the road does not take is ignored`() {
+        // Pointing back, or across: outside the envelope.
+        assertTrue(outOfTurn(240.0, 1.5) < 66.0)
+        assertTrue(outOfTurn(10.0, 1.5) < 66.0)
+    }
+
+    @Test fun `the course does not turn the arrow before the car`() {
+        // A right turn coming up: the envelope opens, the car still goes straight on (no yaw), its
+        // course straight; and mid-turn (yaw above the turning rate) a lagging course is not used.
+        val g = GyroHeading(); g.seed(0.0)
+        repeat(90) { g.update(dt, 0.0, 0.0, 8.0, envLoDeg = 0.0, envHiDeg = 90.0, capDps = 20.0, courseDeg = 0.0) }
+        assertEquals(0.0, g.heading, 1.0)
+        val h = GyroHeading(); h.seed(0.0)
+        repeat(60) { h.update(dt, 30.0, 0.0, 8.0, envLoDeg = 0.0, envHiDeg = 90.0, capDps = 40.0, courseDeg = 0.0) }
+        assertTrue("turned with the gyroscope: ${h.heading}", h.heading > 20.0)
+    }
 }

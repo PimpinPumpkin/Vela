@@ -2686,6 +2686,15 @@ raw fix. The per-frame loop (the nav ticker) is in `ui/map/VelaMapView.kt`.
     the turn and swinging the rest past the corner. Unit test, a 90 degree turn at 22.5 degrees
     a second and 6 m/s with the line bending a second late: 16.6 degrees behind with the pull,
     under 6 without.
+  - Out of a turn (the rate under `TURNING_DPS`, moving), the last accepted fix's course pulls
+    the heading with `TAU_COURSE_S` (0.6 s) when it is within the envelope, more than
+    `COURSE_SETTLE_DEG` (4) from the heading, under `GYRO_COURSE_FRESH_MS` (1.2 s) old and taken
+    at `GYRO_COURSE_MIN_MPS` (3 m/s) or more. The reference at the puck trails the car round a
+    corner and rotation under `MIN_SPEED_MPS` is not counted, so without it the arrow stops short
+    of the new road until the envelope's back edge pushes it on. A real drive's trace replayed
+    through the filter: a right turn held at 73 to 76 degrees for 1.3 s with the car's course at
+    91 without it, and went on to 88 over the same 1.3 s with it. Dial
+    `debug.vela.tune.gyroCourse 0` turns it off.
   - Route envelope (`gyroEnvelope`): the heading stays between the least and greatest direction
     the route takes from `GYRO_ENV_BACK_S` (1 s, at least 10 m) behind the puck to
     `GYRO_ENV_AHEAD_S` (1.5 s, at least 20 m) ahead, in 8 m chords every 4 m, plus

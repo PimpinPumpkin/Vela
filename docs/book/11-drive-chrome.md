@@ -282,7 +282,10 @@ turns when the car does. The road's direction at the arrow pulls the heading bac
 turn and quickly on a straight, which also cancels the gyroscope's drift. Turning into a corner
 there is no pull: the road's direction at the arrow turns about a second after the car, and
 pulling toward it left the arrow behind the car through the turn. Stopped, the gyroscope is
-ignored, since a phone picked up at a light turns too.
+ignored, since a phone picked up at a light turns too. Out of the turn, the fix's own course
+finishes it when the road goes that way: the road's direction at the arrow is still coming round
+the corner, and a turn begun at a crawl is partly made while the gyroscope is ignored, so
+without it the arrow stops short of the new road for a second or two.
 
 A phone in a wobbly mount twists without the car turning, so two things hold the arrow to the
 road. It can only point where the route goes from a second behind it to a second and a half

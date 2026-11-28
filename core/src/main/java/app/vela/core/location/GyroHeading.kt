@@ -19,6 +19,9 @@ import kotlin.math.exp
  * ([TAU_STRAIGHT_S]). Stopped, a phone picked up at a light turns too, so the gyroscope is ignored
  * and the heading follows the reference. It never strays more than [MAX_OFF_DEG] from it.
  *
+ * Out of a turn (the car no longer turning), a fresh fix's course that the road also takes pulls
+ * the heading onto it ([TAU_COURSE_S]): the reference at the arrow trails the car round a corner.
+ *
  * It also stays within the route's envelope: the range of directions the route takes from a little
  * behind the arrow to a little ahead, as signed offsets from the reference, plus [ENV_SLACK_DEG].
  * On a straight the envelope is a few degrees wide, so a phone mount that wobbles cannot turn the
@@ -45,7 +48,8 @@ class GyroHeading {
 
     /** One frame of [dt] seconds: the gyroscope's yaw rate (null when none is arriving), the
      *  reference bearing, the car's speed, and the route's envelope as signed degrees from the
-     *  reference ([envLoDeg] at most 0, [envHiDeg] at least 0). Returns the new heading. */
+     *  reference ([envLoDeg] at most 0, [envHiDeg] at least 0). [courseDeg] is a fresh fix's
+     *  course at speed, or null. Returns the new heading. */
     fun update(
         dt: Double,
         yawRateDps: Double?,
@@ -54,6 +58,7 @@ class GyroHeading {
         envLoDeg: Double = -MAX_OFF_DEG,
         envHiDeg: Double = MAX_OFF_DEG,
         capDps: Double? = null,
+        courseDeg: Double? = null,
     ): Double {
         if (heading.isNaN() || dt <= 0.0) {
             if (heading.isNaN()) { heading = norm(referenceDeg); lastReference = referenceDeg }
@@ -79,8 +84,20 @@ class GyroHeading {
             abs(rate) >= TURNING_DPS || abs(refRate) >= TURNING_DPS -> TAU_TURNING_S
             else -> TAU_STRAIGHT_S
         }
-        val off = delta(h, referenceDeg)
-        if (tau.isFinite()) h += off * (1.0 - exp(-dt / tau))
+        // OUT OF THE TURN: the car is no longer turning, so the fix's course ([courseDeg]) is where
+        // it points, and the arrow settles on it when the road goes that way. The reference at the
+        // arrow trails the car round the corner, and left alone the arrow waited for it.
+        var target = referenceDeg
+        var pull = tau
+        if (courseDeg != null && moving && yawRateDps != null && abs(rate) < TURNING_DPS) {
+            val cd = delta(referenceDeg, courseDeg)
+            if (cd >= lowEdge(envLoDeg) && cd <= highEdge(envHiDeg) && abs(delta(h, courseDeg)) > COURSE_SETTLE_DEG) {
+                target = courseDeg
+                pull = TAU_COURSE_S
+            }
+        }
+        val off = delta(h, target)
+        if (pull.isFinite()) h += off * (1.0 - exp(-dt / pull))
         val rel = delta(referenceDeg, h)
         val clamped = rel.coerceIn(lowEdge(envLoDeg), highEdge(envHiDeg))
         if (clamped != rel) h = referenceDeg + clamped
@@ -103,6 +120,10 @@ class GyroHeading {
         const val TAU_TURNING_S = 3.0
         const val TAU_STRAIGHT_S = 1.0
         const val TAU_STOPPED_S = 0.4
+        /** The pull toward the fix's course once a turn is over ([update]'s courseDeg). */
+        const val TAU_COURSE_S = 0.6
+        /** A course this close to the heading is noise, not a turn left to finish. */
+        const val COURSE_SETTLE_DEG = 4.0
         const val MAX_OFF_DEG = 75.0
         /** An envelope edge this far from the reference is a corner, not a straight's wiggle. */
         const val OPEN_DEG = 15.0

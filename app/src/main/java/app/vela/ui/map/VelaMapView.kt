@@ -3569,6 +3569,7 @@ fun VelaMapView(
                     navPuck.headWinMin = app.vela.ui.AppTune.value("headWinMin", HEAD_WIN_MIN_M).coerceIn(0.0, 40.0)
                     navPuck.headLeadS = app.vela.ui.AppTune.value("headLeadS", HEAD_LEAD_S).coerceIn(0.0, 2.0)
                     navPuck.camLeadS = app.vela.ui.AppTune.value("camLeadS", CAM_LEAD_S).coerceIn(0.0, 2.0)
+                    navPuck.gyroCourseOn = app.vela.ui.AppTune.value("gyroCourse", 1.0) >= 0.5
                 }
                 val headWin = maxOf(win, navPuck.headWinMin)
                 val headM = puckM + navPuck.speed * navPuck.headLeadS
@@ -3607,7 +3608,11 @@ fun VelaMapView(
                     val cap = if (android.os.SystemClock.elapsedRealtime() - worldAccelAt[0] > GYRO_FRESH_MS) null
                         else app.vela.core.location.GyroHeading.accelCapDps(
                             kotlin.math.hypot(worldAccel[0].toDouble(), worldAccel[1].toDouble()), navPuck.speed)
-                    navPuck.displayBearing = gh.update(dtEase.toDouble(), gyroRate, refBrg, navPuck.speed, env[0], env[1], cap).toFloat()
+                    val course = navPuck.fixCourse.takeIf {
+                        navPuck.gyroCourseOn && !it.isNaN() && navPuck.fixCourseV >= GYRO_COURSE_MIN_MPS &&
+                            tuneNow - navPuck.fixCourseAtMs <= GYRO_COURSE_FRESH_MS
+                    }
+                    navPuck.displayBearing = gh.update(dtEase.toDouble(), gyroRate, refBrg, navPuck.speed, env[0], env[1], cap, course).toFloat()
                     // The camera leads by the low-passed rate, inside the same envelope.
                     val lead = (gh.rate * CAM_GYRO_LEAD_S).coerceIn(-CAM_GYRO_LEAD_MAX_DEG, CAM_GYRO_LEAD_MAX_DEG)
                     val camRel = (app.vela.core.location.GyroHeading.delta(refBrg, gh.heading) + lead)
@@ -5467,6 +5472,11 @@ fun VelaMapView(
                 navPuck.kalman.update(v.toDouble())
             }
             navPuck.speed = navPuck.kalman.speed
+            // The fix's own course, for the gyroscope arrow's finish out of a turn (GyroHeading).
+            if (myBearing != null && mySpeedRaw != null) {
+                navPuck.fixCourse = myBearing.toDouble(); navPuck.fixCourseV = mySpeedRaw.toDouble()
+                navPuck.fixCourseAtMs = now - fixAgeMs
+            }
             app.vela.diag.NavTrace.fix(now, m, navPuck.speed, fixAgeMs, accepted)
             if (accepted) navPuck.speedAtAccept = navPuck.speed
         } else if (navMode && newFix && navPuck.engaged) {
@@ -10230,6 +10240,11 @@ private class NavPuck {
     // deceleration from the fix before it, applied between fixes so the arrow slows with the car.
     var lastFixV = Double.NaN
     var lastFixVAtMs = 0L
+    // The last accepted fix's course and speed, and when it was taken (elapsed realtime).
+    var fixCourse = Double.NaN
+    var fixCourseV = 0.0
+    var fixCourseAtMs = 0L
+    var gyroCourseOn = true
     var gpsBrake = 0.0
     var speedAtAccept = 0.0       // kalman speed when the last fix was ACCEPTED — sizes the snap
                                   // look-ahead through an outage (the live model decays to ~0
@@ -10336,6 +10351,10 @@ private const val GYRO_ENV_AHEAD_S = 1.5
 private const val GYRO_ENV_AHEAD_MIN_M = 20.0
 private const val GYRO_ENV_STEP_M = 4.0
 private const val CAM_GYRO_LEAD_S = 0.35
+/** A fix's course steers the gyroscope arrow out of a turn (GyroHeading's courseDeg) while it is
+ *  this fresh and was taken at this speed or more: slower, a course is noise. */
+private const val GYRO_COURSE_FRESH_MS = 1_200L
+private const val GYRO_COURSE_MIN_MPS = 3.0
 private const val CAM_GYRO_LEAD_MAX_DEG = 25.0
 /** GPS braking ([NavPuck.gpsBrake]): two fixes this far apart (s) give a deceleration; one of at
  *  least BRAKE_MIN_MPS2 slows the model between fixes, at most BRAKE_MAX_MPS2, and only under
