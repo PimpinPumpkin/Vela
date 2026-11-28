@@ -694,6 +694,10 @@ object NavEngine {
                     // spokenSign drops the secondary sign destinations for SPEECH (the banner keeps
                     // the full sign) - speaking the whole sign took long enough that the next
                     // prompt interrupted it mid-sentence.
+                    // A drive's fork to places says them as Google's second sentence, on its far line:
+                    // "Keep slight left. Follow signs for Sacramento and South Lake Tahoe".
+                    firstForStep && due.last().index == 0 && cornerQuiet && !trackRide && lotLine == null &&
+                        followSignsLine(target, lane) != null -> followSignsLine(target, lane)!!
                     firstForStep && lane != null -> nav().useLanesToDo(lane.side, lane.count, nav().spokenSign(lotLine ?: target.spokenInstruction()))
                     firstForStep -> nav().spokenSign(lotLine ?: target.spokenInstruction())
                     // The step's SECOND prompt drops the sign-destination tail ("toward X"):
@@ -923,6 +927,20 @@ object NavEngine {
      *  an exit, a fork or a keep, at any speed. U-turns, roundabouts and merges keep their own. */
     internal fun driveQuiet(ms: List<Maneuver>, i: Int): Boolean =
         i in ms.indices && (ms[i].type in TOWN_TURN_TYPES || (SpokenDetail.exitLike(ms[i].type) && ms[i].type != ManeuverType.UTURN))
+
+    /** A fork or keep whose sign names places only, said as Google's two sentences: the head with
+     *  its lanes, then "Follow signs for A and B" ([NavStrings.followSigns]). Null for any other
+     *  step, a sign with a route on it, or a language without the sentence. */
+    private fun followSignsLine(m: Maneuver, lane: app.vela.core.model.LaneGuidance?): String? {
+        if (m.type !in FORK_KEEP_TYPES) return null
+        val places = nav().signParts(m.spokenInstruction())
+        if (places.isEmpty() || places.any { routeKey(it) != null }) return null
+        val follow = nav().followSigns(places) ?: return null
+        val head = nav().repeatShort(m.spokenInstruction())
+        return (if (lane != null) nav().useLanesToDo(lane.side, lane.count, head) else head) + ". " + follow
+    }
+
+    private val FORK_KEEP_TYPES = setOf(ManeuverType.FORK_LEFT, ManeuverType.FORK_RIGHT, ManeuverType.KEEP_LEFT, ManeuverType.KEEP_RIGHT)
 
     /** The furthest a quiet step's near line names the step after it ([update]). */
     const val QUIET_THEN_M = 350.0
@@ -1308,7 +1326,8 @@ object NavEngine {
                 .takeIf { ms[it].type == ManeuverType.ARRIVE && gapTo(it) <= QUIET_THEN_M } ?: -1 else -1
             var joinedArrive = false
             var joinedNear = false
-            val full = if (lane != null) nav().useLanesToDo(lane.side, lane.count, nav().spokenSign(m.spokenInstruction()))
+            val full = (if (quiet) followSignsLine(m, lane) else null)
+                ?: if (lane != null) nav().useLanesToDo(lane.side, lane.count, nav().spokenSign(m.spokenInstruction()))
                 else nav().spokenSign(m.spokenInstruction())
             val brief = nav().repeatShort(m.spokenInstruction())
             val bands = bandsOf(i)

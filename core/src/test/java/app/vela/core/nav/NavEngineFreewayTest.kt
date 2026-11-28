@@ -147,4 +147,17 @@ class NavEngineFreewayTest {
         assertTrue("$far", far[0].first in 1015.0..1300.0)
         assertTrue(cruise(keep(1900.0)).none { it.second.startsWith("Continue on") })
     }
+
+    @Test fun `a fork to places says them as a sentence of their own, a fork to a route keeps it inline`() {
+        fun fork(text: String) = straight(
+            4000.0,
+            2000.0 to Maneuver(ManeuverType.KEEP_LEFT, text, pt(0.0, 0.0), 0.0, 0.0),
+        )
+        val places = cruise(fork("Keep slight left toward Sacramento, South Lake Tahoe"))
+        assertTrue("$places", places.any { it.second == "In 900 meters, Keep slight left. Follow signs for Sacramento and South Lake Tahoe" })
+        assertTrue("$places", places.any { it.second == "Keep slight left" })
+        val route = cruise(fork("Keep slight left toward US 50 East, Sacramento"))
+        assertTrue("$route", route.any { it.second == "In 900 meters, Keep slight left toward US 50 East, Sacramento" })
+        assertTrue("$route", route.none { "Follow signs" in it.second })
+    }
 }

@@ -135,6 +135,10 @@ interface NavStrings {
      *  [spokenDistance] ("three quarters of a mile"). Default = [spokenDistance]. */
     fun spokenLength(meters: Double, imperial: Boolean): String = spokenDistance(meters, imperial)
 
+    /** Google's second sentence for a fork whose sign names places only: EN "Follow signs for
+     *  Sacramento and South Lake Tahoe". Null (the default) keeps the places on the line. */
+    fun followSigns(places: List<String>): String? = null
+
     /** Spoken as each intermediate stop is passed — EN "You've reached <label>" (blank → "your stop"). */
     fun reachedStop(label: String): String
 
@@ -308,6 +312,12 @@ object EnNavStrings : NavStrings {
     override fun continueOn(road: String) = "Continue on $road"
 
     override fun continueFor(road: String, length: String): String = "Continue on $road for $length"
+
+    override fun followSigns(places: List<String>): String? = when (places.size) {
+        0 -> null
+        1 -> "Follow signs for ${places[0]}"
+        else -> "Follow signs for " + places.dropLast(1).joinToString(", ") + " and " + places.last()
+    }
 
     // Google's: "In 600 feet, you will arrive at your destination", "Then you will arrive at your
     // destination".

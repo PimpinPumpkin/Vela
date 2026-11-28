@@ -2160,6 +2160,12 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   out at both such turns on the Davis and Sacramento fixture drives and said it for two lanes
   ("use the right two lanes to turn right") and for exits. A lane line kept the light cue off the
   line; without it the near line is "At the light, turn right onto Howe Avenue".
+- On a drive, a fork or keep whose sign names places only says them on its far line as Google's
+  second sentence (`followSignsLine`, `NavStrings.followSigns`, English): "In half a mile, use the
+  left 4 lanes to keep slight left. Follow signs for Sacramento and South Lake Tahoe". A sign with
+  a route on it keeps "toward US 50 East" in the line. Google, at the US 50 fork on the Sacramento
+  fixture drive: "In half a mile, keep left to continue on U.S. 50 East." then "Follow signs for
+  Sacramento and South Lake Tahoe."
 - A band the car would reach within `BAND_MERGE_S` (8 s) of a prompt, at the fix's speed with a
   `MIN_PACE_MPS` (1.5 m/s) floor, is taken as said by that prompt: entering a step 170 m before
   its turn at 13 m/s said the line, and the 150 m band said it again three seconds later.

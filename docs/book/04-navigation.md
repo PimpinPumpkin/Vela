@@ -123,6 +123,8 @@ turn. The voice says "turn left" 25 m out either way.
   same side does not say the side again: "Use the right lane to take the ramp toward ...". On a
   drive a right turn from the right lane alone, or a left from the left lane alone, says no lane,
   as Google's does; two lanes, a middle lane and exits still do.
+- A fork toward places says them as a sentence of their own, as Google's does: "Keep slight left.
+  Follow signs for Sacramento and South Lake Tahoe". A fork toward a route keeps it in the line.
 - A turn with no street name right after a short ramp is the ramp splitting, said "Keep right"
   or "Keep left", not "Turn right".
 - In English an approach repeat for the same step drops the sign's "toward ..." tail. The line
