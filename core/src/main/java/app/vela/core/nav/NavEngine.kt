@@ -613,7 +613,7 @@ object NavEngine {
         // The destination close after the last turn rides on its near line, as Google's does:
         // "Turn right onto Kadema Drive. Then your destination will be on the left".
         val arriveIdx = if (chainIdx < 0 && stop == null && idxCur < maneuvers.lastIndex) nextSpoken(maneuvers, idxCur + 1)
-            .takeIf { maneuvers[it].type == ManeuverType.ARRIVE && manAlong[it] - manAlong[idxCur] <= QUIET_THEN_M } ?: -1 else -1
+            .takeIf { maneuvers[it].type == ManeuverType.ARRIVE && manAlong[it] - manAlong[idxCur] <= ARRIVE_THEN_M } ?: -1 else -1
         // Just round a quiet corner, the next turn's first line waits until the turn is made.
         val prevCornerHold = cornerQuiet && !trackRide && idxCur > 0 && driveQuiet(maneuvers, idxCur - 1) &&
             traveled < manAlong[idxCur - 1] + CORNER_CLEAR_M
@@ -947,6 +947,9 @@ object NavEngine {
 
     /** The furthest a quiet step's near line names the step after it ([update]). */
     const val QUIET_THEN_M = 350.0
+    /** The furthest after a quiet turn the destination rides on its near line: Google did so 20 m
+     *  and about 100 m on, and gave one 180 m on its own line. */
+    const val ARRIVE_THEN_M = 150.0
 
     /** "Continue on ... for ..." only with at least this far to the next step (Google said
      *  "for three quarters of a mile" with 1.2 km to go). */
@@ -1326,7 +1329,7 @@ object NavEngine {
             val quietNext = if (nextIdx >= 0) nextIdx else laterIdx.takeIf { it >= 0 && gapTo(it) <= QUIET_THEN_M } ?: -1
             // update's arriveIdx: the destination close after this turn, said as its "then".
             val arriveNext = if (quiet && quietNext < 0 && i < ms.lastIndex) nextSpoken(ms, i + 1)
-                .takeIf { ms[it].type == ManeuverType.ARRIVE && gapTo(it) <= QUIET_THEN_M } ?: -1 else -1
+                .takeIf { ms[it].type == ManeuverType.ARRIVE && gapTo(it) <= ARRIVE_THEN_M } ?: -1 else -1
             var joinedArrive = false
             var joinedNear = false
             val full = (if (quiet) followSignsLine(m, lane) else null)

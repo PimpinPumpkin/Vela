@@ -2343,8 +2343,9 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
 - The destination's approach prompt reads the same side (`NavStrings.destinationWillBe`): "Your
   destination will be on the right", or with no side Google's "You will arrive at your
   destination" (English; "will be ahead" in the other tables). Said "ahead", it contradicted the
-  arrival line that named a side. On a drive, a destination within `QUIET_THEN_M` (350 m) after a
-  quiet turn is that turn's near line's "then", as Google's: "Turn right onto Kadema Drive. Then
+  arrival line that named a side. On a drive, a destination within `ARRIVE_THEN_M` (150 m) after a
+  quiet turn is that turn's near line's "then", as Google's (it did so 20 m and about 100 m on,
+  and gave a destination 180 m on its own line): "Turn right onto Kadema Drive. Then
   your destination will be on the left"; it then has no approach line of its own
   (`chainedBands` 0 and 1), only the line on arriving.
 - ETA sums the remaining step durations, the current leg pro-rated, times the route's traffic
