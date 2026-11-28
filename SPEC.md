@@ -2155,6 +2155,11 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   itself it only buzzes. Arrival gets one near-band cue.
 - In English a lane clause on a ramp of the same side drops the ramp's side: "Use the right
   lane to take the ramp toward ...", not "... the ramp on the right toward ...".
+- On a drive a turn made from the one lane at its own edge says no lanes (`spokenLanes`): "In a
+  quarter mile, turn right onto Howe Avenue", not "use the right lane to". Google left the lane
+  out at both such turns on the Davis and Sacramento fixture drives and said it for two lanes
+  ("use the right two lanes to turn right") and for exits. A lane line kept the light cue off the
+  line; without it the near line is "At the light, turn right onto Howe Avenue".
 - A band the car would reach within `BAND_MERGE_S` (8 s) of a prompt, at the fix's speed with a
   `MIN_PACE_MPS` (1.5 m/s) floor, is taken as said by that prompt: entering a step 170 m before
   its turn at 13 m/s said the line, and the 150 m band said it again three seconds later.

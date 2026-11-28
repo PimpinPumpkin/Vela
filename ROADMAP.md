@@ -277,6 +277,8 @@ off the list when it has been.
   leaves Wi-Fi.
 - A drive's town turns say their near line with no distance, as Google's ("At the light, turn
   left onto 5th Street"; SPEC 4.6, Guidance): unit tests only; not yet heard on a drive.
+- On a drive, no lane line for a turn made from the one lane at its own edge (SPEC 4.6): unit
+  tests and a mock drive on a 4a; not yet heard on a drive.
 - Arrival in Google's words: "You will arrive at your destination", and a destination close
   after the last turn said as its "then" (SPEC 4.6): unit tests and a mock drive on a 4a; not yet
   heard on a drive.

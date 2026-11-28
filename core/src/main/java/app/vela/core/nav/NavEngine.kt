@@ -515,7 +515,7 @@ object NavEngine {
         // Lane guidance from OSRM's per-lane data (same info as the banner arrows) — spoken as a
         // PREFACE on the first prompt that fires for the step, Google-style ("use the right 2
         // lanes to take exit 172 toward Sacramento"), so the lanes come BEFORE the maneuver.
-        val lane = app.vela.core.model.laneGuidance(target.lanes)
+        val lane = spokenLanes(target, cornerQuiet)
         // ManeuverType.CONTINUE is minted ONLY for "same physical road, keep driving straight" —
         // OSRM continue/new-name+straight (RouteGeometry.osrmType) and the obf engine
         // CONTINUE_ON_STREET (ghType) — so it can never carry a turn, fork, ramp, merge or u-turn.
@@ -1298,7 +1298,7 @@ object NavEngine {
                 }
                 continue
             }
-            val lane = app.vela.core.model.laneGuidance(m.lanes)
+            val lane = spokenLanes(m, cornerQuiet)
             // update's cornerQuiet: a town turn's near line names the turn after, and it says
             // nothing at the corner.
             val quiet = cornerQuiet && !trackRide && driveQuiet(ms, i)
@@ -1508,8 +1508,23 @@ object NavEngine {
     /** [part], step [next]'s words in a "then", with the lanes it needs in front: "then use the left
      *  lane to keep slight left". A chained step's own approach lines, which would say them, are
      *  taken as said. */
-    private fun withLanes(next: Maneuver, part: String): String =
-        app.vela.core.model.laneGuidance(next.lanes)?.let { nav().useLanesToDo(it.side, it.count, part) } ?: part
+    private fun withLanes(next: Maneuver, part: String, drive: Boolean = false): String =
+        spokenLanes(next, drive)?.let { nav().useLanesToDo(it.side, it.count, part) } ?: part
+
+    /** The lanes [m]'s lines say ([app.vela.core.model.laneGuidance]). On a drive ([drive]) a
+     *  turn made from the one lane at its own edge says none, as Google's does: "turn right onto
+     *  Howe Avenue", not "use the right lane to". Exits and forks, and two lanes or more, keep
+     *  theirs. */
+    internal fun spokenLanes(m: Maneuver, drive: Boolean): app.vela.core.model.LaneGuidance? {
+        val g = app.vela.core.model.laneGuidance(m.lanes) ?: return null
+        if (!drive || m.type !in TOWN_TURN_TYPES || g.count != 1) return g
+        val ownEdge = when (g.side) {
+            app.vela.core.model.LaneSide.RIGHT -> m.type.name.endsWith("RIGHT")
+            app.vela.core.model.LaneSide.LEFT -> m.type.name.endsWith("LEFT")
+            else -> false
+        }
+        return if (ownEdge) null else g
+    }
 
     /** [short] for step [next] as the "then" of [cur]'s line, without a route [cur] already named:
      *  "Keep slight left toward I 80 West, then keep slight left", not the route twice. */
@@ -1531,9 +1546,9 @@ object NavEngine {
         val nextText = if (detail == SpokenDetail.Mode.FULL || SpokenDetail.exitLike(next.type)) next.spokenInstruction()
         else next.instructionNoRoad ?: next.spokenInstruction()
         val plain = if (separate && thenDropsRoad(next)) next.instructionNoRoad!! else thenShort(cur, next, nextText)
-        val cued = if (detail == SpokenDetail.Mode.FULL && app.vela.core.model.laneGuidance(next.lanes) == null)
+        val cued = if (detail == SpokenDetail.Mode.FULL && spokenLanes(next, separate) == null)
             withLight(lightCue(next, nextDtn, CueLine.THEN), plain) else plain
-        return thenJoin(line, withLanes(next, cued), separate) to plain
+        return thenJoin(line, withLanes(next, cued, separate), separate) to plain
     }
 
     /** [line] and the "then" [next]: Google's own sentence after it on a drive ([separate],
@@ -1574,16 +1589,16 @@ object NavEngine {
         val nextNamed = if (separate && thenDropsRoad(next)) next.instructionNoRoad!! else thenShort(cur, next, next.spokenInstruction())
         // An exit keeps its sign: "take exit 12" without it says too little.
         val nextBare = if (SpokenDetail.exitLike(next.type)) nextNamed else nav().repeatShort(next.instructionNoRoad ?: next.spokenInstruction())
-        if (detail == SpokenDetail.Mode.FULL && app.vela.core.model.laneGuidance(next.lanes) == null) {
+        if (detail == SpokenDetail.Mode.FULL && spokenLanes(next, separate) == null) {
             val cued = withLight(lightCue(next, nextDtn, CueLine.THEN), nextNamed)
             if (cued != nextNamed) {
                 val withCue = thenJoin(bare, cued, separate)
                 if (fits(withCue)) return TurnJoin(withCue, true, nextNamed, true)
             }
         }
-        val named = thenJoin(bare, withLanes(next, nextNamed), separate)
+        val named = thenJoin(bare, withLanes(next, nextNamed, separate), separate)
         if (fits(named)) return TurnJoin(named, true, nextNamed, true)
-        return TurnJoin(thenJoin(bare, withLanes(next, nextBare), separate), true, nextBare, true)
+        return TurnJoin(thenJoin(bare, withLanes(next, nextBare, separate), separate), true, nextBare, true)
     }
 
     /** A distance phrased for SPEECH, honoring the imperial/metric preference — now localized via the

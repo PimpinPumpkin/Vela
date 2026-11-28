@@ -120,7 +120,9 @@ than 5 m ahead at a crawl. Waiting at a stop line before a turn, the card still 
 turn. The voice says "turn left" 25 m out either way.
 
 - The first prompt for a step leads with lane guidance when the step has lanes. A ramp on the
-  same side does not say the side again: "Use the right lane to take the ramp toward ...".
+  same side does not say the side again: "Use the right lane to take the ramp toward ...". On a
+  drive a right turn from the right lane alone, or a left from the left lane alone, says no lane,
+  as Google's does; two lanes, a middle lane and exits still do.
 - A turn with no street name right after a short ramp is the ramp splitting, said "Keep right"
   or "Keep left", not "Turn right".
 - In English an approach repeat for the same step drops the sign's "toward ..." tail. The line

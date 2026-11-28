@@ -190,4 +190,21 @@ class NavEngineCornerQuietTest {
         // Nothing more about it until the arrival itself.
         assertEquals("$said", 1, said.count { "destination will be" in it.second })
     }
+
+    @Test fun `a turn from the one lane at its own edge says no lanes, two lanes still do`() {
+        fun withLanes(lanes: List<app.vela.core.model.Lane>): Route {
+            val r = route()
+            val ms = r.legs[0].maneuvers.map { if (it.type == ManeuverType.TURN_LEFT) it.copy(lanes = lanes) else it }
+            return r.copy(legs = listOf(r.legs[0].copy(maneuvers = ms)))
+        }
+        fun lane(ind: String, valid: Boolean) = app.vela.core.model.Lane(listOf(ind), valid)
+        val one = drive(withLanes(listOf(lane("left", true), lane("none", false), lane("none", false))), quiet = true)
+        assertTrue("$one", one.none { "lane" in it.second })
+        assertTrue("$one", one.any { it.second == "In 400 meters, Turn left onto North Road" })
+        val two = drive(withLanes(listOf(lane("left", true), lane("left", true), lane("none", false))), quiet = true)
+        assertTrue("$two", two.any { it.second.startsWith("In 400 meters, Use the left 2 lanes to turn left") })
+        // One lane that is not at the turn's own edge is still said.
+        val middle = drive(withLanes(listOf(lane("none", false), lane("left", true), lane("none", false))), quiet = true)
+        assertTrue("$middle", middle.any { it.second.startsWith("In 400 meters, Use the center lane to turn left") })
+    }
 }
