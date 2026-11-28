@@ -40,18 +40,21 @@ object CameraDetour {
 
     /**
      * The one rule for leading with a camera-lighter route, shared by the re-rank over the routers'
-     * own alternates and the pick over the side-street results: the index of the option with the
-     * fewest cameras (ties to the faster) when it passes fewer cameras than option 0 and costs at
-     * most [cap] seconds over [eta0]; null when option 0 stays. Option 0 is the route that leads
-     * now, [eta0] the fastest route's time (the cap is measured from the fastest, not the leader).
+     * own alternates and the pick over the side-street results. Eligible options pass fewer cameras
+     * than the current leader (option 0) and cost at most [cap] seconds over the fastest route's
+     * [eta0]. Return the index with the fewest cameras, with ties going to the faster option.
+     * Return null when the leader stays.
      */
     fun choose(options: List<Option>, eta0: Double, cap: Double): Int? {
-        if (options.isEmpty()) return null
-        val best = options.indices.minByOrNull { options[it].cameras * 1_000_000L + options[it].etaS.toLong() } ?: return null
-        if (best == 0) return null
-        val o = options[best]
-        return if (o.cameras < options[0].cameras && o.etaS - eta0 <= cap) best else null
+        val leaderCameras = options.firstOrNull()?.cameras ?: return null
+        return options.indices.asSequence()
+            .filter { options[it].cameras < leaderCameras && withinBudget(options[it].etaS, eta0, cap) }
+            .minWithOrNull(compareBy({ options[it].cameras }, { options[it].etaS }))
     }
+
+    fun withinBudget(eta: Double, fastestEta: Double, cap: Double): Boolean =
+        eta.isFinite() && eta >= 0 && fastestEta.isFinite() && fastestEta >= 0 &&
+            cap.isFinite() && cap >= 0 && eta - fastestEta <= cap
 
     /** [cands] minus every cluster within [withinM] of a point in [tried]: the same corner reached
      *  from another route gets the same side streets, so asking again spends requests for nothing. */

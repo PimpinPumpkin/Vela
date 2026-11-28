@@ -61,6 +61,49 @@ class CameraDetourTest {
         assertEquals(null, CameraDetour.choose(emptyList(), 1000.0, 250.0))
     }
 
+    @Test fun `a route over the cap does not hide a qualifying improvement`() {
+        val options = listOf(
+            CameraDetour.Option(3, 1000.0),
+            CameraDetour.Option(0, 1300.0),
+            CameraDetour.Option(1, 1250.0),
+            CameraDetour.Option(2, 1100.0),
+        )
+
+        assertEquals(2, CameraDetour.choose(options, 1000.0, 250.0))
+    }
+
+    @Test fun `the detour cap is measured from the fastest route after the leader changes`() {
+        val options = listOf(
+            CameraDetour.Option(2, 1200.0),
+            CameraDetour.Option(0, 1250.1),
+            CameraDetour.Option(1, 1250.0),
+        )
+
+        assertEquals(2, CameraDetour.choose(options, 1000.0, 250.0))
+    }
+
+    @Test fun `the faster route wins when camera counts tie within a second`() {
+        val options = listOf(
+            CameraDetour.Option(3, 1000.0),
+            CameraDetour.Option(1, 1100.9),
+            CameraDetour.Option(1, 1100.1),
+            CameraDetour.Option(1, 1100.1),
+        )
+
+        assertEquals(2, CameraDetour.choose(options, 1000.0, 250.0))
+    }
+
+    @Test fun `invalid trial ETAs do not qualify as shorter routes`() {
+        val options = listOf(
+            CameraDetour.Option(3, 1000.0),
+            CameraDetour.Option(0, -1.0),
+            CameraDetour.Option(0, Double.NEGATIVE_INFINITY),
+            CameraDetour.Option(1, 1100.0),
+        )
+        assertEquals(3, CameraDetour.choose(options, 1000.0, 250.0))
+        assertEquals(null, CameraDetour.choose(options, Double.NaN, 250.0))
+    }
+
     @Test fun `a cluster already tried from another route is not tried again`() {
         val cands = CameraDetour.candidates(north, listOf(1000.0, 4000.0))
         // The first cluster's corner, reached 30 m off along the road, counts as tried; the second does not.

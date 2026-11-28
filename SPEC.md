@@ -3353,15 +3353,21 @@ since a cluster's centroid sits in the junction's middle. The corridor fetch is 
   segment's bearing as undirected lines, `min(d, 180 - d) <= 50` degrees. A camera with no
   facing counts. Applied to route counts, the avoid re-rank, the alerts and the route bar.
 - "Avoid surveillance cameras" (`FlockRouteAlert`, also the pickers' "Avoid cameras" chip, which
-  refetches the routes) re-ranks the alternates on offer. The fewest-camera route leads within
-  a detour of at most the lesser of 25 percent of the ETA and 10 minutes. It does not route
-  around cameras.
+  refetches the routes) re-ranks the alternates on offer. It considers routes that pass fewer
+  mapped cameras than the leader and add at most the lesser of 25 percent of the fastest
+  route's ETA and 10 minutes. Among those routes the fewest cameras wins, with ties going to
+  the faster route. A negative or nonfinite ETA cannot qualify.
 - "Try side streets around cameras" (off by default, under the re-rank, drive mode only):
   `CameraDetour` clusters each route's cameras (join 40 m, nearest first, at most 3) and tries
   the points 150 m left and right of the road at each. A candidate whose count drops within the
-  same cap is kept and the next cluster builds on it. Per trip: at most 6 route requests, 4 on
-  one route; a cluster within 60 m of one already tried is skipped. `CameraDetour.choose` is
-  the one rule for both: fewest cameras, ties to the faster, beating the leader within the cap.
+  same cap is kept and the next cluster builds on it. Each directions request allows up to
+  6 side-street requests, including any needed after a recount. A pass tries up to 4 per
+  route and skips clusters within 60 m of one already tried in that pass.
+  `CameraDetour.choose` selects the leader from the retained results.
+- Each camera comparison belongs to the current directions request and route order. A
+  saved route moving to the front, a no-toll route joining the list, or a resnapped route line
+  triggers a recount. Closing directions or starting navigation discards pending comparison
+  and side-street results.
 - A kept route leads the list and carries its waypoint plan (`Route.detourPlan`). A drive on it
   holds the detour points as silent stops, which every recheck routes through and nothing speaks
   or lists. A reroute drops them (4.4): a driver who left the detour's way is taken on from there. `NavSession.withSilentVias` puts those still ahead back in after a

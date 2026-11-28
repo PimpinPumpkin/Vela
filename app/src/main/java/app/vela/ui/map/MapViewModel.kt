@@ -518,6 +518,7 @@ class MapViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MapUiState())
+    private val cameraRoutePlan = CameraRoutePlan()
     val state: StateFlow<MapUiState> = _state.asStateFlow()
 
     private var destination: LatLng? = null
@@ -550,7 +551,10 @@ class MapViewModel @Inject constructor(
             get() = this@MapViewModel.controlsBox
             set(v) { this@MapViewModel.controlsBox = v }
         override fun cancelViewportControls() { this@MapViewModel.controlsJob?.cancel() }
-        override fun cancelChooserPrefetch() { this@MapViewModel.modeEtaJob?.cancel() }
+        override fun cancelChooserPrefetch() {
+            this@MapViewModel.modeEtaJob?.cancel()
+            this@MapViewModel.cancelRouteAlternatives()
+        }
         override var autoStartOnRoute: Boolean
             get() = this@MapViewModel.autoStartOnRoute
             set(v) { this@MapViewModel.autoStartOnRoute = v }
@@ -4901,6 +4905,7 @@ class MapViewModel @Inject constructor(
     fun clearSelection() {
         reviewsJob?.cancel() // free the scrape WebView/mutex — nothing is reading its result now
         routeJob?.cancel() // a directions fetch in flight must not resurrect routes after we clear them
+        cancelRouteAlternatives()
         // Remember what the user just had open: the close-triggered ambient repaint re-cuts the
         // pool to the zoom-tiered cap, and a modest place could lose its slot to ranking jitter -
         // the icon you were JUST looking at vanished on back-out (user 2026-07-17). The pin below
@@ -4919,7 +4924,7 @@ class MapViewModel @Inject constructor(
         _state.update {
             it.copy(
                 selected = null, placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false, reviewsFound = 0, loadingDetails = false,
-                routes = emptyList(), activeRoute = null, directionsOpen = false,
+                routes = emptyList(), activeRoute = null, directionsOpen = false, flockOnRoute = emptyList(),
                 transit = emptyList(), transitLoading = false,
                 showSteps = false, previewStepIndex = null,
                 directionsWaypoints = emptyList(), pickingStop = false,
@@ -4965,6 +4970,7 @@ class MapViewModel @Inject constructor(
     /** Back out of the directions preview to the place sheet: drop the route,
      *  keep the place selected (so back peels one layer at a time). */
     fun clearRoute() {
+        cancelRouteAlternatives()
         _state.update { it.copy(openSavedRouteId = null) }
         // Backing out of a GPX track's trip unloads the track: a later bike trip to the same place
         // is routed as usual, and the track is no longer drawn.
@@ -4978,7 +4984,7 @@ class MapViewModel @Inject constructor(
         modeEtaJob?.cancel(); modeEtaKey = null
         _state.update {
             it.copy(
-                routes = emptyList(), activeRoute = null, directionsOpen = false,
+                routes = emptyList(), activeRoute = null, directionsOpen = false, flockOnRoute = emptyList(),
                 transit = emptyList(), transitLoading = false, modeEtas = emptyMap(),
                 showSteps = false, previewStepIndex = null,
                 directionsOrigin = null, pickingOrigin = false, pickingDest = false, directionsReversed = false,
@@ -6858,14 +6864,23 @@ class MapViewModel @Inject constructor(
         if (!picked.provisional) return
         namingJob?.cancel()
         namingJob = viewModelScope.launch {
-            val named = nameIfNeeded(picked)
+            val result = nameIfNeeded(picked)
+            ensureActive()
+            val before = _state.value
+            val at = cameraRoutePlan.indexOfRoute(picked, before.routes)
+            if (at < 0) return@launch
+            val current = before.routes[at]
+            val named = result.copy(savedName = current.savedName, tolls = current.tolls)
+            val restart = recountCameras?.takeIf { cameraRoutePlan.invalidateForResnap(current, named) }
+            val routes = before.routes.toMutableList().apply { this[at] = named }
             _state.update { st ->
-                val routes = st.routes.toMutableList()
-                // By identity, not index: a saved route moved to the top shifts the others (#622).
-                val at = routes.indexOfFirst { it === picked }
-                if (at >= 0) routes[at] = named
-                st.copy(routes = routes, activeRoute = if (st.activeRoute === picked) named else st.activeRoute)
+                st.copy(
+                    routes = routes,
+                    activeRoute = if (st.activeRoute === current) named else st.activeRoute,
+                    flockOnRoute = if (restart == null) st.flockOnRoute else emptyList(),
+                )
             }
+            restart?.invoke()
         }
     }
 
@@ -6989,16 +7004,18 @@ class MapViewModel @Inject constructor(
         if (plan == null) linkPlan = null
         val etaKey = modeEtaKeyOf(origin, dest, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries, s.directionsTimeMode, s.directionsTimeEpochSec)
         beginModeEtas(etaKey)
+        routeJob?.cancel()
+        cancelRouteAlternatives()
+        cameraRoutePlan.resetDetourBudget()
         if (mode == TravelMode.TRANSIT) { routeTransit(origin, dest, s.directionsTimeMode, s.directionsTimeEpochSec, etaKey); return }
         // Guard: this reply is only applied if directions is still open for the SAME mode (the user hasn't
         // backed out or switched away while it was fetching). Mirrors routeTransit's stale-load guard.
         fun stillWanted() = _state.value.directionsOpen && _state.value.travelMode == mode
-        routeJob?.cancel()
-        savedRoutesJob?.cancel()
         routeJob = viewModelScope.launch {
             try {
                 val routes = if (plan == null) dataSource.directions(origin, dest, mode, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries)
                     else dataSource.directions(origin, dest, mode, plan, s.avoidTolls, s.avoidHighways, s.avoidFerries).map { it.copy(detourPlan = plan) }
+                ensureActive()
                 if (!stillWanted()) return@launch // backed out / switched mode mid-fetch — don't resurrect it
                 _state.update {
                     it.copy(
@@ -7014,7 +7031,7 @@ class MapViewModel @Inject constructor(
                 if (routes.isEmpty()) autoStartOnRoute = false
                 shownDuration(routes)?.let { publishModeEta(etaKey, mode, formatDuration(it)) }
                 prefetchModeEtas(etaKey, origin, dest, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries, s.directionsTimeMode, s.directionsTimeEpochSec, except = mode)
-                val flockEpoch = ++routesEpoch // stamp THIS route set; a newer route() bumps it and stales the flock job
+                val flockEpoch = cameraRoutePlan.epoch
                 if (routes.isNotEmpty()) refreshFlockOnRoute(routes, flockEpoch, origin, dest, mode, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries)
                 // Warm the region's road-features file while the chooser is up: its first parse
                 // (176k features, 1.5 s on a 4a) used to land in the drive's first seconds beside
@@ -7041,6 +7058,7 @@ class MapViewModel @Inject constructor(
     }
 
     private var flockRouteJob: kotlinx.coroutines.Job? = null
+    private var recountCameras: (() -> Unit)? = null
     private var roadFeaturesJob: kotlinx.coroutines.Job? = null
 
     // ---- Saved routes (issue #622) ----------------------------------------------------------
@@ -7048,8 +7066,8 @@ class MapViewModel @Inject constructor(
     // (same mode, start near its start, end near its end) it joins the list with a live time: the
     // router is asked for the trip through a few via points where the saved line leaves the
     // router's own answer (SavedRoutes.viasAgainst), and the vias ride as the route's detourPlan
-    // so a drive's traffic re-checks keep to it (leaving it lets go of it, NavSession.reroute). Appended at the END: the flock counts and the provisional
-    // naming index into the list, and the Fastest tag goes by time, not position.
+    // so a drive's traffic re-checks keep to it (leaving it lets go of it, NavSession.reroute).
+    // The saved route moves to the front, and camera counts follow the new order.
 
     private var savedRoutesJob: kotlinx.coroutines.Job? = null
 
@@ -7073,15 +7091,14 @@ class MapViewModel @Inject constructor(
                 val same = withContext(Dispatchers.Default) {
                     current.indexOfFirst { app.vela.core.nav.SavedRoutes.sameWay(line, it.polyline) && app.vela.core.nav.SavedRoutes.sameWay(it.polyline, line) }
                 }
+                if (!stillWanted()) return@launch
                 if (same >= 0) {
-                    // Already on offer: name it and lift it to the top, selected.
-                    _state.update { st ->
-                        if (st.routes.size <= same) st
-                        else {
-                            val named = st.routes[same].copy(savedName = saved.name)
-                            st.copy(routes = listOf(named) + st.routes.filterIndexed { i, _ -> i != same }, activeRoute = named)
-                        }
-                    }
+                    val latest = _state.value.routes
+                    val index = cameraRoutePlan.indexOfRoute(current[same], latest)
+                    if (index < 0) continue
+                    val named = latest[index].copy(savedName = saved.name)
+                    invalidateCameraPlan()
+                    _state.update { it.copy(routes = listOf(named) + latest.filterIndexed { i, _ -> i != index }, activeRoute = named, flockOnRoute = emptyList()) }
                     liftedSaved = true
                     continue
                 }
@@ -7090,17 +7107,20 @@ class MapViewModel @Inject constructor(
                 val r = runCatching { dataSource.directions(origin, dest, mode, vias, avoidTolls, avoidHighways, avoidFerries) }
                     .getOrDefault(emptyList()).firstOrNull() ?: continue
                 // Still the same route set (a mode switch or an edit replaces it)?
-                if (!stillWanted() || _state.value.routes.firstOrNull()?.polyline !== current.first().polyline) return@launch
+                ensureActive()
+                if (!stillWanted()) return@launch
+                if (_state.value.routes.firstOrNull()?.polyline !== current.first().polyline) break
                 // A saved route LEADS the list, selected (user 2026-09-30): it is the way you chose.
                 val mine = r.copy(detourPlan = vias, savedName = saved.name)
-                _state.update { it.copy(routes = listOf(mine) + it.routes, activeRoute = mine) }
+                invalidateCameraPlan()
+                _state.update { it.copy(routes = listOf(mine) + it.routes, activeRoute = mine, flockOnRoute = emptyList()) }
                 liftedSaved = true
                 android.util.Log.i("VelaSavedRoute", "offered a saved route through ${vias.size} via(s)")
             }
             // The list changed order: the camera counts are index-aligned, so count again.
             if (liftedSaved && stillWanted()) {
                 val now = _state.value.routes
-                refreshFlockOnRoute(now, ++routesEpoch, origin, dest, mode, emptyList(), avoidTolls, avoidHighways, avoidFerries)
+                refreshFlockOnRoute(now, cameraRoutePlan.epoch, origin, dest, mode, emptyList(), avoidTolls, avoidHighways, avoidFerries)
             }
         }
     }
@@ -7120,23 +7140,30 @@ class MapViewModel @Inject constructor(
         noTollJob = viewModelScope.launch {
             val avoiding = runCatching { dataSource.directions(origin, dest, mode, stops, true, avoidHighways, avoidFerries) }
                 .getOrDefault(emptyList()).firstOrNull() ?: return@launch
+            ensureActive()
             val latest = _state.value.routes
             if (latest.isEmpty() || !stillWanted()) return@launch
             val plan = withContext(Dispatchers.Default) {
                 app.vela.core.nav.TollCompare.plan(latest, avoiding, app.vela.core.nav.SavedRoutes::sameWay)
             } ?: return@launch
-            var added: List<app.vela.core.model.Route>? = null
+            val out = app.vela.core.nav.TollCompare.apply(latest, plan, avoiding)
+            val appended = plan.avoidingIdx == null
             _state.update { st ->
                 if (st.routes !== latest || !stillWanted()) st
                 else {
-                    val out = app.vela.core.nav.TollCompare.apply(st.routes, plan, avoiding)
-                    added = out.takeIf { plan.avoidingIdx == null }
                     val active = st.routes.indexOfFirst { it === st.activeRoute }.takeIf { it >= 0 }?.let { out[it] } ?: st.activeRoute
-                    st.copy(routes = out, activeRoute = active)
+                    st.copy(
+                        routes = out, activeRoute = active,
+                        flockOnRoute = if (appended) emptyList() else st.flockOnRoute,
+                    )
                 }
             }
+            if (_state.value.routes !== out) return@launch
             // The list grew: the camera counts are index-aligned, so count again.
-            added?.let { refreshFlockOnRoute(it, ++routesEpoch, origin, dest, mode, stops, false, avoidHighways, avoidFerries) }
+            if (appended) {
+                invalidateCameraPlan()
+                refreshFlockOnRoute(out, cameraRoutePlan.epoch, origin, dest, mode, stops, false, avoidHighways, avoidFerries)
+            }
             android.util.Log.i("VelaToll", "tolls: fastest may have tolls, avoiding route ${if (plan.avoidingIdx == null) "added" else "already on offer"}")
         }
     }
@@ -7272,7 +7299,21 @@ class MapViewModel @Inject constructor(
     suspend fun awaitRouteWork(capMs: Long = 3000L) {
         kotlinx.coroutines.withTimeoutOrNull(capMs) { roadFeaturesJob?.join(); flockRouteJob?.join() }
     }
-    private var routesEpoch = 0 // bumped on each fresh route(); stales an in-flight flock count if a newer route set lands
+    private fun cancelRouteAlternatives() {
+        savedRoutesJob?.cancel()
+        noTollJob?.cancel()
+        namingJob?.cancel()
+        invalidateCameraPlan()
+    }
+
+    private fun invalidateCameraPlan() {
+        cameraRoutePlan.invalidate()
+        flockRouteJob?.cancel()
+        recountCameras = null
+    }
+
+    private fun currentCameraPlan(epoch: Int, mode: TravelMode): Boolean =
+        cameraRoutePlan.isCurrent(epoch, mode, _state.value) && app.vela.ui.FlockRouteAlert.on.value
 
     /** When "Avoid surveillance cameras" is on, count the ALPR cameras near each route option (the bundled
      *  FlockCameras set; keyless Overpass only until it loads; index-aligned with [routes]) so the picker can badge "passes N cameras" AND auto-prefer
@@ -7290,7 +7331,10 @@ class MapViewModel @Inject constructor(
         avoidFerries: Boolean,
     ) {
         flockRouteJob?.cancel()
-        if (!app.vela.ui.FlockRouteAlert.on.value) return
+        if (!currentCameraPlan(epoch, mode)) return
+        recountCameras = {
+            refreshFlockOnRoute(_state.value.routes, cameraRoutePlan.epoch, origin, dest, mode, stops, avoidTolls, avoidHighways, avoidFerries)
+        }
         flockRouteJob = viewModelScope.launch {
             val counts = withContext(Dispatchers.Default) {
                 val local = app.vela.data.FlockCameras.isLoaded
@@ -7305,19 +7349,15 @@ class MapViewModel @Inject constructor(
                 }
             }
             android.util.Log.i("VelaFlockRoute", "counts=$counts")
-            // Still THIS route set? Guard on the epoch, not the polyline: naming a provisional route
-            // (selectRoute(0), which fires right after this launches for the common provisional-top case)
-            // RE-SNAPS its geometry, so a polyline compare tripped and silently dropped the badges +
-            // auto-avoid. The epoch only bumps on a fresh route(); naming/user-pick keep the same set
-            // (same size + order), so the counts still line up index-for-index with _state.routes.
+            // A saved-route reorder or a provisional route's resnap starts a new comparison epoch.
             val cur = _state.value.routes
-            if (routesEpoch != epoch || cur.size != counts.size) return@launch
+            if (!currentCameraPlan(epoch, mode) || cur.size != counts.size) return@launch
             _state.update { it.copy(flockOnRoute = counts) }
-            // Auto-avoid: pick the fewest-camera route (tie → the faster one) IF it beats the fastest on
-            // cameras and costs at most 25% / 10 min more. The cap is where we "draw the line" - a modest
-            // detour to dodge cameras, not a wild one. Long-press "route through here" is the manual override.
+            // A saved route can lead the list. Compare camera counts to the leader and measure the
+            // extra time against the fastest ETA in the list.
             val eta = { r: Route -> r.durationInTrafficSeconds ?: r.durationSeconds }
-            val eta0 = eta(cur[0]) // routes are sorted fastest-first, and cur[0] is the default active
+            val eta0 = shownDuration(cur) ?: return@launch
+            if (!eta0.isFinite() || eta0 < 0) return@launch
             val cap = minOf(eta0 * 0.25, 600.0)
             if (counts.any { it > 0 }) {
                 // One rule for the pick (`CameraDetour.choose`), shared with the side-street pass below
@@ -7356,14 +7396,13 @@ class MapViewModel @Inject constructor(
                 val routesNow = _state.value.routes
                 val countsNow = _state.value.flockOnRoute
                 if (routesNow.size == countsNow.size && countsNow.any { it > 0 }) {
-                    val budget = intArrayOf(app.vela.core.nav.CameraDetour.MAX_REQUESTS)
                     val tried = ArrayList<LatLng>()
                     val results = ArrayList<Pair<Route, Int>>()
                     for (i in routesNow.indices) {
-                        if (budget[0] <= 0) break
+                        if (cameraRoutePlan.detourRequestsLeft == 0) break
                         if (countsNow[i] <= 0 || routesNow[i].detourPlan.isNotEmpty()) continue
-                        val r = tryCameraDetour(routesNow[i], countsNow[i], eta0, cap, epoch, origin, dest, mode, stops, avoidTolls, avoidHighways, avoidFerries, budget, tried)
-                        if (routesEpoch != epoch) return@launch
+                        val r = tryCameraDetour(routesNow[i], countsNow[i], eta0, cap, epoch, origin, dest, mode, stops, avoidTolls, avoidHighways, avoidFerries, tried)
+                        if (!currentCameraPlan(epoch, mode)) return@launch
                         if (r != null) results += r
                     }
                     if (results.isNotEmpty()) {
@@ -7372,7 +7411,7 @@ class MapViewModel @Inject constructor(
                             results.map { (r, n) -> app.vela.core.nav.CameraDetour.Option(n, eta(r)) }
                         val pick = app.vela.core.nav.CameraDetour.choose(options, eta0, cap)
                         android.util.Log.i("VelaFlockRoute", "detour pick: ${results.size} result(s), cameras ${results.map { it.second }}, leader ${countsNow[0]} -> ${pick?.let { options[it].cameras } ?: countsNow[0]}")
-                        if (pick != null && routesEpoch == epoch) {
+                        if (pick != null && currentCameraPlan(epoch, mode) && app.vela.ui.FlockDetour.on.value) {
                             val (kept, n) = results[pick - 1]
                             _state.update { it.copy(routes = listOf(kept) + it.routes, flockOnRoute = listOf(n) + it.flockOnRoute) }
                             selectRoute(0)
@@ -7386,15 +7425,15 @@ class MapViewModel @Inject constructor(
     /** One greedy pass over the camera clusters of [route]: for each, its left then right point is
      *  added to the trip and the trip re-routed; a candidate that passes fewer cameras inside
      *  [cap] is kept and the next cluster builds on it. Clusters within `SAME_CLUSTER_M` of one in
-     *  [tried] are skipped and the ones tried here are added to it; every request comes out of
-     *  [budget] (the trip's, shared across routes) and at most `MAX_REQUESTS_PER_ROUTE` are spent
+     *  [tried] are skipped and the ones tried here are added to it. Each request spends one of
+     *  the trip's requests, and at most `MAX_REQUESTS_PER_ROUTE` are spent
      *  here. Returns the best route found with its camera count, carrying its waypoint plan
      *  ([Route.detourPlan]) so a drive keeps the detour; null when nothing beat [routeCount]. */
     private suspend fun tryCameraDetour(
         route: Route, routeCount: Int, eta0: Double, cap: Double, epoch: Int,
         origin: LatLng, dest: LatLng, mode: TravelMode, stops: List<LatLng>,
         avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean,
-        budget: IntArray, tried: MutableList<LatLng>,
+        tried: MutableList<LatLng>,
     ): Pair<Route, Int>? {
         val eta = { r: Route -> r.durationInTrafficSeconds ?: r.durationSeconds }
         val poly = route.polyline
@@ -7412,17 +7451,16 @@ class MapViewModel @Inject constructor(
         outer@ for (c in cands) {
             tried += c.at
             for (via in listOf(c.left, c.right)) {
-                if (requests >= app.vela.core.nav.CameraDetour.MAX_REQUESTS_PER_ROUTE || budget[0] <= 0) break@outer
+                if (!currentCameraPlan(epoch, mode) || !app.vela.ui.FlockDetour.on.value) return null
+                if (requests >= app.vela.core.nav.CameraDetour.MAX_REQUESTS_PER_ROUTE || !cameraRoutePlan.takeDetourRequest()) break@outer
                 val trial = vias + (c.atM to via)
                 val plan = app.vela.core.nav.CameraDetour.mergePlan(stopAt, trial)
                 requests++
-                budget[0]--
                 val r = runCatching { dataSource.directions(origin, dest, mode, plan, avoidTolls, avoidHighways, avoidFerries) }
                     .getOrDefault(emptyList()).firstOrNull() ?: continue
-                if (routesEpoch != epoch) return null
+                if (!currentCameraPlan(epoch, mode)) return null
                 val n = withContext(Dispatchers.Default) { app.vela.data.FlockCameras.along(r.polyline).size }
-                val extra = eta(r) - eta0
-                if (n < bestCount && extra <= cap) {
+                if (n < bestCount && app.vela.core.nav.CameraDetour.withinBudget(eta(r), eta0, cap)) {
                     vias = trial
                     best = r.copy(detourPlan = plan)
                     bestCount = n
@@ -7430,7 +7468,7 @@ class MapViewModel @Inject constructor(
                 }
             }
         }
-        android.util.Log.i("VelaFlockRoute", "detour: clusters=${cands.size} requests=$requests (${budget[0]} left) kept=${best != null} cameras $routeCount -> $bestCount")
+        android.util.Log.i("VelaFlockRoute", "detour: clusters=${cands.size} requests=$requests kept=${best != null} cameras $routeCount -> $bestCount")
         return best?.let { it to bestCount }
     }
 

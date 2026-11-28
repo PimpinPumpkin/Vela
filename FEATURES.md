@@ -251,8 +251,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 ## Cameras and road alerts
 
 - "Surveillance cameras" draws mapped license plate readers and which way each faces. On by default.
-- "Avoid surveillance cameras" shows each route's camera count and prefers fewer cameras for a small
-  detour.
+- "Avoid surveillance cameras" shows the count of mapped cameras on each route and prefers the
+  fewest among routes within the detour limit.
 - "Try side streets around cameras" also tries the streets beside each camera.
 - "Plate camera heads-up" shows a card near a camera. "Say when a plate camera is ahead" speaks it.
 - "Speed cameras" draws fixed speed cameras. "Warn me out loud" announces one ahead and shows a
