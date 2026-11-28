@@ -91,6 +91,9 @@ before the line ends. The near prompt names a turn close after it ("Turn left on
 then take the ramp on the right"), and that turn still gets its own line once the corner is 15 m
 behind. Recorded on two Davis drives, Google said its near line 93 to 160 m out and nothing
 after it; Vela's old line at the turn started 12 to 30 m out and played through the corner.
+On a numbered highway with nothing to do for a while the voice says so, as Google's does:
+"Continue on I 80 East for 9 miles" where the on-ramp merges, and once just past a fork or keep
+onto a highway, when the next step is at least 1.2 km off. In town it says nothing of the kind.
 Walking and cycling keep the short line at the turn, where corners come close together. Off a
 drive, any maneuver at 80 km/h (50 mph) or more, and an exit, fork, keep, U-turn or the
 turn onto an on-ramp at 55 km/h (34 mph) or more, gets one prompt about 15 s out and the

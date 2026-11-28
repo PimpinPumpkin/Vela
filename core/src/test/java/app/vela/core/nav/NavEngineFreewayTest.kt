@@ -96,4 +96,55 @@ class NavEngineFreewayTest {
             assertTrue("ramp $rampM: $said", own.any { it.first in (turnAt - 250.0)..(turnAt - 40.0) })
         }
     }
+
+    /** Straight east [totalM]; [steps] as (meters along, maneuver) with the depart and arrive added. */
+    private fun straight(totalM: Double, vararg steps: Pair<Double, Maneuver>): Route {
+        val poly = (0..(totalM / 10).toInt()).map { pt(it * 10.0, 0.0) }
+        val all = listOf(0.0 to Maneuver(ManeuverType.DEPART, "Head east", poly.first(), 0.0, 0.0)) + steps.toList() +
+            listOf(totalM to Maneuver(ManeuverType.ARRIVE, "Arrive", poly.last(), 0.0, 0.0))
+        val ms = all.mapIndexed { k, (at, m) ->
+            val len = if (k < all.lastIndex) all[k + 1].first - at else 0.0
+            m.copy(location = pt(at, 0.0), distanceMeters = len, durationSeconds = len / 25)
+        }
+        return Route(poly, listOf(RouteLeg(totalM, totalM / 25, null, ms)), totalM, totalM / 25, null)
+    }
+
+    private fun cruise(r: Route, v: Double = 25.0): List<Pair<Double, String>> {
+        var st = NavState()
+        val said = ArrayList<Pair<Double, String>>()
+        val cum = RouteProjection.cumulative(r.polyline)
+        var m = 0.0
+        while (m <= cum.last() - 30.0) {
+            val (s2, ev) = NavEngine.update(r, st, RouteProjection.pointAt(r.polyline, cum, m), speedMps = v, bearingDeg = 90.0, cornerQuiet = true)
+            st = s2
+            ev.filterIsInstance<NavEvent.Speak>().forEach { said += m to it.text }
+            if (st.arrived) break
+            m += v
+        }
+        return said
+    }
+
+    @Test fun `a merge onto a highway that goes on a while says Google's continue line`() {
+        val r = straight(
+            12_000.0,
+            1000.0 to Maneuver(ManeuverType.RAMP_RIGHT, "Take the ramp on the right toward I 80 East", pt(0.0, 0.0), 0.0, 0.0),
+            1400.0 to Maneuver(ManeuverType.MERGE, "Merge onto I 80", pt(0.0, 0.0), 0.0, 0.0, ref = "I 80"),
+            10_400.0 to Maneuver(ManeuverType.RAMP_RIGHT, "Take exit 9 toward Davis", pt(0.0, 0.0), 0.0, 0.0),
+        )
+        val said = cruise(r)
+        assertTrue("$said", said.any { it.second == "Continue on I 80 East for 9 kilometers" && it.first in 1100.0..1400.0 })
+        assertTrue("$said", said.none { it.second.startsWith("Merge") || "merge onto" in it.second })
+    }
+
+    @Test fun `past a keep onto a numbered highway the continue line comes once, and not with the next step close`() {
+        fun keep(nextAt: Double) = straight(
+            nextAt + 1000.0,
+            1000.0 to Maneuver(ManeuverType.KEEP_LEFT, "Keep left toward Sacramento", pt(0.0, 0.0), 0.0, 0.0, road = "Capital City Freeway", ref = "US 50"),
+            nextAt to Maneuver(ManeuverType.RAMP_RIGHT, "Take exit 4A toward I 5 North", pt(0.0, 0.0), 0.0, 0.0),
+        )
+        val far = cruise(keep(6000.0)).filter { it.second.startsWith("Continue on") }
+        assertEquals("$far", listOf("Continue on US 50 for 5 kilometers"), far.map { it.second })
+        assertTrue("$far", far[0].first in 1015.0..1300.0)
+        assertTrue(cruise(keep(1900.0)).none { it.second.startsWith("Continue on") })
+    }
 }

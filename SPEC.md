@@ -2115,7 +2115,17 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   m out ("In half a mile"), near 200 to 280 m out with no distance and no sign tail ("Take exit
   4A."), nothing at the gore, and a "then" for a step 320 m on but not 400 or 460 m on. A "then",
   on any line, counts only as that next step's far line, so its near line is still said, and
-  past a quiet turn or gore it waits until the car is `CORNER_CLEAR_M` (15 m) past it. So does the line
+  past a quiet turn or gore it waits until the car is `CORNER_CLEAR_M` (15 m) past it.
+- On a numbered highway a drive says Google's "Continue on I 80 East for 9 miles" (English,
+  `NavStrings.continueFor`, `spokenLength`: whole miles from 1.5 miles, whole kilometers from 2).
+  A merge whose highway goes on at least `CONTINUE_MIN_M` (1.2 km) before the next step says it
+  in place of its own line (`mergeContinue`), the length from the merge to that step; once 15 to
+  300 m past a fork, keep or ramp onto a numbered highway (`continueAfter`), with that far to go
+  and the next far line 8 s off, it is said once (`NavState.continuedStep`). The road is the sign
+  on that step or the two before it that names the same route ("I 80 East"), else its ref
+  (`highwayLabel`). Google, on a Davis to Sacramento fixture drive: "Continue on I-80 East for 9
+  miles." at the on-ramp, "Continue on U.S. 50 East for 2 miles." past the fork, "Continue on I-5
+  North for 3 quarters of a mile." before the next exit; nothing like it in town. So does the line
   at a turn close after the corner, which otherwise played inside the corner, and a line at a turn
   counts that turn's approach lines as said, so the near line never repeats it. Google, recorded
   on two Davis fixture drives: far 300 to 420 m out with the distance, near 93 to 160 m out with

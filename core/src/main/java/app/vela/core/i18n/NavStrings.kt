@@ -127,6 +127,14 @@ interface NavStrings {
      *  (NavSession.rollingOpener). A language without its own says its "continue onto" phrase. */
     fun continueOn(road: String): String = phrase("continue", null, road, null, null, null)
 
+    /** Google's line on a highway with nothing to do for a while: EN "Continue on I 80 East for 9
+     *  miles". [length] is from [spokenLength]. Null (the default) leaves it out. */
+    fun continueFor(road: String, length: String): String? = null
+
+    /** A stretch of road for [continueFor]: EN whole miles from 1.5 miles ("9 miles"), else
+     *  [spokenDistance] ("three quarters of a mile"). Default = [spokenDistance]. */
+    fun spokenLength(meters: Double, imperial: Boolean): String = spokenDistance(meters, imperial)
+
     /** Spoken as each intermediate stop is passed — EN "You've reached <label>" (blank → "your stop"). */
     fun reachedStop(label: String): String
 
@@ -298,6 +306,17 @@ object EnNavStrings : NavStrings {
 
     override fun startNav(firstInstruction: String): String = "Starting navigation. $firstInstruction"
     override fun continueOn(road: String) = "Continue on $road"
+
+    override fun continueFor(road: String, length: String): String = "Continue on $road for $length"
+
+    override fun spokenLength(meters: Double, imperial: Boolean): String {
+        val whole = if (imperial) meters / 1609.34 else meters / 1000.0
+        return when {
+            imperial && whole >= 1.5 -> "${whole.roundToInt()} miles"
+            !imperial && whole >= 2.0 -> "${whole.roundToInt()} kilometers"
+            else -> spokenDistance(meters, imperial)
+        }
+    }
 
     override fun reachedStop(label: String): String =
         if (label.isNotBlank()) "You've reached $label" else "You've reached your stop"

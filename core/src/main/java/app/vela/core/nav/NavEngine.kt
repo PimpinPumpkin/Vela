@@ -653,6 +653,17 @@ object NavEngine {
                 if (!isArrive) events += NavEvent.Haptic(target.type, approaching = true)
             }
         }
+        var continuedStep = state.continuedStep
+        if (!voiceSilent && detail == SpokenDetail.Mode.FULL && !prevCornerHold && cornerQuiet && !trackRide &&
+            continuedStep != idxCur && !isArrive
+        ) {
+            // Google's "Continue on US 50 East for 3 miles", once, just past a fork or keep onto a
+            // numbered highway with the next step a way off.
+            continueAfter(maneuvers, manAlong, idxCur, traveled, v, imperial, farM)?.let {
+                events += NavEvent.Speak(it)
+                continuedStep = idxCur
+            }
+        }
         if (!voiceSilent && detail == SpokenDetail.Mode.FULL && !prevCornerHold) {
             val bands = bandsFor(idxCur).toList()
             val due = bands.withIndex().filter { (slot, d) ->
@@ -721,12 +732,15 @@ object NavEngine {
                     quietCorner && nearLine -> wrap(instr)
                     else -> nav().inThen(distancePhrase, wrap(instr))
                 }
-                var line = say(instruction)
+                // A drive's merge onto a highway with nothing to do for a while says Google's line
+                // instead: "Continue on I 80 East for 9 miles".
+                val mergeOn = if (cornerQuiet && !trackRide && target.type == ManeuverType.MERGE) mergeContinue(maneuvers, manAlong, idxCur, v, imperial, farM) else null
+                var line = mergeOn ?: say(instruction)
                 // Entering a short step at speed, the whole line was still playing when the line
                 // at the turn cut in (it interrupts), and the sign's tail was what got cut. When
                 // the car reaches the turn-now point before the line could end, the first prompt
                 // keeps its lanes and drops the tail, as a repeat does.
-                if (firstForStep && !isArrive && (dtn - turnNowM) / pace < line.length / SPEECH_CPS + SPEECH_LEAD_S) {
+                if (mergeOn == null && firstForStep && !isArrive && (dtn - turnNowM) / pace < line.length / SPEECH_CPS + SPEECH_LEAD_S) {
                     val brief = nav().repeatShort(lotLine ?: target.spokenInstruction())
                     line = say(if (lane != null) nav().useLanesToDo(lane.side, lane.count, brief) else brief)
                 }
@@ -858,6 +872,7 @@ object NavEngine {
             stopCuedAtM = stopCuedAt,
             stillFixes = stillFixes,
             chainedStep = if (chainedNow) chainedIdx else state.chainedStep,
+            continuedStep = continuedStep,
             // Named on a near line, the turn after keeps its own near line, said after this corner.
             // A town turn that will say nothing at its corner keeps its near line however it was named.
             chainedBands = if (!chainedNow) state.chainedBands
@@ -899,6 +914,54 @@ object NavEngine {
 
     /** The furthest a quiet step's near line names the step after it ([update]). */
     const val QUIET_THEN_M = 350.0
+
+    /** "Continue on ... for ..." only with at least this far to the next step (Google said
+     *  "for three quarters of a mile" with 1.2 km to go). */
+    const val CONTINUE_MIN_M = 1200.0
+    /** And only this close past the fork or keep it follows. */
+    const val CONTINUE_WINDOW_M = 300.0
+
+    /** The first step from [from] on that says something ([quiet] ones skipped). */
+    private fun nextSpoken(ms: List<Maneuver>, from: Int): Int {
+        var j = from
+        while (j < ms.lastIndex && quiet(ms, j)) j++
+        return j
+    }
+
+    /** The numbered highway step [p] puts the car on, as a sign on it or just before it names it
+     *  ("I 80 East"), else its ref ("US 50"); null when it is no numbered route. */
+    internal fun highwayLabel(ms: List<Maneuver>, p: Int): String? {
+        val ref = (ms[p].ref ?: ms[p].road)?.takeIf { it.isNotBlank() } ?: return null
+        val key = routeKey(ref) ?: return null
+        for (k in p downTo maxOf(0, p - 2)) {
+            nav().signParts(ms[k].spokenInstruction()).firstOrNull { routeKey(it) == key }?.let { return it }
+        }
+        return ref
+    }
+
+    /** The "Continue on ..." line for the car [traveled] meters along, on the way to step [idx]:
+     *  just past a fork, keep or ramp onto a numbered highway, with the next step at least
+     *  [CONTINUE_MIN_M] away and its far line 8 s off. Null otherwise. */
+    private fun continueAfter(ms: List<Maneuver>, manAlong: DoubleArray, idx: Int, traveled: Double, v: Double, imperial: Boolean, farM: Double): String? {
+        var p = idx - 1
+        while (p > 0 && quiet(ms, p)) p--
+        if (p < 1 || !SpokenDetail.exitLike(ms[p].type) || ms[p].type == ManeuverType.UTURN) return null
+        val past = traveled - manAlong[p]
+        if (past < CORNER_CLEAR_M || past > CONTINUE_WINDOW_M) return null
+        val road = highwayLabel(ms, p) ?: return null
+        val left = manAlong[nextSpoken(ms, idx)] - traveled
+        if (left < maxOf(CONTINUE_MIN_M, farM + v * BAND_MERGE_S)) return null
+        return nav().continueFor(road, nav().spokenLength(left, imperial))
+    }
+
+    /** Merge [idx]'s line as Google says it when the highway it joins goes on a while: "Continue on
+     *  I 80 East for 9 miles", the length from the merge to the next step. Null otherwise. */
+    private fun mergeContinue(ms: List<Maneuver>, manAlong: DoubleArray, idx: Int, v: Double, imperial: Boolean, farM: Double): String? {
+        val road = highwayLabel(ms, idx) ?: return null
+        val left = manAlong[nextSpoken(ms, idx + 1)] - manAlong[idx]
+        if (left < maxOf(CONTINUE_MIN_M, farM + v * BAND_MERGE_S)) return null
+        return nav().continueFor(road, nav().spokenLength(left, imperial))
+    }
 
     /** Whether step [i], approached at [speedMps], gets one approach line instead of two in the full
      *  voice: anything at [SpokenDetail.FAST_MPS] or more, and an exit, fork, keep, U-turn or the
@@ -1262,6 +1325,12 @@ object NavEngine {
             // down to the turn: a line where a band is first due, at the real distance when the car
             // is already well inside it, and the bands the line counts as said.
             val lines = ArrayList<String>()
+            // The "Continue on ..." line just past a fork onto a highway, as update says it there.
+            if (cornerQuiet && !trackRide && i > 0) {
+                var p = i - 1
+                while (p > 0 && quiet(ms, p)) p--
+                if (p >= 1) continueAfter(ms, manAlong, i, manAlong[p] + CORNER_CLEAR_M, speedMps, imperial, far)?.let { lines += it }
+            }
             var nearAlways = true // the near band said before the turn, wherever the car came in
             var saidSome = false
             var saidNone = false
@@ -1275,9 +1344,10 @@ object NavEngine {
                     val sayM = sayAt(d, due.last().value)
                     val nearLine = due.last().index == 1 || bands[1] < sayM && (sayM - bands[1]) / pace < BAND_MERGE_S
                     val cueLine = if (nearLine) CueLine.NEAR else CueLine.FAR
-                    var line = say(d, sayM, cueLine, first, if (first) full else brief)
+                    val mergeOn = if (cornerQuiet && !trackRide && m.type == ManeuverType.MERGE) mergeContinue(ms, manAlong, i, speedMps, imperial, far) else null
+                    var line = mergeOn ?: say(d, sayM, cueLine, first, if (first) full else brief)
                     // Still playing at the line at the turn: the short form, as update cuts it.
-                    if (first && (d - turnNowM) / pace < line.length / SPEECH_CPS + SPEECH_LEAD_S) {
+                    if (mergeOn == null && first && (d - turnNowM) / pace < line.length / SPEECH_CPS + SPEECH_LEAD_S) {
                         line = say(d, sayM, cueLine, true, if (lane != null) nav().useLanesToDo(lane.side, lane.count, brief) else brief)
                     }
                     lines += line

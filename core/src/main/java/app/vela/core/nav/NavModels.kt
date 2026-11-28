@@ -33,6 +33,7 @@ data class NavState(
                                           // (NavSession): where the route is, for the banner
     val toTrackM: Double = -1.0,       // a GPX track ride (TrackRide) away from its line: meters to it (its
                                        // start until the rider has joined it); -1 otherwise
+    val continuedStep: Int = -1,       // the step whose approach began with "Continue on I 80 for 9 miles"
 )
 
 /**
