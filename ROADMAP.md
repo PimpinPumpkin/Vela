@@ -290,7 +290,8 @@ off the list when it has been.
   keep onto one, when the next step is 1.2 km or more away (SPEC 4.6, Guidance): unit tests and
   a mock drive on a 4a; not yet heard on a freeway drive.
 - On a drive, exits, ramps, forks and keeps say Google's two lines at any speed, far ("In 800
-  meters, take exit 10") and near without a distance ("Take exit 10"), and nothing at the gore;
+  meters, take exit 10") and near without a distance ("Take exit 10", with its lanes when it has
+  them), and nothing at the gore;
   a step after an exit gets its own lines (SPEC 4.6, Guidance): unit tests and mock drives on a
   4a; not yet heard on a freeway drive.
 - A drive's "then" is Google's own short sentence with no street ("Turn right onto Elm Street.

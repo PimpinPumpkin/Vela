@@ -704,6 +704,10 @@ object NavEngine {
                     // the far band already named it, and repeating the whole thing at every
                     // band read as "the same shit in declining feet counts" off an exit
                     // (real-drive report, 2026-07-17; Google shortens repeats the same way).
+                    // A drive's exit keeps its lanes on the near line, as Google's: "Use the right
+                    // lane to take exit 519B".
+                    cornerQuiet && !trackRide && lane != null && SpokenDetail.exitLike(target.type) && lotLine == null ->
+                        nav().useLanesToDo(lane.side, lane.count, nav().repeatShort(target.spokenInstruction()))
                     else -> nav().repeatShort(lotLine ?: target.spokenInstruction())
                 }
                 val pace = v.coerceAtLeast(MIN_PACE_MPS)
@@ -1336,6 +1340,8 @@ object NavEngine {
                 ?: if (lane != null) nav().useLanesToDo(lane.side, lane.count, nav().spokenSign(m.spokenInstruction()))
                 else nav().spokenSign(m.spokenInstruction())
             val brief = nav().repeatShort(m.spokenInstruction())
+            // update's exit near line keeps its lanes on a drive.
+            val nearBrief = if (quiet && lane != null && SpokenDetail.exitLike(m.type)) nav().useLanesToDo(lane.side, lane.count, brief) else brief
             val bands = bandsOf(i)
             // An approach line [d] out saying [sayM], as update's say() builds it: the step's first
             // line takes its lanes or the turn after it.
@@ -1392,7 +1398,7 @@ object NavEngine {
                     val nearLine = due.last().index == 1 || bands[1] < sayM && (sayM - bands[1]) / pace < BAND_MERGE_S
                     val cueLine = if (nearLine) CueLine.NEAR else CueLine.FAR
                     val mergeOn = if (cornerQuiet && !trackRide && m.type == ManeuverType.MERGE) mergeContinue(ms, manAlong, i, speedMps, imperial, far) else null
-                    var line = mergeOn ?: say(d, sayM, cueLine, first, if (first) full else brief)
+                    var line = mergeOn ?: say(d, sayM, cueLine, first, if (first) full else nearBrief)
                     // Still playing at the line at the turn: the short form, as update cuts it.
                     if (mergeOn == null && first && (d - turnNowM) / pace < line.length / SPEECH_CPS + SPEECH_LEAD_S) {
                         line = say(d, sayM, cueLine, true, if (lane != null) nav().useLanesToDo(lane.side, lane.count, brief) else brief)

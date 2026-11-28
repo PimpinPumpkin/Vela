@@ -160,4 +160,15 @@ class NavEngineFreewayTest {
         assertTrue("$route", route.any { it.second == "In 900 meters, Keep slight left toward US 50 East, Sacramento" })
         assertTrue("$route", route.none { "Follow signs" in it.second })
     }
+
+    @Test fun `an exit's near line keeps its lanes`() {
+        val lanes = listOf(app.vela.core.model.Lane(listOf("straight"), false), app.vela.core.model.Lane(listOf("straight"), false), app.vela.core.model.Lane(listOf("slight right"), true))
+        val r = straight(
+            4000.0,
+            2000.0 to Maneuver(ManeuverType.RAMP_RIGHT, "Take exit 519B toward J Street, Downtown", pt(0.0, 0.0), 0.0, 0.0, lanes = lanes),
+        )
+        val said = cruise(r)
+        assertTrue("$said", said.any { it.second == "In 900 meters, Use the right lane to take exit 519B toward J Street, Downtown" })
+        assertTrue("$said", said.any { it.second == "Use the right lane to take exit 519B" })
+    }
 }
