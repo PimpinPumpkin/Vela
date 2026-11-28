@@ -270,6 +270,12 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- A match whose road pieces came back late takes the tiles' street names and marks the route
+  short of names, so a re-check renames it (SPEC 4.2, `StretchNamer`). A stand-in waits for
+  Google's route to stop turning the car round instead of offering it as faster (SPEC 4.6,
+  Rechecks). Unit and session tests only: not yet seen on a drive that starts as the phone
+  leaves Wi-Fi.
+
 - The route line curves through junction corners (SPEC 4.8, `roundCorners`), the turn arrows and
   the corner hold on it: on a Davis fixture mock drive on a 4a the two left turns drew as curves
   and the arrow went round them. Not yet seen on a real drive: the puck through a tight turn, a

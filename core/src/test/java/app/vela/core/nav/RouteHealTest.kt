@@ -38,6 +38,13 @@ class RouteHealTest {
         assertFalse(NavSession.turnOutOfReach(null, 15.0))
     }
 
+    @Test fun `a stand-in waits when Google's route sets off against the car`() {
+        assertEquals(RouteHeal.StandIn.WAIT, RouteHeal.standIn(standIn, route(), lineOk = false, firstTurnOutOfReach = false, turnsRoundHere = true))
+        // Still only for Google's full line with traffic, and only in place of a stand-in.
+        assertEquals(RouteHeal.StandIn.NO, RouteHeal.standIn(standIn, route(traffic = false), lineOk = false, firstTurnOutOfReach = false, turnsRoundHere = true))
+        assertEquals(RouteHeal.StandIn.NO, RouteHeal.standIn(route(), route(), lineOk = false, firstTurnOutOfReach = false, turnsRoundHere = true))
+    }
+
     @Test fun `only a stand-in gives way, and only to Google's full line that keeps the car's course`() {
         // Google's own route, or the open router's online one, is not a stand-in.
         assertEquals(RouteHeal.StandIn.NO, RouteHeal.standIn(route(), route(), lineOk = true, firstTurnOutOfReach = false))

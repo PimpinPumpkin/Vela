@@ -1516,14 +1516,16 @@ class GoogleMapsDataSource @Inject constructor(
                     "stretches=${hybridStretches.size}",
                     "stretchM=${hybridStretches.sumOf { it.toM - it.fromM }.toInt()}",
                     "matched=${stretchSource[0]}", "tiled=${stretchSource[1]}", "bare=${stretchSource[2]}", "lanes=${stretchSource[3]}",
+                    "unchecked=${stretchNames[3]}".takeIf { stretchNames[3] > 0 },
                     "naming=${System.currentTimeMillis() - tHybrid}ms",
                     "nudged=${nudgedM.get()}m".takeIf { nudgedM.get() > 0 },
                     "namingLate".takeIf { !namedInTime },
                     "urgent".takeIf { urgent },
                     banCheck?.second?.note(),
                 ).joinToString(";"),
-                // A stretch that went out bare is asked for again during the drive (RouteHeal).
-                namesShort = !namedInTime || stretchSource[2] > 0,
+                // A stretch that went out bare is asked for again during the drive (RouteHeal), and
+                // so is a match whose road pieces did not come: its turns carry no names either.
+                namesShort = !namedInTime || stretchSource[2] > 0 || stretchNames[3] > 0,
             )?.let { h -> banCheck?.second?.kept?.let { app.vela.core.data.naming.TurnBans.mark(h, it) } ?: h }
             if (hybridStretches.isNotEmpty()) runCatching {
                 android.util.Log.i("VelaDirections", "google line: ${hybridStretches.size} stretch(es) off the open route, " +

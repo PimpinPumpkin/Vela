@@ -62,12 +62,17 @@ object RouteHeal {
      * It switches at once, near turn or not, as Google does: waiting sent the car down the
      * stand-in's turn, which Google's route does not take. It waits ([StandIn.WAIT]) only when
      * the candidate's first turn is already out of reach ([firstTurnOutOfReach], the reroute's
-     * own test, [NavSession.turnOutOfReach]). [lineOk]: the caller drives a car and found that
-     * [candidate] does not turn it round. The same roads come back through [gains].
+     * own test, [NavSession.turnOutOfReach]), or when it sets off against the car or behind it
+     * where it is ([turnsRoundHere]): a re-check asks without a heading, so at a corner its route
+     * can begin on the cross street the other way, and asked again past the corner it goes the
+     * car's way. [lineOk]: the caller drives a car and found that [candidate] does not turn it
+     * round. The same roads come back through [gains].
      */
-    fun standIn(current: Route, candidate: Route, lineOk: Boolean, firstTurnOutOfReach: Boolean): StandIn {
-        if (!current.isOffline || !lineOk || !googleLine(candidate) || !candidate.drivable) return StandIn.NO
+    fun standIn(current: Route, candidate: Route, lineOk: Boolean, firstTurnOutOfReach: Boolean, turnsRoundHere: Boolean = false): StandIn {
+        if (!current.isOffline || !googleLine(candidate) || !candidate.drivable) return StandIn.NO
         if (!candidate.hasRealSteps || candidate.namesShort || !candidate.hasLiveTraffic) return StandIn.NO
+        if (turnsRoundHere) return StandIn.WAIT
+        if (!lineOk) return StandIn.NO
         return if (firstTurnOutOfReach) StandIn.WAIT else StandIn.SWITCH
     }
 }

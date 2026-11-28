@@ -101,4 +101,32 @@ class StretchNamerTest {
         assertEquals(Source.MATCHED, n.inHand(a)!!.source)
         assertEquals(Source.TILES, n.inHand(b)!!.source)
     }
+    private val unchecked = Named(emptyList(), Source.MATCHED, noEdges = true)
+
+    @Test fun `a match whose road pieces did not come gives way to the tile names`() = runBlocking {
+        val tiles = Tiles()
+        val n = StretchNamer({ delay(20); unchecked }, { _, _ -> withLanes }, { _, f -> tiles.get(f) }, NEVER)
+        val t0 = System.currentTimeMillis()
+        val r = n.name(a)!!
+        assertEquals(Source.TILES, r.source)
+        assertTrue("did not sit out the hedge wait", System.currentTimeMillis() - t0 < NEVER / 2)
+        assertEquals(Source.TILES, n.result(a)!!.source)
+    }
+
+    @Test fun `a match without road pieces stands when the tiles have no names`() = runBlocking {
+        val n = StretchNamer({ unchecked }, { _, _ -> withLanes }, { _, _ -> Named(emptyList(), Source.BARE) }, HEDGE)
+        val r = n.name(a)!!
+        assertEquals(Source.MATCHED, r.source)
+        assertTrue(r.noEdges)
+        assertFalse("no lane detail without road pieces", r.lanes)
+    }
+
+    @Test fun `at the deadline a match without road pieces takes tile names already read`() = runBlocking {
+        val tiles = Tiles(takesMs = NEVER)
+        val n = StretchNamer({ unchecked }, { _, _ -> null }, { _, f -> tiles.get(f) }, HEDGE)
+        assertNull(withTimeoutOrNull(DEADLINE) { n.name(a) })
+        assertEquals("nothing read in time: the match stands", Source.MATCHED, n.inHand(a)!!.source)
+        tiles.read = true
+        assertEquals(Source.TILES, n.inHand(a)!!.source)
+    }
 }

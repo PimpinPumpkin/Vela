@@ -1125,6 +1125,10 @@ class NavSession @Inject constructor(
     @Volatile private var noSignalReroute = false
     private var backCum: Pair<List<LatLng>, DoubleArray>? = null
     @Volatile private var standInRetryAtMs = 0L
+    /** How many times the stand-in [standInTurnWaitsFor] waited for Google's route to stop turning
+     *  the car round ([STAND_IN_TURN_WAITS] at most). */
+    private var standInTurnWaits = 0
+    private var standInTurnWaitsFor: Route? = null
 
     /** Drive [candidate] from here, a re-check's route on a line the car is on. */
     private fun adoptRecheck(candidate: Route, candidateEta: Double, remainingStops: List<NavStop>) {
@@ -1273,6 +1277,12 @@ class NavSession @Inject constructor(
             // Google's line may replace a route that is not, but never by turning the car round:
             // a re-check asks without a heading, and right after the reroute that set Google's
             // routes aside the car is still going the other way.
+            // Sets off against the car or behind it where it is: never offered, and a stand-in
+            // waits for it to be asked again past the corner.
+            val turnsRoundHere = mode == TravelMode.DRIVE && (lastBearing ?: movingCourse)?.let { h ->
+                app.vela.core.data.RouteGeometry.startsAgainst(candidate.polyline, h) ||
+                    app.vela.core.data.RouteGeometry.startsBehind(candidate.polyline, h)
+            } == true
             val lineOk = mode == TravelMode.DRIVE && RouteHeal.offGoogleLine(current) && run {
                 val h = lastBearing ?: movingCourse ?: return@run false
                 !app.vela.core.data.RouteGeometry.startsAgainst(candidate.polyline, h) &&
@@ -1280,7 +1290,7 @@ class NavSession @Inject constructor(
                     !app.vela.core.data.RouteGeometry.goesBack(candidate.polyline, trackTo(car, h)) &&
                     !app.vela.core.data.RouteGeometry.doublesBack(candidate.polyline, candidate.legs.firstOrNull()?.distanceMeters ?: Double.MAX_VALUE)
             }
-            val gains = if (sameCourse && candidate.drivable) RouteHeal.gains(current, candidate, lineOk) else null
+            val gains = if (sameCourse && candidate.drivable && !turnsRoundHere) RouteHeal.gains(current, candidate, lineOk) else null
             if (gains != null) {
                 lastSwapReason = "heal"
                 adoptRecheck(candidate, candidateEta, remainingStops)
@@ -1293,7 +1303,11 @@ class NavSession @Inject constructor(
             }
             // A STAND-IN gives way to Google's route on other roads too (RouteHeal.standIn), at once,
             // with the faster-route chime and a line on screen so the change is not a surprise.
-            when (RouteHeal.standIn(current, candidate, lineOk, turnOutOfReach(firstTurnAheadM(candidate, car), lastTrustedSpeedMps))) {
+            if (current !== standInTurnWaitsFor) { standInTurnWaitsFor = current; standInTurnWaits = 0 }
+            // Asked a few times past the corner; a Google route that still turns the car round
+            // means it would, and the stand-in goes back to the plain cadence.
+            val waitTurn = turnsRoundHere && standInTurnWaits < STAND_IN_TURN_WAITS
+            when (RouteHeal.standIn(current, candidate, lineOk, turnOutOfReach(firstTurnAheadM(candidate, car), lastTrustedSpeedMps), waitTurn)) {
                 RouteHeal.StandIn.SWITCH -> {
                     lastSwapReason = "stand-in"
                     adoptRecheck(candidate, candidateEta, remainingStops)
@@ -1303,8 +1317,12 @@ class NavSession @Inject constructor(
                     return@launch
                 }
                 RouteHeal.StandIn.WAIT -> {
-                    standInRetryAtMs = SystemClock.elapsedRealtime() + STAND_IN_RETRY_MS
-                    note("recheck: Google's route is back, its first turn is out of reach, asking again past it")
+                    if (waitTurn) standInTurnWaits++
+                    standInRetryAtMs = SystemClock.elapsedRealtime() + if (waitTurn) STAND_IN_TURN_RETRY_MS else STAND_IN_RETRY_MS
+                    note(
+                        if (waitTurn) "recheck: Google's route is back, it turns the car round from here, asking again past it"
+                        else "recheck: Google's route is back, its first turn is out of reach, asking again past it",
+                    )
                     return@launch
                 }
                 RouteHeal.StandIn.NO -> Unit
@@ -1314,6 +1332,12 @@ class NavSession @Inject constructor(
             // the arrival time above has already taken it. Offered, it was the road being driven.
             if (sameCourse && app.vela.core.data.RouteGeometry.sameRoad(current.polyline, candidate.polyline)) {
                 note("recheck: kept current route (same road, candidate saves ${saving.toInt()} s, traffic=$trafficAware)")
+                return@launch
+            }
+            // A route that turns the car round where it is is not a faster route: accepted, the
+            // car is off it at once and a reroute follows.
+            if (turnsRoundHere) {
+                note("recheck: kept current route (the candidate turns the car round here, saves ${saving.toInt()} s)")
                 return@launch
             }
             // A candidate similar to one the user DISMISSED is only re-offered when it beats the
@@ -1902,6 +1926,8 @@ class NavSession @Inject constructor(
         const val BACK_TO_ROUTE_BEHIND_M = 500.0  // the way back may point this far behind where the car left the route
         const val REJOIN_MIN_LEFT_MS = 3_000L     // a reroute asks for the way back only with this much of its deadline left
         const val STAND_IN_RETRY_MS = 15_000L     // a stand-in whose new first turn was out of reach asks again after this
+        const val STAND_IN_TURN_RETRY_MS = 6_000L // ...and one whose Google route turned the car round, once past the corner
+        const val STAND_IN_TURN_WAITS = 4         // asks per stand-in before a turning-round Google route is taken as meant
         const val DEGRADED_FAST_TRIES = 6          // ~2 min of fast heal attempts per degraded route
         // A recheck candidate whose sampled points all sit within this of the current route line
         // counts as the SAME course -> its fresh ETA recalibrates the shown arrival time. Tighter

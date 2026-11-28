@@ -126,8 +126,9 @@ All of this gets `HYBRID_WAIT_MS` (5.5 s). Past that, the route goes out on Goog
 what each stretch has by then: its match if that finished, else names from the tiles already
 read, else bare turns. One slow stretch does not cost the others their names. The open router's
 own route never replaces a stretch, because it is the route through whatever Google went
-around. A route that goes out past the deadline, or with any stretch bare, is marked short of
-names, and the drive asks for it again ([chapter 4](04-navigation.md)).
+around. A route that goes out past the deadline, with any stretch bare, or with a match whose
+road pieces did not come is marked short of names, and the drive asks for it again
+([chapter 4](04-navigation.md)).
 
 ### No wrong street names
 
@@ -154,8 +155,10 @@ matched road pieces (`trace_attributes`) and checks every turn against them (`ch
   name the driver has heard, not the one on the map: a long road that takes the cross street's
   name for its last block still gets "Turn right onto X" at that corner.
 
-If the road pieces do not come back, matched turns go out without street names. The open
-router's turn names get the same check against the pieces under its own line. That request
+If the road pieces do not come back, matched turns have no street names. That stretch takes
+the tiles' names instead when they have any, and the route is marked short of names, so the
+drive asks for it again. The open router's turn names get the same check against the pieces
+under its own line. That request
 gets `OPEN_NAMES_WAIT_MS` (1.5 s), and with no answer its names stand.
 
 ### Joining the pieces

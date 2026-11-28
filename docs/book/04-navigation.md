@@ -405,8 +405,15 @@ starts on a degraded route asks on its first fix, since the network is usually b
   lies within 40 m of your line (`RouteGeometry.sameRoad`); the five-sample same-course test
   cannot tell a parallel street from the same one. Its lower time is fresher traffic, and it
   has already corrected the arrival time.
+- Another course, and you are on a stand-in (a route the phone planned because the network was
+  out): Google's route with traffic and names takes its place at once, with the faster-route
+  chime and a line on screen but no spoken offer (`RouteHeal.standIn`). It waits only when its
+  first turn is already out of reach (asked again 15 s later), or when it starts against you or
+  behind you. A recheck asks without a heading, so from a corner its route can begin on the
+  cross street the other way; it is asked again 6 s later, up to four times.
 - Another course: it is offered when it saves more than 90 seconds, has live traffic and full
-  steps, passes every remaining stop, and takes between 40% and 90% of the time left. A
+  steps, passes every remaining stop, takes between 40% and 90% of the time left, and does not
+  start against you or behind you. Accepted, such a route would have you off it at once. A
   candidate without traffic never counts, because free-flow time always looks faster. A
   dismissed candidate comes back only when it beats the dismissed saving by another minute.
 

@@ -19,7 +19,9 @@ import java.util.concurrent.ConcurrentHashMap
  * in hand when the deadline passes. A matcher that answers sooner costs no tile request.
  *
  * What a stretch has when the deadline passes is kept ([inHand]): a finished match stays when
- * its lanes did not come, and one slow stretch does not cost the others their names.
+ * its lanes did not come, and one slow stretch does not cost the others their names. A match
+ * whose road pieces did not come ([Named.noEdges]) has no names on its turns, so the tiles
+ * name that stretch when they have names.
  */
 class StretchNamer(
     /** The matcher's steps for the stretch, or null when it has none. */
@@ -51,7 +53,15 @@ class StretchNamer(
             tiles(st, true)
         }
         val m = match(st)
-        if (m != null) {
+        if (m != null && m.noEdges) {
+            // A match whose road pieces did not come back has no street name on any turn. The
+            // tiles name the stretch instead; the match stands only when they have no names.
+            best[st] = m
+            failed.complete(Unit)
+            val t = hedge.await()
+            if (t != null && t.source == Source.TILES) best[st] = t
+            best[st]
+        } else if (m != null) {
             hedge.cancel()
             best[st] = m
             // The matcher's call blocks, so a deadline that passed during it is only seen here.
@@ -67,7 +77,12 @@ class StretchNamer(
 
     /** After the deadline: what [name] finished for [st], else the stretch named from the tiles
      *  already read. No request is made. */
-    suspend fun inHand(st: HybridRoute.Stretch): Named? = best[st] ?: tiles(st, false)?.also { best[st] = it }
+    suspend fun inHand(st: HybridRoute.Stretch): Named? {
+        val have = best[st]
+        if (have != null && !have.noEdges) return have
+        val t = tiles(st, false)
+        return if (t != null && (have == null || t.source == Source.TILES)) t.also { best[st] = it } else have
+    }
 
     /** What each stretch ended up with. */
     fun result(st: HybridRoute.Stretch): Named? = best[st]

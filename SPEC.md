@@ -1070,8 +1070,11 @@ the hybrid is rebuilt from what each stretch has in hand (`StretchNamer.inHand`)
 that finished, without lanes if those were late; else the tiles already read
 (`RoadNameTiles.linesAlong(fetchMissing = false)`, no request); else bare turns. A matched
 stretch keeps its road shape for the drawn line. The open router's own route is never
-substituted for a stretch. A hybrid built past the deadline, or with any stretch bare, is marked
-`namesShort`, and the drive's recheck asks again on the degraded interval.
+substituted for a stretch. A match whose road pieces (`trace_attributes`) did not come back has
+no name on any turn (`Named.noEdges`): the stretch takes the tiles' names instead when they have
+any, or keeps the bare match. A hybrid built past the deadline, with any stretch bare, or with a
+match left without its road pieces is marked `namesShort`, and the drive's recheck asks again on
+the degraded interval.
 
 A match is accepted by `offLine`, which samples both paths every 30 m. A sample over
 `MATCH_OFF_M` (22 m) from the other path is a stray. Strays within 90 m of each other join and
@@ -2503,6 +2506,8 @@ SAME_COURSE_M                    250   a candidate within this of the current li
 FASTER_THRESHOLD_S                90   minimum saving before a route is offered
 MIN_PLAUSIBLE_ETA_FRACTION       0.4   a candidate under this share of the time left is not offered
 STAND_IN_RETRY_MS             15_000   a stand-in whose new first turn was out of reach asks again after this
+STAND_IN_TURN_RETRY_MS         6_000   a stand-in whose Google route turned the car round asks again after this
+STAND_IN_TURN_WAITS                4   such asks per stand-in route
 ```
 
 A validated default network (the view model's network callback) calls `onNetworkBack`: on a
@@ -2554,9 +2559,15 @@ with abbreviated steps, no live traffic, or street names that fell short (`Route
   a near turn or not, as Google does: waiting sent the car down the stand-in's turn, which
   Google's route does not take. Only when the candidate's first turn is already out of reach
   (`turnOutOfReach`, the reroute's test: under `REACH_S` at the car's speed, never under
-  `REACH_MIN_M`) it waits, and asks again `STAND_IN_RETRY_MS` later whatever the cadence.
+  `REACH_MIN_M`) it waits, and asks again `STAND_IN_RETRY_MS` later whatever the cadence. A
+  candidate that sets off against the car or behind it where it is (`startsAgainst`,
+  `startsBehind` from the last course) also waits, and asks again `STAND_IN_TURN_RETRY_MS` later,
+  up to `STAND_IN_TURN_WAITS` times per stand-in: a re-check asks without a heading, and from a
+  corner its route can begin on the cross street the other way.
 - Different course: offered when it has traffic and real steps, covers every remaining stop,
-  saves more than `FASTER_THRESHOLD_S`, and its ETA is between 0.4 and 0.9 of the time left. A
+  saves more than `FASTER_THRESHOLD_S`, its ETA is between 0.4 and 0.9 of the time left, and in
+  a car it does not set off against the car or behind it. Accepted, such a route has the car off
+  it at once. Nor does a same-course gain take one. A
   trafficless candidate is never offered and never calibrates, because free-flow always appears
   to beat traffic. A dismissed candidate returns only when it saves 60 s more than before.
 
