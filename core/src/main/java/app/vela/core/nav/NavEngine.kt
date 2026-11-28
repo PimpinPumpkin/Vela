@@ -297,6 +297,10 @@ object NavEngine {
         // A GPX track ride (TrackRide): the approach bands and the "then" distance are a
         // cyclist's ([farBand], [nearBand], [TRACK_CHAIN_M]). False keeps every other drive as is.
         trackRide: Boolean = false,
+        // A drive (NavSession, DRIVE): a town turn says no line at the corner ([townTurn]). Its
+        // near line carries the turn after it, and the line for that turn waits until the car is
+        // [CORNER_CLEAR_M] past this one. False keeps the line at the turn (walking, cycling).
+        cornerQuiet: Boolean = false,
     ): Pair<NavState, List<NavEvent>> {
         val events = mutableListOf<NavEvent>()
         val maneuvers = route.maneuvers
@@ -599,6 +603,14 @@ object NavEngine {
             val pace = v.coerceAtLeast(MIN_PACE_MPS)
             bandsFor(laterIdx).toList().withIndex().filter { (_, d) -> (gap - d) / pace < BAND_MERGE_S }.map { it.index }.toSet()
         }
+        // GOOGLE'S TOWN RHYTHM: two lines, the far one with its distance and the near one, and
+        // nothing at the corner, where the driver is turning. The near line names the turn after.
+        val quietCorner = cornerQuiet && detail == SpokenDetail.Mode.FULL && !trackRide && townTurn(maneuvers, idxCur, v)
+        val chainIdx = if (nextIdx >= 0) nextIdx else laterIdx
+        // Just round a quiet corner, the next turn's first line waits until the turn is made.
+        val prevCornerHold = cornerQuiet && !trackRide && idxCur > 0 && townTurn(maneuvers, idxCur - 1, v) &&
+            traveled < manAlong[idxCur - 1] + CORNER_CLEAR_M
+        var chainedOnNear = false
         var chainedNow = false
         var chainedIdx = -1
         // The words the "then" gave the chained step, and whether they were said at this turn.
@@ -638,7 +650,7 @@ object NavEngine {
                 if (!isArrive) events += NavEvent.Haptic(target.type, approaching = true)
             }
         }
-        if (!voiceSilent && detail == SpokenDetail.Mode.FULL) {
+        if (!voiceSilent && detail == SpokenDetail.Mode.FULL && !prevCornerHold) {
             val bands = bandsFor(idxCur).toList()
             val due = bands.withIndex().filter { (slot, d) ->
                 dtn <= d && slot !in spoken &&
@@ -683,13 +695,18 @@ object NavEngine {
                 val cue = if (isArrive) null else lightCue(target, dtn, if (nearLine) CueLine.NEAR else CueLine.FAR)
                 fun wrap(instr: String) = when {
                     firstForStep && thenStopHere -> withStop(instr)
+                    quietCorner && nearLine && !thenStopHere && !isArrive && chainIdx >= 0 -> {
+                        val own = if (firstForStep && lane != null) instr else withLight(cue.takeIf { it == LightCue.AT_LIGHT || it == LightCue.AT_STOP }, instr)
+                        withNext(own, chainIdx).also { if (it != own) chainedOnNear = true }
+                    }
                     isArrive || (firstForStep && lane != null) -> instr
                     firstForStep && nextIdx >= 0 -> withNext(withLight(cue.takeIf { it == LightCue.AT_LIGHT || it == LightCue.AT_STOP }, instr))
                     else -> withLight(cue.takeIf { it != LightCue.NEXT_STOP }, instr)
                 }
                 // "At the next stop sign, turn right onto ..." stands in for the distance, on a
                 // plain line only.
-                val nextStop = cue == LightCue.NEXT_STOP && !(firstForStep && (thenStopHere || lane != null || nextIdx >= 0))
+                val nextStop = cue == LightCue.NEXT_STOP && !(firstForStep && (thenStopHere || lane != null || nextIdx >= 0)) &&
+                    !(quietCorner && nearLine && chainIdx >= 0)
                 val distancePhrase = spokenDistance(sayM, imperial)
                 fun say(instr: String) = if (nextStop) withLight(LightCue.NEXT_STOP, instr) else nav().inThen(distancePhrase, wrap(instr))
                 var line = say(instruction)
@@ -745,7 +762,9 @@ object NavEngine {
                     // the step before. At the merge itself there is nothing to choose.
                     val mergeSaid = target.type == ManeuverType.MERGE && 1 in spoken && nextIdx < 0 && laterIdx < 0
                     // The shorter modes said their one line on the approach; the buzz below stays.
-                    if (detail == SpokenDetail.Mode.FULL && !ringSaid && !mergeSaid && TURN_NOW_SAID_SLOT !in spoken) {
+                    // A town turn whose near line was said has nothing more to say at the corner.
+                    val cornerSaid = quietCorner && 1 in spoken
+                    if (detail == SpokenDetail.Mode.FULL && !ringSaid && !mergeSaid && !cornerSaid && TURN_NOW_SAID_SLOT !in spoken) {
                         events += NavEvent.Speak(turnNowLine(withStop(turnText)), interrupt = true)
                     }
                     events += NavEvent.Haptic(target.type) // firm, direction-coded buzz at the turn
@@ -824,7 +843,11 @@ object NavEngine {
             stopCuedAtM = stopCuedAt,
             stillFixes = stillFixes,
             chainedStep = if (chainedNow) chainedIdx else state.chainedStep,
-            chainedBands = if (!chainedNow) state.chainedBands else (if (chainedIdx == laterIdx) laterBands else setOf(0, 1)) +
+            // Named on a near line, the turn after keeps its own near line, said after this corner.
+            // A town turn that will say nothing at its corner keeps its near line however it was named.
+            chainedBands = if (!chainedNow) state.chainedBands
+            else if (chainedOnNear || (cornerQuiet && !trackRide && townTurn(maneuvers, chainedIdx, v))) (if (chainedIdx == laterIdx) laterBands - 1 else setOf(0))
+            else (if (chainedIdx == laterIdx) laterBands else setOf(0, 1)) +
                 (if (thenAtTurn && chainRepeatsSoon(maneuvers, manAlong, idxCur, chainedIdx, dtn, turnNowM, v, thenSaid)) setOf(TURN_NOW_SAID_SLOT) else emptySet()),
         )
         return newState to events
@@ -843,6 +866,22 @@ object NavEngine {
     private const val SIDE_SPAN_M = 25.0
     /** More bend than this through the mark and the side is not said (a corner, a U-turn). */
     private const val SIDE_MAX_BEND_DEG = 45.0
+
+    /** How far past a town turn the car is before the next turn's first line is said
+     *  ([update]'s cornerQuiet): the line comes once the turn is made, not inside it. */
+    const val CORNER_CLEAR_M = 15.0
+
+    private val TOWN_TURN_TYPES = setOf(
+        ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.SHARP_LEFT, ManeuverType.SHARP_RIGHT,
+        ManeuverType.SLIGHT_LEFT, ManeuverType.SLIGHT_RIGHT,
+    )
+
+    /** Step [i] is a town turn at [speedMps]: a plain left or right (slight and sharp too) that is
+     *  not given the highway's one approach line ([oneApproach]) and is not the turn onto an
+     *  on-ramp ([onRampTurn]). With [update]'s cornerQuiet it says two lines, as Google's does:
+     *  far with its distance, near, and none at the corner. */
+    internal fun townTurn(ms: List<Maneuver>, i: Int, speedMps: Double): Boolean =
+        i in ms.indices && ms[i].type in TOWN_TURN_TYPES && !oneApproach(ms, i, speedMps) && !onRampTurn(ms, i)
 
     /** Whether step [i], approached at [speedMps], gets one approach line instead of two in the full
      *  voice: anything at [SpokenDetail.FAST_MPS] or more, and an exit, fork, keep, U-turn or the
@@ -1060,8 +1099,8 @@ object NavEngine {
      *  prepares them while the route preview is up, so the first prompts of a drive need no
      *  synthesis while the camera flies in. A line this misses (a real distance on a short step, a
      *  higher speed) is simply synthesized when spoken, as before. */
-    fun startPrompts(route: Route, imperial: Boolean, count: Int = 2, trackRide: Boolean = false): List<String> =
-        upcomingPrompts(route, fromStep = 1, spoken = emptySet(), speedMps = 0.0, imperial = imperial, count = count, nearestFirst = false, trackRide = trackRide)
+    fun startPrompts(route: Route, imperial: Boolean, count: Int = 2, trackRide: Boolean = false, cornerQuiet: Boolean = false): List<String> =
+        upcomingPrompts(route, fromStep = 1, spoken = emptySet(), speedMps = 0.0, imperial = imperial, count = count, nearestFirst = false, trackRide = trackRide, cornerQuiet = cornerQuiet)
 
     /**
      * The lines [update] is about to speak, from the turn at [fromStep] on, for the voice to get
@@ -1076,7 +1115,7 @@ object NavEngine {
     fun upcomingPrompts(
         route: Route, fromStep: Int, spoken: Set<Int>, speedMps: Double, imperial: Boolean, count: Int = 2,
         nearestFirst: Boolean = true, trackRide: Boolean = false, toTurnM: Double = Double.NaN,
-        chainedStep: Int = -1, chainedStepBands: Set<Int> = emptySet(),
+        chainedStep: Int = -1, chainedStepBands: Set<Int> = emptySet(), cornerQuiet: Boolean = false,
     ): List<String> {
         val ms = route.maneuvers
         val manAlong = geomFor(route).manAlong
@@ -1116,7 +1155,9 @@ object NavEngine {
                 i != fromStep -> {
                     val v = if (turnLeftOf(ms[i - 1].type) != null) minOf(pace, TURN_PACE_MPS) else pace
                     val adv = (v * 2.5).coerceIn(ADVANCE_MIN_M, 90.0)
-                    listOf(legM + adv - v, legM + adv - 2 * v)
+                    // Past a quiet corner the first line waits until the car is clear of it.
+                    if (cornerQuiet && !trackRide && townTurn(ms, i - 1, speedMps)) listOf(legM - CORNER_CLEAR_M, legM - CORNER_CLEAR_M - v)
+                    else listOf(legM + adv - v, legM + adv - 2 * v)
                 }
                 said.isNotEmpty() -> listOf(Double.POSITIVE_INFINITY)
                 toTurnM.isNaN() -> listOf(legM)
@@ -1166,6 +1207,11 @@ object NavEngine {
                 continue
             }
             val lane = app.vela.core.model.laneGuidance(m.lanes)
+            // update's cornerQuiet: a town turn's near line names the turn after, and it says
+            // nothing at the corner.
+            val quiet = cornerQuiet && !trackRide && townTurn(ms, i, speedMps)
+            val quietNext = if (nextIdx >= 0) nextIdx else laterIdx
+            var joinedNear = false
             val full = if (lane != null) nav().useLanesToDo(lane.side, lane.count, nav().spokenSign(m.spokenInstruction()))
                 else nav().spokenSign(m.spokenInstruction())
             val brief = nav().repeatShort(m.spokenInstruction())
@@ -1176,6 +1222,10 @@ object NavEngine {
             fun say(d: Double, sayM: Double, cueLine: CueLine, first: Boolean, instr: String): String {
                 val cue = lightCue(m, d, cueLine)
                 val wrapped = when {
+                    quiet && cueLine == CueLine.NEAR && quietNext >= 0 -> {
+                        val own = if (first && lane != null) instr else withLight(cue.takeIf { it == LightCue.AT_LIGHT || it == LightCue.AT_STOP }, instr)
+                        joinNext(m, ms[quietNext], own, d + gapTo(quietNext), detail).first.also { if (it != own) joinedNear = true }
+                    }
                     first && lane != null -> instr
                     first && nextIdx >= 0 -> {
                         val own = withLight(cue.takeIf { it == LightCue.AT_LIGHT || it == LightCue.AT_STOP }, instr)
@@ -1183,7 +1233,8 @@ object NavEngine {
                     }
                     else -> withLight(cue.takeIf { it != LightCue.NEXT_STOP }, instr)
                 }
-                val nextStop = cue == LightCue.NEXT_STOP && !(first && (lane != null || nextIdx >= 0))
+                val nextStop = cue == LightCue.NEXT_STOP && !(first && (lane != null || nextIdx >= 0)) &&
+                    !(quiet && cueLine == CueLine.NEAR && quietNext >= 0)
                 return if (nextStop) withLight(LightCue.NEXT_STOP, instr) else nav().inThen(spokenDistance(sayM, imperial), wrapped)
             }
             // Update's approach lines replayed from the car's first look at the step ([entries])
@@ -1217,6 +1268,16 @@ object NavEngine {
                 if (sp.isEmpty()) saidNone = true else saidSome = true
             }
             if (joinedFirst) { chainedInto = nextIdx; chainedBands = setOf(0, 1) }
+            if (joinedNear) {
+                chainedInto = quietNext
+                chainedBands = if (quietNext == nextIdx) setOf(0)
+                    else bandsOf(quietNext).withIndex().filter { (_, d) -> (gapTo(quietNext) - d) / pace < BAND_MERGE_S }.map { it.index }.toSet() - 1
+            }
+            // Its near line said wherever the car came in, a quiet town turn says nothing more.
+            if (quiet && nearAlways) {
+                out += (if (i == fromStep && nearestFirst) lines.reversed() else lines).distinct()
+                continue
+            }
             // The line at the turn repeats short once an approach line said the whole instruction.
             val nows = listOfNotNull(
                 short(m, m.spokenInstruction()).takeIf { saidSome },
@@ -1243,7 +1304,9 @@ object NavEngine {
                     if (!alwaysChained) continue
                     chainedInto = k
                     val repeats = joins.all { (dtn, j) -> j.atTurn && chainRepeatsSoon(ms, manAlong, i, k, dtn, turnNowM, speedMps, j.thenSaid) }
-                    chainedBands = (
+                    chainedBands = if (cornerQuiet && !trackRide && townTurn(ms, k, speedMps)) {
+                        if (k == nextIdx) setOf(0) else bandsOf(k).withIndex().filter { (_, d) -> (gap - d) / pace < BAND_MERGE_S }.map { it.index }.toSet() - 1
+                    } else (
                         if (k == nextIdx || ms[k].type == ManeuverType.MERGE) setOf(0, 1)
                         else bandsOf(k).withIndex().filter { (_, d) -> (gap - d) / pace < BAND_MERGE_S }.map { it.index }.toSet()
                     ) + (if (repeats) setOf(TURN_NOW_SAID_SLOT) else emptySet())

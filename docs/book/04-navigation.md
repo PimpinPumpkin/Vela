@@ -82,8 +82,13 @@ turn now     = speed x 2.5 s, clamped 25..90 m   // also where the step advances
 PASSED_SLACK_M = 75    // a maneuver this far behind was passed in a gap: advance silently
 ```
 
-A turn in town gets a far and a near prompt, then the short turn-now line, with the 400 m and
-150 m floors. Any maneuver at 80 km/h (50 mph) or more, and an exit, fork, keep, U-turn or the
+A turn in town on a drive gets two lines, as Google's does: a far prompt with the distance and a
+near one, with the 400 m and 150 m floors, and nothing at the corner, where the driver is
+turning. The near prompt names a turn close after it ("In 500 feet, turn left onto 5th Street,
+then take the ramp on the right"), and that turn still gets its own line once the corner is 15 m
+behind. Recorded on two Davis drives, Google said its near line 93 to 160 m out and nothing
+after it; Vela's old line at the turn started 12 to 30 m out and played through the corner.
+Walking and cycling keep the short line at the turn, where corners come close together. Any maneuver at 80 km/h (50 mph) or more, and an exit, fork, keep, U-turn or the
 turn onto an on-ramp at 55 km/h (34 mph) or more, gets one prompt about 15 s out and the
 turn-now line: at 29 m/s (65 mph) that is "In a quarter mile" 450 m out, then "Take exit 12" at
 the gore. With far and near prompts too, an exit, the fork on its ramp and the merge after it
@@ -168,9 +173,10 @@ on an audio session of Vela's with a loudness enhancer on it, raised by the same
 Vela's voice: +4.1 dB and +6.8 dB, and no further ([SPEC 9.1](../../SPEC.md#91-spoken-guidance)).
 
 Two turns within 130 m of each other are said on one line: "Turn right onto Elm Street, then
-turn left onto Oak Avenue", when the first is announced and again at the first turn. The second
-turn is then said only at the turn itself. Said apart, its approach line landed on top of the
-first turn's line. Dutch, Swedish and Japanese do not have the joining line yet and say the two
+turn left onto Oak Avenue", when the first is announced and again at the first turn (on a drive,
+on its near line instead). Walking or cycling, the second turn is then said only at the turn
+itself; on a drive, which says nothing at a town corner, its own near line comes once the first
+corner is behind. Said apart, its approach line landed on top of the first turn's line. Dutch, Swedish and Japanese do not have the joining line yet and say the two
 apart.
 
 A next step up to 500 m on whose first prompt would come as soon as the turn is made joins the

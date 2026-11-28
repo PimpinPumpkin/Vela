@@ -105,6 +105,13 @@ object TripLog {
     private fun onOff(b: Boolean) = if (b) "on" else "off"
 
     /** The units the drive spoke in, from its `routing:` note; null for a file from before it. */
+    /** Whether the trip was a drive, from its `routing:` note's mode: a drive's town turns say no
+     *  line at the corner (NavEngine.update's cornerQuiet). A trip with no note counts as a drive. */
+    fun recordedDrive(events: List<Event>): Boolean = events.firstOrNull { it.tag == "K" && it.text.startsWith("routing: ") }?.text?.let {
+        val mode = it.substringAfter("mode ", "").trim().uppercase()
+        mode.isEmpty() || mode == "DRIVE"
+    } ?: true
+
     fun recordedImperial(events: List<Event>): Boolean? = events.firstOrNull { it.tag == "K" && it.text.startsWith("routing: ") }?.text?.let {
         when {
             "units imperial" in it -> true
@@ -366,6 +373,7 @@ object TripLog {
         val maneuvers = ArrayList<NavReplay.ManeuverDiff>()
         var manOffset = 0
         val units = recordedImperial(parsed.events) ?: imperial
+        val drive = recordedDrive(parsed.events)
         parsed.segments.forEachIndexed { i, seg ->
             val fromIdx = seg.fromPoint.coerceIn(0, parsed.points.size)
             val toIdx = (parsed.segments.getOrNull(i + 1)?.fromPoint ?: parsed.points.size)
@@ -374,12 +382,12 @@ object TripLog {
             val r = if (parsed.inputs.isNotEmpty()) {
                 // What the engine was handed, bearings included: an input carries one only when
                 // the drive passed one. A card's fix index is then the fix the input followed.
-                val rr = NavReplay.analyze(seg.route, inSeg.map { it.latLng }, units, speeds = inSeg.map { it.speed }, bearings = inSeg.map { it.bearing })
+                val rr = NavReplay.analyze(seg.route, inSeg.map { it.latLng }, units, speeds = inSeg.map { it.speed }, bearings = inSeg.map { it.bearing }, cornerQuiet = drive)
                 rr.copy(cards = rr.cards.map { c -> c.copy(fixIndex = (inSeg.getOrNull(c.fixIndex)?.afterFix ?: fromIdx).coerceAtLeast(0)) })
             } else {
                 val pts = parsed.points.subList(fromIdx, toIdx)
                 // Speed only: a fix the phone gave no bearing is recorded with 0, which reads as north.
-                val rr = NavReplay.analyze(seg.route, pts.map { it.latLng }, units, speeds = pts.map { it.speed.toDouble() })
+                val rr = NavReplay.analyze(seg.route, pts.map { it.latLng }, units, speeds = pts.map { it.speed.toDouble() }, cornerQuiet = drive)
                 rr.copy(cards = rr.cards.map { it.copy(fixIndex = it.fixIndex + fromIdx) })
             }
             cards += r.cards

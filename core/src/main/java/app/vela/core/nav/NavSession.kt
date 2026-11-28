@@ -446,7 +446,7 @@ class NavSession @Inject constructor(
     fun prepareStart(route: Route, imperial: Boolean, onDone: () -> Unit = {}) {
         if (_state.value.navigating || route.maneuvers.isEmpty()) { onDone(); return }
         // In speaking order, so a start that cannot wait for all of them has the first ones.
-        val lines = listOf(openerFor(route, imperial)) + NavEngine.startPrompts(route, imperial, trackRide = app.vela.core.data.TrackRide.isTrack(route)) +
+        val lines = listOf(openerFor(route, imperial)) + NavEngine.startPrompts(route, imperial, trackRide = app.vela.core.data.TrackRide.isTrack(route), cornerQuiet = mode == TravelMode.DRIVE) +
             listOfNotNull(app.vela.core.i18n.NavStringsRegistry.current().toTrackStart().takeIf { app.vela.core.data.TrackRide.isTrack(route) })
         val left = java.util.concurrent.atomic.AtomicInteger(lines.size)
         lines.forEach { voice.prepare(it) { if (left.decrementAndGet() == 0) onDone() } }
@@ -468,7 +468,7 @@ class NavSession @Inject constructor(
         if (key == prewarmKey && !spoke) return
         prewarmKey = key
         // After the events below are spoken: speak() runs first on the same worker.
-        val lines = NavEngine.upcomingPrompts(route, nav.stepIndex, nav.spoken, speedMps, imperial, trackRide = app.vela.core.data.TrackRide.isTrack(route), toTurnM = nav.distanceToNextManeuver, chainedStep = nav.chainedStep, chainedStepBands = nav.chainedBands)
+        val lines = NavEngine.upcomingPrompts(route, nav.stepIndex, nav.spoken, speedMps, imperial, trackRide = app.vela.core.data.TrackRide.isTrack(route), toTurnM = nav.distanceToNextManeuver, chainedStep = nav.chainedStep, chainedStepBands = nav.chainedBands, cornerQuiet = mode == TravelMode.DRIVE)
         // Then "Rerouting" and the distance clauses, kept for the drive (SpokenPieces).
         scope.launch { voice.prepareAll(lines, SpokenPieces.forDrive(imperial)) }
     }
@@ -663,7 +663,7 @@ class NavSession @Inject constructor(
         val course = bearingDeg.takeIf { accuracyM == null || accuracyM <= NavEngine.HEADING_MAX_ACC_M }
         val departCourse = lastBearing
         val (engineNext, engineEvents) = NavEngine.update(route, nav, loc, imperial, speedMps, movingFloor, offRoute, farOff, course, stopAhead, headingMinMps(),
-            trackRide = app.vela.core.data.TrackRide.isTrack(route))
+            trackRide = app.vela.core.data.TrackRide.isTrack(route), cornerQuiet = mode == TravelMode.DRIVE)
         // A track ride (TrackRide) away from its line (TrackGuide.away): the engine still counts
         // from the track's start (or the last point reached), so its turns and distances are not
         // the rider's. The banner says to go to the start, or back to the route, with the distance

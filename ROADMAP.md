@@ -275,6 +275,8 @@ off the list when it has been.
   Google's route to stop turning the car round instead of offering it as faster (SPEC 4.6,
   Rechecks). Unit and session tests only: not yet seen on a drive that starts as the phone
   leaves Wi-Fi.
+- A drive's town turns say no line at the corner, Google's two lines (SPEC 4.6, Guidance): unit
+  tests and a replay of a real drive; not yet heard on a drive.
 - Out of a turn, the gyroscope arrow (and the camera with it) settles on the fix's course
   instead of stopping short of the new road (SPEC 4.7, Gyroscope mode). Checked by replaying a
   real drive's trace through the filter at a desk; not yet on a drive.
