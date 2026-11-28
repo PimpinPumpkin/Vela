@@ -10223,9 +10223,9 @@ class MapViewModel @Inject constructor(
             // failed, or is still coming). It must still draw the route's furniture and nothing
             // else: unfiltered, every sign and light in view drew, blocks from the line, and the
             // set was re-uploaded on every pan (user drive, Pixel 9, 2026-10-05).
-            val navPoly = _state.value.takeIf { it.navigating }?.activeRoute?.polyline
+            val navRoute = _state.value.takeIf { it.navigating }?.activeRoute
             val merged = withContext(Dispatchers.Default) {
-                (if (navPoly != null) controlsOnRoute(navPoly, res) else res).groupBy { it.kind }.flatMap { (kind, group) ->
+                (if (navRoute != null) controlsOnRoute(navRoute, res) else res).groupBy { it.kind }.flatMap { (kind, group) ->
                     app.vela.core.data.MapDeclutter.cluster(group, CONTROLS_CLUSTER_M) { it.loc }
                         .map { c -> app.vela.core.data.TrafficControl(c.centroid, kind) }
                 }
@@ -10239,7 +10239,7 @@ class MapViewModel @Inject constructor(
             // Fetch/merge visibility: like flock's diag line, "controls don't show" reports are
             // only diagnosable when the pipeline says what it actually produced.
             android.util.Log.i("VelaControls", "fetched=${res.size} merged=${merged.size} kept=${kept.size}")
-            if (navPoly != null) app.vela.diag.TripNote.add("signs: view fallback, ${kept.size} on the route of ${res.size} in view")
+            if (navRoute != null) app.vela.diag.TripNote.add("signs: view fallback, ${kept.size} on the route of ${res.size} in view")
             _state.update { it.copy(trafficControls = kept) }
         }
     }

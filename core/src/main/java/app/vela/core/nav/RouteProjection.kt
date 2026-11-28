@@ -58,6 +58,58 @@ object RouteProjection {
         return alignedWithRoad(bearingAt(poly, cum, at), roadDeg)
     }
 
+    /** A stop sign this far past a junction the route goes through, and no closer than
+     *  [STOP_JUNCTION_NODE_M], is the far side's: OSM maps one sign per approach a few meters
+     *  before the junction, so leaving it the route runs over the sign for the traffic coming the
+     *  other way, or out of the street it turned onto. */
+    const val STOP_FAR_SIDE_M = 20.0
+
+    /** A sign this close to a junction is on the junction's own node and holds the route too. */
+    const val STOP_JUNCTION_NODE_M = 5.0
+
+    /** Signs this close together stand at one junction, whose middle they mark. */
+    const val STOP_JUNCTION_M = 30.0
+
+    /** The turns whose corner is a junction for [stopsNotFarSide]. */
+    private val CORNER_TURNS = setOf(
+        app.vela.core.model.ManeuverType.TURN_LEFT, app.vela.core.model.ManeuverType.TURN_RIGHT,
+        app.vela.core.model.ManeuverType.SLIGHT_LEFT, app.vela.core.model.ManeuverType.SLIGHT_RIGHT,
+        app.vela.core.model.ManeuverType.SHARP_LEFT, app.vela.core.model.ManeuverType.SHARP_RIGHT,
+        app.vela.core.model.ManeuverType.UTURN,
+    )
+
+    /** Meters along [poly] of each corner [route] turns at, for [stopsNotFarSide]. */
+    fun cornersAlong(route: app.vela.core.model.Route, poly: List<LatLng>, cum: DoubleArray): List<Double> =
+        route.maneuvers.filter { it.type in CORNER_TURNS }.mapNotNull { alongMeters(poly, cum, it.location, STOP_JUNCTION_M) }
+
+    /**
+     * [stops] without the signs on the far side of a junction the route goes through (see
+     * [STOP_FAR_SIDE_M]): from [STOP_JUNCTION_NODE_M] to [STOP_FAR_SIDE_M] past a corner the route
+     * turns at ([corners], meters along [poly]), or past the middle of two or more signs within
+     * [STOP_JUNCTION_M] of each other (any signs, the cross street's too), unless another such
+     * junction lies ahead of it within [STOP_FAR_SIDE_M]. Other kinds pass through. Call it on
+     * the raw nodes, like [stopIsOnRoute].
+     */
+    fun stopsNotFarSide(
+        poly: List<LatLng>, cum: DoubleArray,
+        stops: List<app.vela.core.data.TrafficControl>, corners: List<Double>,
+    ): List<app.vela.core.data.TrafficControl> {
+        val signs = stops.filter { it.kind == app.vela.core.data.TrafficControl.Kind.STOP }
+        if (signs.isEmpty() || poly.size < 2) return stops
+        val middles = app.vela.core.data.MapDeclutter.cluster(signs, STOP_JUNCTION_M) { it.loc }
+            .filter { it.members.size >= 2 }
+            .mapNotNull { alongMeters(poly, cum, it.centroid, STOP_ON_ROUTE_M) }
+        val junctions = (corners + middles).sorted()
+        if (junctions.isEmpty()) return stops
+        return stops.filter { c ->
+            if (c.kind != app.vela.core.data.TrafficControl.Kind.STOP) return@filter true
+            val at = alongMeters(poly, cum, c.loc, STOP_ON_ROUTE_M) ?: return@filter true
+            val past = junctions.any { j -> at - j > STOP_JUNCTION_NODE_M && at - j <= STOP_FAR_SIDE_M }
+            val before = junctions.any { j -> j - at >= 1.0 && j - at <= STOP_FAR_SIDE_M }
+            !past || before
+        }
+    }
+
     /** How close a traffic light's node has to be to the route: ON it. OSM maps a light per
      *  approach at the stop line, or one in the junction's middle; the route's own approach and a
      *  middle node sit on the line, while the cross street's approach (10 to 25 m up it), the other

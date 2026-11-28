@@ -3406,6 +3406,13 @@ since a cluster's centroid sits in the junction's middle. The corridor fetch is 
 - A stop sign with no orientation counts within `STOP_NO_BEARING_M` (10 m). On a Davis route the
   route's own signs sat 0 to 8 m from the line and the cross streets' 12 to 25 m. The live
   Overpass path never has an orientation.
+- A stop sign on the far side of a junction holds the other direction
+  (`RouteProjection.stopsNotFarSide`): OSM maps one sign per approach a few meters before the
+  junction, so leaving it the route runs over the sign for the traffic coming the other way, or
+  out of the street it turned onto. A sign more than `STOP_JUNCTION_NODE_M` (5 m) and at most
+  `STOP_FAR_SIDE_M` (20 m) past a junction is dropped, unless another junction lies ahead of it
+  within 20 m. A junction is a corner the route turns at, or the middle of two or more signs
+  within `STOP_JUNCTION_M` (30 m) of each other.
 - The bake (`scripts/road_features_tsv.py`) takes a node's orientation from drivable ways only
   (motorway to track, a `*_link` ranked with its parent). A stop line's node is often shared with
   a crosswalk, which runs along the main road. A stop sign on a node shared by several roads

@@ -192,6 +192,11 @@ merged node sits in the middle of the junction.
   Davis route the route's own signs sat 0 to 8 m from the line and the cross streets' 12 to 25 m.
 - A sign whose road is not known counts within `STOP_NO_BEARING_M = 10` m, between those two
   bands. That covers the live Overpass path, which carries no road, and the bake's empty cases.
+- A sign 5 to 20 m past a junction is the far side's and is not drawn
+  (`RouteProjection.stopsNotFarSide`). Leaving a junction the route runs over the sign for the
+  traffic coming the other way, and after a turn over the one holding the street turned onto,
+  for its traffic coming out. The junction is a corner the route turns at, or the middle of two
+  or more signs within 30 m of each other.
 - The bake reads a sign's road from drivable ways only. A crosswalk through the stop line runs
   along the main road and would make the side street's sign look like yours. A sign on a junction
   node holds the most minor road through it. An all-way stop (`stop=all`), or a sign where two

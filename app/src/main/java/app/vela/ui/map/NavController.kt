@@ -1665,7 +1665,7 @@ internal class NavController(
                 // street that ENTERS your road (right place, wrong direction) and every sign on
                 // the parallel street a block over (right direction, wrong place); the direction
                 // test alone kept the second kind (user drive 2026-10-01).
-                val onRoute = controlsOnRoute(poly, res)
+                val onRoute = controlsOnRoute(route, res)
                 onRoute.groupBy { it.kind }.flatMap { (kind, group) ->
                     app.vela.core.data.MapDeclutter.cluster(group, MapViewModel.CONTROLS_CLUSTER_M) { it.loc }
                         .map { c -> app.vela.core.data.TrafficControl(c.centroid, kind) }
@@ -1707,13 +1707,16 @@ private const val DRIVE_TRACE_STEP_M = 15.0
 private const val DEMO_REPLAN_NEAR_M = 150.0
 
 /** The road furniture that is the driver's own: a stop sign whose node is ON the route with its
- *  road running the route's way, and a light, hump or crossing within reach of the line. Used for
- *  the drive's corridor set AND for the whole-view fallback during a drive, so that whichever
- *  path fills the layer, nothing off the route is ever drawn while navigating. */
-internal fun controlsOnRoute(poly: List<app.vela.core.model.LatLng>, all: List<app.vela.core.data.TrafficControl>): List<app.vela.core.data.TrafficControl> {
+ *  road running the route's way and not on the far side of a junction (the other direction's,
+ *  `RouteProjection.stopsNotFarSide`), and a light, hump or crossing within reach of the line.
+ *  Used for the drive's corridor set AND for the whole-view fallback during a drive, so that
+ *  whichever path fills the layer, nothing off the route is ever drawn while navigating. */
+internal fun controlsOnRoute(route: app.vela.core.model.Route, all: List<app.vela.core.data.TrafficControl>): List<app.vela.core.data.TrafficControl> {
+    val poly = route.polyline
     if (poly.size < 2) return emptyList()
     val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
-    return all.filter { c ->
+    val near = app.vela.core.nav.RouteProjection.stopsNotFarSide(poly, cum, all, app.vela.core.nav.RouteProjection.cornersAlong(route, poly, cum))
+    return near.filter { c ->
         when (c.kind) {
             app.vela.core.data.TrafficControl.Kind.STOP ->
                 app.vela.core.nav.RouteProjection.stopIsOnRoute(poly, cum, c.loc, c.roadBearingDeg)
