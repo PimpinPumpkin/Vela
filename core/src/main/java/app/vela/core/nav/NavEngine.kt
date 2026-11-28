@@ -752,7 +752,9 @@ object NavEngine {
         val stillFixes = if (moving) 0 else state.stillFixes + 1
         val parkedAtEnd = stillFixes >= PARK_STILL_FIXES && remaining <= END_PARK_ALONG_M && crowEnd <= ARRIVE_PROX_M
         if (idxCur < maneuvers.lastIndex && !parkedAtEnd) {
-            if (dtn <= turnNowM && TURN_NOW_SLOT !in spoken) {
+            // Just round a quiet corner the line at a turn close after it waits too: said in the
+            // hold, it played inside the corner and the near line said it again after.
+            if (dtn <= turnNowM && TURN_NOW_SLOT !in spoken && !prevCornerHold) {
                 if (!voiceSilent) {
                     // Turn-now repeats short once any approach band already spoke the full
                     // instruction — "Take the ramp", not the whole sign again (see repeatShort).
@@ -775,7 +777,8 @@ object NavEngine {
                     }
                     events += NavEvent.Haptic(target.type) // firm, direction-coded buzz at the turn
                 }
-                spoken = spoken + TURN_NOW_SLOT
+                // The line at the turn said the turn: no approach line after it.
+                spoken = spoken + TURN_NOW_SLOT + setOf(0, 1)
             }
             if (dtn <= advanceM) {
                 stepIndex = idxCur + 1

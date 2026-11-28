@@ -2110,7 +2110,9 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   or one due at once (`chainedNext`, `dueNext`): "Turn left onto 5th Street, then take the ramp on
   the right toward I 80 East". A "then",
   on any line, counts only as that next town turn's far line, so its near line is still said, and
-  past a quiet corner it waits until the car is `CORNER_CLEAR_M` (15 m) past it. Google, recorded
+  past a quiet corner it waits until the car is `CORNER_CLEAR_M` (15 m) past it. So does the line
+  at a turn close after the corner, which otherwise played inside the corner, and a line at a turn
+  counts that turn's approach lines as said, so the near line never repeats it. Google, recorded
   on two Davis fixture drives: far 300 to 420 m out with the distance, near 93 to 160 m out with
   none ("Turn right onto F Street."), the next step's "Then ..." 88 to 113 m before the corner,
   and nothing at it; Vela's line at the turn started 12 to 30 m out and played through the

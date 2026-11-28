@@ -129,4 +129,43 @@ class NavEngineCornerQuietTest {
         val own = said.filter { "Oak Avenue" in it.second && "Keep" !in it.second && !it.second.startsWith("In 400") }
         assertTrue("$said", own.any { it.first >= 975.0 })
     }
+
+    @Test fun `a turn close after a corner is said once`() {
+        // East 1500 m, left onto North Road, right into a lot [gap] m on, arrive 50 m on. Slowed
+        // through the corners as a car is: 9 m/s, 5 m/s within 15 m of a turn.
+        for (gap in listOf(25.0, 32.0, 39.0, 45.0, 60.0)) {
+            val east = (0..150).map { pt(it * 10.0, 0.0) }
+            val north = (1..gap.toInt()).map { pt(1500.0, it.toDouble()) }
+            val east2 = (1..50).map { pt(1500.0 + it, gap) }
+            val poly = east + north + east2
+            val ms = listOf(
+                Maneuver(ManeuverType.DEPART, "Head east", poly.first(), 1500.0, 150.0),
+                Maneuver(ManeuverType.TURN_LEFT, "Turn left onto North Road", pt(1500.0, 0.0), gap, gap / 5, road = "North Road", instructionNoRoad = "Turn left"),
+                Maneuver(ManeuverType.TURN_RIGHT, "Turn right into the parking lot", pt(1500.0, gap), 50.0, 10.0, instructionNoRoad = "Turn right into the parking lot"),
+                Maneuver(ManeuverType.ARRIVE, "Arrive", poly.last(), 0.0, 0.0),
+            )
+            val d = poly.zipWithNext { a, b -> a.distanceTo(b) }.sum()
+            val r = Route(poly, listOf(RouteLeg(d, d / 10, null, ms)), d, d / 10, null)
+            var st = NavState()
+            val said = ArrayList<Pair<Double, String>>()
+            val cum = RouteProjection.cumulative(poly)
+            var m = 0.0
+            while (m <= cum.last() - 5.0) {
+                val near = listOf(1500.0, 1500.0 + gap).minOf { kotlin.math.abs(m - it) }
+                val v = if (near < 15.0) 5.0 else 9.0
+                val here = RouteProjection.pointAt(poly, cum, m)
+                val ahead = RouteProjection.pointAt(poly, cum, m + 3.0)
+                val brg = Math.toDegrees(Math.atan2((ahead.lng - here.lng) * mPerDegLng, (ahead.lat - here.lat) * 111_320.0)).let { (it + 360) % 360 }
+                val (s2, ev) = NavEngine.update(r, st, here, speedMps = v, bearingDeg = brg, cornerQuiet = true)
+                st = s2
+                ev.filterIsInstance<NavEvent.Speak>().forEach { said += m to it.text }
+                if (st.arrived) break
+                m += v
+            }
+            val lot = said.filter { it.second.startsWith("Turn right into the parking lot") }
+            assertEquals("gap $gap: $said", 1, lot.size)
+            // Not inside the first corner: out of it, about CORNER_CLEAR_M past it.
+            assertTrue("gap $gap: $said", lot[0].first >= 1510.0)
+        }
+    }
 }
