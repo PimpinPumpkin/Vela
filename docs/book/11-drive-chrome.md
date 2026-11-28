@@ -59,7 +59,9 @@ the lane's center and they lie over one another, the lit one on top, so a straig
 is a straight arrow with the right arrow's bend coming off its shaft, and a turn looks the same in
 every lane. A short dash under the arrows parts the lanes. In a lane you can use, the arrow for
 the turn lights; a lane with no arrow that way lights nothing, even when the lane data calls it
-usable.
+usable, as long as some other lane has one. When no lane has an arrow that way, the data left the
+turn's lane unmarked: the usable lane then draws the turn's arrow, lit, beside its own, which is
+the lane the voice names.
 A screen reader hears the whole instruction from the arrow. A roundabout keeps "take the 2nd
 exit onto" above the road. The road is found by its own text in any language; the sign
 destinations need the language's "toward" marker (`TurnCardText`, `NavStrings.signDestination`),

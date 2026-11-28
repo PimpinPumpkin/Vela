@@ -886,13 +886,14 @@ internal fun LaneDiagram(
         else -> (21f / 97f).dp
     }
     val shown = lanes.take(8)
+    val laneSets = laneArrows(lanes, maneuver)
     Surface(color = if (plain) Color.Transparent else on.copy(alpha = 0.10f), shape = RoundedCornerShape(8.dp), modifier = modifier) {
         Row(
             Modifier.padding(start = 8.dp, end = 8.dp, top = if (plain) unit * LANE_TOP else 6.dp, bottom = if (plain) 0.dp else 2.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            shown.forEachIndexed { i, lane ->
-                val arrows = laneArrows(lane, maneuver)
+            shown.forEachIndexed { i, _ ->
+                val arrows = laneSets[i]
                 fun lit(ind: String) = ind in arrows.lit
                 // Every arrow the lane allows stands whole on the lane's center (laneGlyphs); dim
                 // ones are drawn first so the lit one lies on top where they share the shaft. Glyphs
@@ -934,10 +935,17 @@ internal class LaneArrows(val kinds: List<String>, val lit: Set<String>)
  * no arrow that way lights nothing: a straight arrow never lights for a left turn. When the
  * maneuver's type does not say which side it goes (a merge, a roundabout, arriving), every arrow
  * of a valid lane lights. Lanes that are not valid light nothing.
+ *
+ * With [unmarkedTurn] (see the list form) a valid lane also draws the maneuver's own arrow, and
+ * that one is lit.
  */
-internal fun laneArrows(lane: Lane, maneuver: ManeuverType): LaneArrows {
-    val kinds = lane.indications.map { laneKind(laneIndication(it)) }.ifEmpty { listOf("straight") }.distinct()
+internal fun laneArrows(lane: Lane, maneuver: ManeuverType, unmarkedTurn: Boolean = false): LaneArrows {
+    val kinds = laneKinds(lane)
     val target = maneuverBucket(maneuver)
+    if (unmarkedTurn && lane.valid && target != null) {
+        val turn = turnKind(target)
+        return LaneArrows((kinds + turn).distinct(), setOf(turn))
+    }
     val lit = when {
         !lane.valid -> emptySet()
         target == null -> kinds.toSet()
@@ -947,6 +955,35 @@ internal fun laneArrows(lane: Lane, maneuver: ManeuverType): LaneArrows {
         )
     }
     return LaneArrows(kinds, lit)
+}
+
+/**
+ * The arrows of each of [lanes] for [maneuver]. When the maneuver turns and no lane has an arrow
+ * within a step of its direction, the data never marked the lane the turn is made from (an
+ * unmarked lane, or a straight-only marking on a lane that also turns): each valid lane then
+ * draws the turn's arrow too, lit, so the diagram shows the lane the voice names ("use the right
+ * lane"). Otherwise each lane as [laneArrows] draws it.
+ */
+internal fun laneArrows(lanes: List<Lane>, maneuver: ManeuverType): List<LaneArrows> {
+    val target = maneuverBucket(maneuver)
+    val unmarked = target != null && target != 0 && lanes.any { it.valid } &&
+        lanes.none { l -> laneKinds(l).any { kotlin.math.abs(laneBucket(it) - target) <= 1 } }
+    return lanes.map { laneArrows(it, maneuver, unmarked) }
+}
+
+private fun laneKinds(lane: Lane): List<String> =
+    lane.indications.map { laneKind(laneIndication(it)) }.ifEmpty { listOf("straight") }.distinct()
+
+/** The glyph for a maneuver's direction ([maneuverBucket]). */
+private fun turnKind(bucket: Int): String = when {
+    bucket <= -4 -> "uturn"
+    bucket == -3 -> "sharp left"
+    bucket == -2 -> "left"
+    bucket == -1 -> "slight left"
+    bucket == 1 -> "slight right"
+    bucket == 2 -> "right"
+    bucket >= 3 -> "sharp right"
+    else -> "straight"
 }
 
 /** The glyph an indication draws: anything unknown is straight. */

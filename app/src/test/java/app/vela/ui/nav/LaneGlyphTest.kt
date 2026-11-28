@@ -126,6 +126,32 @@ class LaneGlyphTest {
     }
 
     @Test
+    fun `when no lane has an arrow the way of the turn, the lane the data marks draws the turn lit`() {
+        // A right turn at a light: left, through, through, the right lane marked for the turn. The
+        // voice says "use the right lane"; the diagram lit nothing.
+        val atLight = listOf(Lane(listOf("left"), false), Lane(listOf("through"), false), Lane(listOf("through"), true))
+        val r = laneArrows(atLight, ManeuverType.TURN_RIGHT)
+        assertEquals(listOf("straight", "right"), r[2].kinds)
+        assertEquals(setOf("right"), r[2].lit)
+        assertEquals(listOf(emptySet<String>(), emptySet()), r.take(2).map { it.lit })
+        assertEquals(listOf(listOf("left"), listOf("straight")), r.take(2).map { it.kinds })
+        // Unmarked lanes the same way.
+        val unmarked = laneArrows(listOf(Lane(listOf("left"), false), Lane(listOf("none"), true)), ManeuverType.TURN_RIGHT)
+        assertEquals(setOf("right"), unmarked[1].lit)
+        // A U-turn from a lane marked straight.
+        assertEquals(setOf("uturn"), laneArrows(listOf(Lane(listOf("through"), true), Lane(listOf("through"), false)), ManeuverType.UTURN)[0].lit)
+        // Some lane goes that way: the valid lane without that arrow stays dim, as before.
+        val left = laneArrows(listOf(Lane(listOf("left"), true), Lane(listOf("left"), true), Lane(listOf("through", "right"), true)), ManeuverType.TURN_LEFT)
+        assertEquals(listOf(setOf("left"), setOf("left"), emptySet()), left.map { it.lit })
+        assertEquals(listOf("straight", "right"), left[2].kinds)
+        // A slight turn the straight arrow already covers adds nothing.
+        assertEquals(listOf("straight"), laneArrows(listOf(Lane(listOf("through"), true)), ManeuverType.SLIGHT_RIGHT)[0].kinds)
+        // No valid lane, or a maneuver with no side: nothing added.
+        assertEquals(emptySet<String>(), laneArrows(atLight.map { it.copy(valid = false) }, ManeuverType.TURN_RIGHT)[2].lit)
+        assertEquals(listOf("straight"), laneArrows(atLight, ManeuverType.MERGE)[2].kinds)
+    }
+
+    @Test
     fun `a head has a sharp point and rounded barb ends`() {
         for (u in units) for (g in laneGlyphs(listOf("straight", "right", "slight left", "sharp right", "uturn"), cx, foot, u)) {
             val outline = laneHeadOutline(g, u)

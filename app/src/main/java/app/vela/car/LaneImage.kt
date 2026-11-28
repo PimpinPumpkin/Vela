@@ -49,8 +49,7 @@ object LaneImage {
     /** Car lanes + a rendered image, or null when there's no lane data. */
     fun build(lanes: List<VelaLane>, maneuver: ManeuverType): Pair<List<Lane>, CarIcon>? {
         if (lanes.isEmpty() || lanes.size > 8) return null
-        val carLanes = lanes.map { vl ->
-            val arrows = laneArrows(vl, maneuver)
+        val carLanes = laneArrows(lanes, maneuver).map { arrows ->
             Lane.Builder().apply {
                 arrows.kinds.forEach { addDirection(LaneDirection.create(shape(it), it in arrows.lit)) }
             }.build()
@@ -71,8 +70,9 @@ object LaneImage {
         val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
         val dim = Color.parseColor("#80868B")
         val foot = (TOP + LANE_GLYPH) * u
-        lanes.forEachIndexed { i, vl ->
-            val arrows = laneArrows(vl, maneuver)
+        val laneSets = laneArrows(lanes, maneuver)
+        lanes.forEachIndexed { i, _ ->
+            val arrows = laneSets[i]
             val cx = (SIDE + LANE_PITCH * (i + 0.5f)) * u
             // Dim arrows first, so the lit one lies on top where they share the shaft.
             laneGlyphs(arrows.kinds, cx, foot, u).sortedBy { if (it.indication in arrows.lit) 1 else 0 }.forEach { g ->
