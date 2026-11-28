@@ -178,7 +178,9 @@ turn left onto Oak Avenue", when the first is announced and again at the first t
 on its near line instead). Walking or cycling, the second turn is then said only at the turn
 itself; on a drive, which says nothing at a town corner, its own near line comes once the first
 corner is behind. Said apart, its approach line landed on top of the first turn's line. Dutch, Swedish and Japanese do not have the joining line yet and say the two
-apart.
+apart. On a drive in English the second turn is Google's own short sentence after the first, with
+no street: "Turn right onto Elm Street. Then at the next light, you'll turn left." Its street
+comes on its own near line.
 
 A next step up to 500 m on whose first prompt would come as soon as the turn is made joins the
 line at the turn only: "Take the ramp, then keep slight left". Said apart, the two came a

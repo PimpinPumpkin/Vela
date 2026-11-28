@@ -149,6 +149,11 @@ interface NavStrings {
      *  alone: a language leaves this out until it has a line of its own that reads right. */
     fun thenNext(instruction: String, next: String): String = instruction
 
+    /** A drive's "then", Google's: the turn after said as its own short sentence once [instruction]
+     *  ends. EN "Turn right onto Elm Street. Then at the next light, you'll turn left". [next] comes
+     *  without its street when it is a turn, since its own line names it. Default = [thenNext]. */
+    fun thenAfter(instruction: String, next: String): String = thenNext(instruction, next)
+
     /** The last turn of a trip when it turns into the destination's parking lot, as the step's own
      *  text. EN "Turn left into the parking lot". The clause [intoLotThen] opens with. */
     fun intoLot(turnLeft: Boolean): String
@@ -308,6 +313,20 @@ object EnNavStrings : NavStrings {
     override fun intoLot(turnLeft: Boolean): String = "Turn ${if (turnLeft) "left" else "right"} into the parking lot"
 
     override fun thenNext(instruction: String, next: String): String = "$instruction, then " + next.replaceFirstChar { it.lowercase() }
+
+    override fun thenAfter(instruction: String, next: String): String {
+        // Google's wording: the light or stop sign becomes "the next" one, and a turn or a lane is
+        // what "you'll" do ("Then at the next stop sign, you'll turn left"); a ramp or an exit is
+        // said as it is ("Then take exit 4A").
+        val (cue, rest) = when {
+            next.startsWith("At the light, ") -> "at the next light, " to next.removePrefix("At the light, ")
+            next.startsWith("At the stop sign, ") -> "at the next stop sign, " to next.removePrefix("At the stop sign, ")
+            else -> "" to next
+        }
+        val lower = rest.replaceFirstChar { it.lowercase() }
+        val verb = if (lower.startsWith("turn ") || lower.startsWith("use ") || lower.startsWith("make ")) "you'll $lower" else lower
+        return "$instruction. Then $cue$verb"
+    }
 
     override fun intoLotThen(turnLeft: Boolean, label: String, left: Boolean?): String {
         val where = when (left) { true -> "is on your left"; false -> "is on your right"; null -> "is ahead" }

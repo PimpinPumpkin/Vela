@@ -277,6 +277,9 @@ off the list when it has been.
   leaves Wi-Fi.
 - A drive's town turns say their near line with no distance, as Google's ("At the light, turn
   left onto 5th Street"; SPEC 4.6, Guidance): unit tests only; not yet heard on a drive.
+- A drive's "then" is Google's own short sentence with no street ("Turn right onto Elm Street.
+  Then at the next light, you'll turn left"; SPEC 4.6, Guidance), and that turn's near line
+  still names it: unit tests and a mock drive on a 4a; not yet heard on a drive.
 - Lane arrows when no lane has an arrow the way of the turn: the lane the data marks for it
   draws the turn's arrow, lit, on the card and the car (SPEC 10.2, `laneArrows`). Unit tests and
   the car's lane bitmap drawn through the app's code; not yet seen on a drive.

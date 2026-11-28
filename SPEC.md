@@ -2203,6 +2203,15 @@ At 12 m a car gets 42 m and 84 m. `OFF_ROUTE_M` (40 m) and `FAR_OFF_M` (90 m) ar
   `thenNext` exists in 13 languages; Dutch, Swedish and Japanese have none yet and say the two
   turns apart, as before. `upcomingPrompts` prepares the chained lines with the same wording
   (`joinNext`, `joinAtTurn`), and the chained step's lines as said.
+- On a drive (`cornerQuiet`) the "then" is Google's: its own short sentence after the line
+  (`NavStrings.thenAfter`, English; other languages keep `thenNext`), and a turn in it has no
+  street (`thenDropsRoad`: left, right, slight, sharp and U-turns that name a road): "Turn right
+  onto Elm Street. Then at the next light, you'll turn left". A light or stop sign in it is "the
+  next" one, and a turn or a lane is what "you'll" do; a ramp or an exit keeps its sign ("Then
+  take exit 4A"). Such a turn counts only its far line as said, so its own near line names the
+  street. Google, recorded on four fixture drives in Davis and Sacramento: "Then at the next stop
+  sign, you'll turn left.", "Then you'll turn left into the parking lot.", "Then, take the J
+  Street exit."
 - A next step past `CHAIN_M` but within `THEN_SOON_M` (500 m), whose first approach line would
   fire as the first turn is made (the far band plus `BAND_MERGE_S` of travel, `dueNext`), rides
   on the first turn's line at the turn only: "Take the ramp, then keep slight left". Its bands

@@ -16,8 +16,9 @@ import java.util.Locale
 
 /**
  * A drive's town turns in Google's rhythm (NavEngine.update's cornerQuiet): a far line with its
- * distance, a near line with none, and nothing at the corner. The near line names a turn close after, and
- * that turn's own line comes once the corner is made. Davis fixture, metric, 10 m/s.
+ * distance, a near line with none, and nothing at the corner. The near line names a turn close after
+ * in a sentence of its own without its street ("Then you'll turn right"), and that turn's own line
+ * comes once the corner is made. Davis fixture, metric, 10 m/s.
  */
 class NavEngineCornerQuietTest {
     private val lat = 38.5449
@@ -82,7 +83,9 @@ class NavEngineCornerQuietTest {
     @Test fun `the near line names a turn close after, and that turn speaks once the corner is made`() {
         val said = drive(route(northM = 100.0, second = true), quiet = true)
         val near = said.first { it.second.startsWith("Turn left onto North Road") }.second
-        assertTrue(near, "then" in near && "Elm Street" in near)
+        assertEquals("Turn left onto North Road. Then you'll turn right", near)
+        // As Google's, the far line says the turn alone; the "then" is on the near line only.
+        assertEquals("In 400 meters, Turn left onto North Road", said.first { it.second.startsWith("In 400") }.second)
         // Nothing inside either corner: from 30 m before the first to 15 m past it, and from 25 m
         // before the second.
         assertTrue("$said", said.none { it.first in 1470.0..1514.0 })
@@ -103,7 +106,7 @@ class NavEngineCornerQuietTest {
         val lines = NavEngine.upcomingPrompts(r, fromStep = 1, spoken = emptySet(), speedMps = 10.0, imperial = false, nearestFirst = false, cornerQuiet = true)
         // The far line, then the near line with no distance and the turn after: nothing else
         // names North Road, so nothing is prepared for the corner.
-        assertEquals("$lines", listOf("In 400 meters, Turn left onto North Road, then turn right onto Elm Street", "Turn left onto North Road, then turn right onto Elm Street"),
+        assertEquals("$lines", listOf("In 400 meters, Turn left onto North Road", "Turn left onto North Road. Then you'll turn right"),
             lines.filter { "North Road" in it }.distinct())
     }
 

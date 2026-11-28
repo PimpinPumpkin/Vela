@@ -268,4 +268,17 @@ class NavStringsTest {
         assertEquals("Treceți de semafor, apoi virați la stânga", RoNavStrings.lightThen(RoNavStrings.passLights(1), "Virați la stânga"))
         assertEquals("Menj el a közlekedési lámpa mellett, majd fordulj balra", HuNavStrings.lightThen(HuNavStrings.passLights(1), "Fordulj balra"))
     }
+
+    @Test fun `a drive's then is Google's own short sentence after the line`() {
+        val en = NavStringsRegistry.forLanguage("en")
+        assertEquals("Turn right onto Elm Street. Then you'll turn left", en.thenAfter("Turn right onto Elm Street", "Turn left"))
+        assertEquals("Turn right onto Elm Street. Then at the next light, you'll turn left", en.thenAfter("Turn right onto Elm Street", "At the light, turn left"))
+        assertEquals("At the stop sign, turn right onto Catalina Drive. Then at the next stop sign, you'll turn left",
+            en.thenAfter("At the stop sign, turn right onto Catalina Drive", "At the stop sign, turn left"))
+        assertEquals("Take exit 4A. Then you'll use the left lane to keep slight left", en.thenAfter("Take exit 4A", "Use the left lane to keep slight left"))
+        assertEquals("Turn left onto 5th Street. Then take the ramp on the right toward I 80 East", en.thenAfter("Turn left onto 5th Street", "Take the ramp on the right toward I 80 East"))
+        // A language without a line of its own keeps its one-sentence join.
+        val fr = NavStringsRegistry.forLanguage("fr")
+        assertEquals(fr.thenNext("Tournez à droite", "Tournez à gauche"), fr.thenAfter("Tournez à droite", "Tournez à gauche"))
+    }
 }
